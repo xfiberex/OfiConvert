@@ -795,7 +795,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private static void ApplyLanguage(string language)
     {
-        var cultureName = language == "en" ? "en-US" : "es-ES";
+        var cultureName = language switch
+        {
+            "en" => "en-US",
+            "pt" => "pt-BR",
+            "fr" => "fr-FR",
+            "de" => "de-DE",
+            "it" => "it-IT",
+            "zh" => "zh-CN",
+            "ja" => "ja-JP",
+            _ => "es-ES"
+        };
         var newDict = new ResourceDictionary
         {
             Source = new Uri($"pack://application:,,,/Lang/{cultureName}.xaml")

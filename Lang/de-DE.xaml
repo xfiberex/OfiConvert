@@ -1,0 +1,146 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=System.Runtime">
+
+    <!-- App -->
+    <system:String x:Key="AppTitle">OfiConvert - Office-Dateikonverter</system:String>
+
+    <!-- Tabs -->
+    <system:String x:Key="TabConversion">Konvertierung</system:String>
+    <system:String x:Key="TabHistory">Verlauf</system:String>
+    <system:String x:Key="TabSettings">Einstellungen</system:String>
+
+    <!-- Action Buttons -->
+    <system:String x:Key="BtnSelectFile">Datei</system:String>
+    <system:String x:Key="BtnConvert">Konvertieren</system:String>
+    <system:String x:Key="BtnCancel">Abbrechen</system:String>
+    <system:String x:Key="BtnPause">Pause</system:String>
+    <system:String x:Key="BtnResume">Fortsetzen</system:String>
+    <system:String x:Key="BtnClear">Löschen</system:String>
+    <system:String x:Key="BtnExport">Exportieren</system:String>
+
+    <!-- Labels -->
+    <system:String x:Key="LblSelectFiles">Auswählen:</system:String>
+    <system:String x:Key="LblFormat">Format:</system:String>
+    <system:String x:Key="LblOutputFolder">Zielordner:</system:String>
+    <system:String x:Key="LblDefaultFolder">Gleicher Speicherort wie Originaldateien</system:String>
+    <system:String x:Key="BtnSelectFolder">Auswählen</system:String>
+    <system:String x:Key="TipDefaultFolder">Standardspeicherort verwenden</system:String>
+    <system:String x:Key="LblDocumentsHeader">Ausgewählte Dokumente</system:String>
+    <system:String x:Key="LblDragHint"> (Dateien hierher ziehen)</system:String>
+    <system:String x:Key="LblEmptyTitle">Keine Dateien ausgewählt</system:String>
+    <system:String x:Key="LblEmptySubtitle">Klicken Sie auf 'Datei' oder ziehen Sie Dateien hierher</system:String>
+    <system:String x:Key="LblTotalSize">Gesamtgröße:</system:String>
+    <system:String x:Key="LblFileCount">Dateianzahl:</system:String>
+    <system:String x:Key="LblErrorsDetected">Fehler erkannt:</system:String>
+    <system:String x:Key="TipClose">Schließen</system:String>
+
+    <!-- Per-file options -->
+    <system:String x:Key="LblPageRange">Seitenbereich:</system:String>
+    <system:String x:Key="LblSheetNames">Blätter (Namen):</system:String>
+    <system:String x:Key="LblSlideRange">Folienbereich:</system:String>
+    <system:String x:Key="LblImageQuality">Bildqualität:</system:String>
+    <system:String x:Key="LblImageDpi">DPI:</system:String>
+    <system:String x:Key="TipPageRange">Z.B.: 1-5 oder 1,3,5</system:String>
+    <system:String x:Key="TipSheetNames">Blattnamen durch Komma getrennt</system:String>
+    <system:String x:Key="TipSlideRange">Z.B.: 1-10 oder 1,3,5</system:String>
+
+    <!-- States -->
+    <system:String x:Key="StatePending">Ausstehend</system:String>
+    <system:String x:Key="StateValidating">Wird überprüft...</system:String>
+    <system:String x:Key="StateConverting">Wird konvertiert...</system:String>
+    <system:String x:Key="StateRetrying">Erneuter Versuch...</system:String>
+    <system:String x:Key="StatePaused">Pausiert</system:String>
+    <system:String x:Key="StateCompleted">Abgeschlossen</system:String>
+    <system:String x:Key="StateError">Fehler</system:String>
+    <system:String x:Key="StateSkipped">Übersprungen</system:String>
+    <system:String x:Key="StateCancelled">Abgebrochen</system:String>
+
+    <!-- Settings -->
+    <system:String x:Key="LblTheme">Design:</system:String>
+    <system:String x:Key="LblThemeSystem">System</system:String>
+    <system:String x:Key="LblThemeDark">Dunkel</system:String>
+    <system:String x:Key="LblThemeLight">Hell</system:String>
+    <system:String x:Key="LblLanguage">Sprache:</system:String>
+    <system:String x:Key="LblSpanish">Español</system:String>
+    <system:String x:Key="LblEnglish">English</system:String>
+    <system:String x:Key="LblPortuguese">Português</system:String>
+    <system:String x:Key="LblFrench">Français</system:String>
+    <system:String x:Key="LblGerman">Deutsch</system:String>
+    <system:String x:Key="LblItalian">Italiano</system:String>
+    <system:String x:Key="LblChinese">中文</system:String>
+    <system:String x:Key="LblJapanese">日本語</system:String>
+    <system:String x:Key="LblParallelConversions">Parallele Konvertierungen:</system:String>
+    <system:String x:Key="LblAutoRetry">Automatisch wiederholen:</system:String>
+    <system:String x:Key="LblMaxRetries">Maximale Versuche:</system:String>
+    <system:String x:Key="LblMinimizeToTray">In Taskleiste minimieren:</system:String>
+    <system:String x:Key="LblShowNotifications">Benachrichtigungen anzeigen:</system:String>
+    <system:String x:Key="LblContextMenu">Explorer-Kontextmenü:</system:String>
+    <system:String x:Key="BtnRegisterMenu">Registrieren</system:String>
+    <system:String x:Key="BtnUnregisterMenu">Deregistrieren</system:String>
+    <system:String x:Key="LblDefaultFormat">Standardformat:</system:String>
+
+    <!-- History -->
+    <system:String x:Key="BtnExportCsv">CSV exportieren</system:String>
+    <system:String x:Key="BtnExportTxt">TXT exportieren</system:String>
+    <system:String x:Key="BtnClearHistory">Verlauf löschen</system:String>
+    <system:String x:Key="LblDate">Datum</system:String>
+    <system:String x:Key="LblSourceFile">Quelldatei</system:String>
+    <system:String x:Key="LblDestination">Ziel</system:String>
+    <system:String x:Key="LblResult">Ergebnis</system:String>
+    <system:String x:Key="LblDuration">Dauer</system:String>
+    <system:String x:Key="LblSuccess">Erfolg</system:String>
+    <system:String x:Key="LblNoHistory">Keine Konvertierungseinträge</system:String>
+
+    <!-- Tray -->
+    <system:String x:Key="TrayShow">Anzeigen</system:String>
+    <system:String x:Key="TrayStartConversion">Konvertierung starten</system:String>
+    <system:String x:Key="TrayExit">Beenden</system:String>
+    <system:String x:Key="TrayNotifSuccess">Konvertierung abgeschlossen: {0} Datei(en) konvertiert.</system:String>
+    <system:String x:Key="TrayNotifErrors">Konvertierung abgeschlossen: {0} erfolgreich, {1} mit Fehlern.</system:String>
+
+    <!-- Messages -->
+    <system:String x:Key="MsgNoFiles">Keine Dateien ausgewählt.</system:String>
+    <system:String x:Key="MsgFileTooBig">Die Datei '{0}' überschreitet das Limit von 500 MB und wird nicht hinzugefügt.</system:String>
+    <system:String x:Key="MsgOfficeNotFound">Microsoft Office ist nicht installiert oder nicht erreichbar.
+
+Diese Anwendung benötigt Microsoft Office (Word, Excel und/oder PowerPoint), das auf dem System installiert ist, um Dateien in PDF zu konvertieren.
+
+LibreOffice wird als Alternative verwendet, falls verfügbar.</system:String>
+    <system:String x:Key="MsgSelectOutputFolder">Sie haben keinen Zielordner ausgewählt.
+
+Möchten Sie einen Ordner zum Speichern der konvertierten Dateien auswählen?</system:String>
+    <system:String x:Key="MsgSelectOutputFolderTitle">Zielordner auswählen</system:String>
+    <system:String x:Key="MsgConversionSuccess">Konvertierung erfolgreich</system:String>
+    <system:String x:Key="MsgConversionErrors">Konvertierung mit Fehlern abgeschlossen</system:String>
+    <system:String x:Key="MsgFilesConverted">{0} Datei(en) erfolgreich konvertiert.</system:String>
+    <system:String x:Key="MsgFilesFailed">{0} Datei(en) fehlgeschlagen.</system:String>
+    <system:String x:Key="MsgFilesSavedTo">Dateien gespeichert in: {0}</system:String>
+    <system:String x:Key="MsgCancelConfirm">Eine Konvertierung läuft. Wenn Sie jetzt schließen, könnten Office-Prozesse geöffnet bleiben.
+
+Möchten Sie die Konvertierung abbrechen und beenden?</system:String>
+    <system:String x:Key="MsgCancelConfirmTitle">Schließen bestätigen</system:String>
+    <system:String x:Key="MsgCannotClearConverting">Kann während der Konvertierung nicht gelöscht werden.</system:String>
+    <system:String x:Key="MsgNoFilesToClear">Keine Dateien zum Löschen.</system:String>
+    <system:String x:Key="MsgConversionComplete">Konvertierung abgeschlossen!</system:String>
+    <system:String x:Key="MsgPasswordProtected">Die Datei ist passwortgeschützt.</system:String>
+    <system:String x:Key="MsgCorruptFile">Die Datei scheint beschädigt zu sein.</system:String>
+    <system:String x:Key="MsgFileLocked">Die Datei wird von einem anderen Prozess verwendet.</system:String>
+    <system:String x:Key="MsgFileNotFound">Die Datei existiert nicht.</system:String>
+    <system:String x:Key="MsgLibreOfficeFallback">LibreOffice wird als Alternative verwendet...</system:String>
+    <system:String x:Key="MsgNoConverterAvailable">Kein Konvertierungsmodul verfügbar. Installieren Sie Microsoft Office oder LibreOffice.</system:String>
+    <system:String x:Key="MsgWarning">Warnung</system:String>
+    <system:String x:Key="MsgInfo">Information</system:String>
+    <system:String x:Key="MsgError">Fehler</system:String>
+    <system:String x:Key="MsgConfirmation">Bestätigung</system:String>
+    <system:String x:Key="MsgContextMenuRegistered">Kontextmenü erfolgreich registriert.</system:String>
+    <system:String x:Key="MsgContextMenuUnregistered">Kontextmenü erfolgreich deregistriert.</system:String>
+
+    <!-- Filter -->
+    <system:String x:Key="FilterOfficeFiles">Office-Dateien|*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx|Word-Dateien (*.docx)|*.docx|Excel-Dateien (*.xlsx)|*.xlsx|PowerPoint-Dateien (*.pptx)|*.pptx|Alle Dateien|*.*</system:String>
+    <system:String x:Key="FilterCsv">CSV-Datei|*.csv</system:String>
+    <system:String x:Key="FilterTxt">Textdatei|*.txt</system:String>
+    <system:String x:Key="TitleSelectFiles">Office-Dateien auswählen</system:String>
+    <system:String x:Key="TitleSelectOutputFolder">Zielordner für konvertierte Dateien auswählen</system:String>
+
+</ResourceDictionary>

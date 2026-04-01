@@ -1,0 +1,146 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=System.Runtime">
+
+    <!-- App -->
+    <system:String x:Key="AppTitle">OfiConvert - Office ファイルコンバーター</system:String>
+
+    <!-- Tabs -->
+    <system:String x:Key="TabConversion">変換</system:String>
+    <system:String x:Key="TabHistory">履歴</system:String>
+    <system:String x:Key="TabSettings">設定</system:String>
+
+    <!-- Action Buttons -->
+    <system:String x:Key="BtnSelectFile">ファイル</system:String>
+    <system:String x:Key="BtnConvert">変換</system:String>
+    <system:String x:Key="BtnCancel">キャンセル</system:String>
+    <system:String x:Key="BtnPause">一時停止</system:String>
+    <system:String x:Key="BtnResume">再開</system:String>
+    <system:String x:Key="BtnClear">クリア</system:String>
+    <system:String x:Key="BtnExport">エクスポート</system:String>
+
+    <!-- Labels -->
+    <system:String x:Key="LblSelectFiles">選択：</system:String>
+    <system:String x:Key="LblFormat">形式：</system:String>
+    <system:String x:Key="LblOutputFolder">出力フォルダー：</system:String>
+    <system:String x:Key="LblDefaultFolder">元のファイルと同じ場所</system:String>
+    <system:String x:Key="BtnSelectFolder">選択</system:String>
+    <system:String x:Key="TipDefaultFolder">デフォルトの場所を使用</system:String>
+    <system:String x:Key="LblDocumentsHeader">選択されたドキュメント</system:String>
+    <system:String x:Key="LblDragHint"> （ここにファイルをドラッグ）</system:String>
+    <system:String x:Key="LblEmptyTitle">ファイルが選択されていません</system:String>
+    <system:String x:Key="LblEmptySubtitle">「ファイル」をクリックするか、ここにファイルをドラッグしてください</system:String>
+    <system:String x:Key="LblTotalSize">合計サイズ：</system:String>
+    <system:String x:Key="LblFileCount">ファイル数：</system:String>
+    <system:String x:Key="LblErrorsDetected">検出されたエラー：</system:String>
+    <system:String x:Key="TipClose">閉じる</system:String>
+
+    <!-- Per-file options -->
+    <system:String x:Key="LblPageRange">ページ範囲：</system:String>
+    <system:String x:Key="LblSheetNames">シート（名前）：</system:String>
+    <system:String x:Key="LblSlideRange">スライド範囲：</system:String>
+    <system:String x:Key="LblImageQuality">画像品質：</system:String>
+    <system:String x:Key="LblImageDpi">DPI：</system:String>
+    <system:String x:Key="TipPageRange">例：1-5 または 1,3,5</system:String>
+    <system:String x:Key="TipSheetNames">カンマ区切りのシート名</system:String>
+    <system:String x:Key="TipSlideRange">例：1-10 または 1,3,5</system:String>
+
+    <!-- States -->
+    <system:String x:Key="StatePending">保留中</system:String>
+    <system:String x:Key="StateValidating">検証中...</system:String>
+    <system:String x:Key="StateConverting">変換中...</system:String>
+    <system:String x:Key="StateRetrying">再試行中...</system:String>
+    <system:String x:Key="StatePaused">一時停止中</system:String>
+    <system:String x:Key="StateCompleted">完了</system:String>
+    <system:String x:Key="StateError">エラー</system:String>
+    <system:String x:Key="StateSkipped">スキップ済み</system:String>
+    <system:String x:Key="StateCancelled">キャンセル済み</system:String>
+
+    <!-- Settings -->
+    <system:String x:Key="LblTheme">テーマ：</system:String>
+    <system:String x:Key="LblThemeSystem">システム</system:String>
+    <system:String x:Key="LblThemeDark">ダーク</system:String>
+    <system:String x:Key="LblThemeLight">ライト</system:String>
+    <system:String x:Key="LblLanguage">言語：</system:String>
+    <system:String x:Key="LblSpanish">Español</system:String>
+    <system:String x:Key="LblEnglish">English</system:String>
+    <system:String x:Key="LblPortuguese">Português</system:String>
+    <system:String x:Key="LblFrench">Français</system:String>
+    <system:String x:Key="LblGerman">Deutsch</system:String>
+    <system:String x:Key="LblItalian">Italiano</system:String>
+    <system:String x:Key="LblChinese">中文</system:String>
+    <system:String x:Key="LblJapanese">日本語</system:String>
+    <system:String x:Key="LblParallelConversions">並列変換：</system:String>
+    <system:String x:Key="LblAutoRetry">自動再試行：</system:String>
+    <system:String x:Key="LblMaxRetries">最大再試行回数：</system:String>
+    <system:String x:Key="LblMinimizeToTray">トレイに最小化：</system:String>
+    <system:String x:Key="LblShowNotifications">通知を表示：</system:String>
+    <system:String x:Key="LblContextMenu">エクスプローラーのコンテキストメニュー：</system:String>
+    <system:String x:Key="BtnRegisterMenu">登録</system:String>
+    <system:String x:Key="BtnUnregisterMenu">登録解除</system:String>
+    <system:String x:Key="LblDefaultFormat">デフォルト形式：</system:String>
+
+    <!-- History -->
+    <system:String x:Key="BtnExportCsv">CSV エクスポート</system:String>
+    <system:String x:Key="BtnExportTxt">TXT エクスポート</system:String>
+    <system:String x:Key="BtnClearHistory">履歴をクリア</system:String>
+    <system:String x:Key="LblDate">日付</system:String>
+    <system:String x:Key="LblSourceFile">ソースファイル</system:String>
+    <system:String x:Key="LblDestination">出力先</system:String>
+    <system:String x:Key="LblResult">結果</system:String>
+    <system:String x:Key="LblDuration">所要時間</system:String>
+    <system:String x:Key="LblSuccess">成功</system:String>
+    <system:String x:Key="LblNoHistory">変換記録がありません</system:String>
+
+    <!-- Tray -->
+    <system:String x:Key="TrayShow">表示</system:String>
+    <system:String x:Key="TrayStartConversion">変換を開始</system:String>
+    <system:String x:Key="TrayExit">終了</system:String>
+    <system:String x:Key="TrayNotifSuccess">変換完了：{0} 個のファイルが変換されました。</system:String>
+    <system:String x:Key="TrayNotifErrors">変換完了：{0} 個成功、{1} 個にエラーがあります。</system:String>
+
+    <!-- Messages -->
+    <system:String x:Key="MsgNoFiles">ファイルが選択されていません。</system:String>
+    <system:String x:Key="MsgFileTooBig">ファイル '{0}' は 500 MB の制限を超えているため、追加されません。</system:String>
+    <system:String x:Key="MsgOfficeNotFound">Microsoft Office がインストールされていないか、アクセスできません。
+
+このアプリケーションでは、ファイルを PDF に変換するために、システムに Microsoft Office（Word、Excel、PowerPoint）がインストールされている必要があります。
+
+利用可能な場合は、LibreOffice が代替として使用されます。</system:String>
+    <system:String x:Key="MsgSelectOutputFolder">出力フォルダーが選択されていません。
+
+変換されたファイルを保存するフォルダーを選択しますか？</system:String>
+    <system:String x:Key="MsgSelectOutputFolderTitle">出力フォルダーを選択</system:String>
+    <system:String x:Key="MsgConversionSuccess">変換成功</system:String>
+    <system:String x:Key="MsgConversionErrors">変換はエラーで完了しました</system:String>
+    <system:String x:Key="MsgFilesConverted">{0} 個のファイルが正常に変換されました。</system:String>
+    <system:String x:Key="MsgFilesFailed">{0} 個のファイルが失敗しました。</system:String>
+    <system:String x:Key="MsgFilesSavedTo">ファイルの保存先：{0}</system:String>
+    <system:String x:Key="MsgCancelConfirm">変換が進行中です。今閉じると、Office のプロセスが開いたままになる可能性があります。
+
+変換をキャンセルして終了しますか？</system:String>
+    <system:String x:Key="MsgCancelConfirmTitle">閉じる確認</system:String>
+    <system:String x:Key="MsgCannotClearConverting">変換中はクリアできません。</system:String>
+    <system:String x:Key="MsgNoFilesToClear">クリアするファイルがありません。</system:String>
+    <system:String x:Key="MsgConversionComplete">変換が完了しました！</system:String>
+    <system:String x:Key="MsgPasswordProtected">ファイルはパスワードで保護されています。</system:String>
+    <system:String x:Key="MsgCorruptFile">ファイルが破損しているようです。</system:String>
+    <system:String x:Key="MsgFileLocked">ファイルは別のプロセスによってロックされています。</system:String>
+    <system:String x:Key="MsgFileNotFound">ファイルが存在しません。</system:String>
+    <system:String x:Key="MsgLibreOfficeFallback">代替として LibreOffice を使用しています...</system:String>
+    <system:String x:Key="MsgNoConverterAvailable">利用可能な変換エンジンがありません。Microsoft Office または LibreOffice をインストールしてください。</system:String>
+    <system:String x:Key="MsgWarning">警告</system:String>
+    <system:String x:Key="MsgInfo">情報</system:String>
+    <system:String x:Key="MsgError">エラー</system:String>
+    <system:String x:Key="MsgConfirmation">確認</system:String>
+    <system:String x:Key="MsgContextMenuRegistered">コンテキストメニューが正常に登録されました。</system:String>
+    <system:String x:Key="MsgContextMenuUnregistered">コンテキストメニューの登録が解除されました。</system:String>
+
+    <!-- Filter -->
+    <system:String x:Key="FilterOfficeFiles">Office ファイル|*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx|Word ファイル (*.docx)|*.docx|Excel ファイル (*.xlsx)|*.xlsx|PowerPoint ファイル (*.pptx)|*.pptx|すべてのファイル|*.*</system:String>
+    <system:String x:Key="FilterCsv">CSV ファイル|*.csv</system:String>
+    <system:String x:Key="FilterTxt">テキストファイル|*.txt</system:String>
+    <system:String x:Key="TitleSelectFiles">Office ファイルを選択</system:String>
+    <system:String x:Key="TitleSelectOutputFolder">変換ファイルの出力フォルダーを選択</system:String>
+
+</ResourceDictionary>

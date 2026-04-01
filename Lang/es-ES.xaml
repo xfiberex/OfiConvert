@@ -64,6 +64,12 @@
     <system:String x:Key="LblLanguage">Idioma:</system:String>
     <system:String x:Key="LblSpanish">Español</system:String>
     <system:String x:Key="LblEnglish">English</system:String>
+    <system:String x:Key="LblPortuguese">Português</system:String>
+    <system:String x:Key="LblFrench">Français</system:String>
+    <system:String x:Key="LblGerman">Deutsch</system:String>
+    <system:String x:Key="LblItalian">Italiano</system:String>
+    <system:String x:Key="LblChinese">中文</system:String>
+    <system:String x:Key="LblJapanese">日本語</system:String>
     <system:String x:Key="LblParallelConversions">Conversiones paralelas:</system:String>
     <system:String x:Key="LblAutoRetry">Reintento automático:</system:String>
     <system:String x:Key="LblMaxRetries">Máximo reintentos:</system:String>
