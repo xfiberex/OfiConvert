@@ -2,28 +2,49 @@
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Windows;
 using OfiConvert.Models;
 using OfiConvert.Services;
+using Serilog;
 
 namespace OfiConvert.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
-    private readonly IFileConversionService _conversionService;
+    private readonly IFileConversionService _officeService;
+    private readonly LibreOfficeConversionService _libreOfficeService;
     private readonly IDialogService _dialogService;
+    private readonly IConversionHistoryService _historyService;
+    private readonly FileValidationService _validationService;
+    private readonly SettingsService _settingsService;
+    private readonly QueuePersistenceService _queueService;
     private readonly HashSet<string> _selectedFilePaths = [];
     private CancellationTokenSource? _cancellationTokenSource;
+    private readonly ManualResetEventSlim _pauseEvent = new(true);
+    private SemaphoreSlim? _parallelSemaphore;
 
-    private const long MaxFileSizeBytes = 500 * 1024 * 1024; // 500 MB
+    private const long MaxFileSizeBytes = 500 * 1024 * 1024;
 
-    public MainViewModel(IFileConversionService conversionService, IDialogService dialogService)
+    public MainViewModel(
+        IFileConversionService officeService,
+        IDialogService dialogService,
+        IConversionHistoryService historyService)
     {
-        _conversionService = conversionService;
+        _officeService = officeService;
         _dialogService = dialogService;
+        _historyService = historyService;
+        _libreOfficeService = new LibreOfficeConversionService();
+        _validationService = new FileValidationService();
+        _settingsService = new SettingsService();
+        _queueService = new QueuePersistenceService();
+
+        LoadSettings();
+        LoadPersistedQueue();
+        RefreshHistory();
     }
 
     public MainViewModel()
-        : this(new OfficeFileConversionService(), new DialogService())
+        : this(new OfficeFileConversionService(), new DialogService(), new ConversionHistoryService())
     {
     }
 
@@ -36,10 +57,10 @@ public partial class MainViewModel : ObservableObject
     private string _totalSize = "0 KB";
 
     [ObservableProperty]
-    private int _fileCount = 0;
+    private int _fileCount;
 
     [ObservableProperty]
-    private int _progressValue = 0;
+    private int _progressValue;
 
     [ObservableProperty]
     private int _progressMaximum = 100;
@@ -48,16 +69,19 @@ public partial class MainViewModel : ObservableObject
     private string _progressPercentage = "0%";
 
     [ObservableProperty]
-    private bool _isConverting = false;
+    private bool _isConverting;
+
+    [ObservableProperty]
+    private bool _isPaused;
 
     [ObservableProperty]
     private string _outputFolder = string.Empty;
 
     [ObservableProperty]
-    private bool _useCustomOutputFolder = false;
+    private bool _useCustomOutputFolder;
 
     [ObservableProperty]
-    private bool _showConversionResults = false;
+    private bool _showConversionResults;
 
     [ObservableProperty]
     private string _conversionResultTitle = string.Empty;
@@ -69,13 +93,44 @@ public partial class MainViewModel : ObservableObject
     private ObservableCollection<string> _conversionErrors = [];
 
     [ObservableProperty]
-    private bool _hasConversionErrors = false;
+    private bool _hasConversionErrors;
 
     [ObservableProperty]
-    private int _successfulConversions = 0;
+    private int _successfulConversions;
 
     [ObservableProperty]
-    private int _failedConversions = 0;
+    private int _failedConversions;
+
+    [ObservableProperty]
+    private OutputFormat _defaultOutputFormat = OutputFormat.PDF;
+
+    [ObservableProperty]
+    private ObservableCollection<ConversionHistoryEntry> _conversionHistory = [];
+
+    // Settings
+    [ObservableProperty]
+    private string _selectedTheme = "System";
+
+    [ObservableProperty]
+    private string _selectedLanguage = "es";
+
+    [ObservableProperty]
+    private int _maxParallelConversions = 2;
+
+    [ObservableProperty]
+    private bool _autoRetryEnabled = true;
+
+    [ObservableProperty]
+    private int _maxRetryCount = 3;
+
+    [ObservableProperty]
+    private bool _minimizeToTray;
+
+    [ObservableProperty]
+    private bool _showNotifications = true;
+
+    [ObservableProperty]
+    private bool _isContextMenuRegistered;
 
     #endregion
 
@@ -84,13 +139,9 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task SelectFilesAsync()
     {
-        const string filter = "Archivos Office|*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx|" +
-                             "Archivos Word (*.docx)|*.docx|" +
-                             "Archivos Excel (*.xlsx)|*.xlsx|" +
-                             "Archivos PowerPoint (*.pptx)|*.pptx|" +
-                             "Todos los archivos|*.*";
-
-        var files = await _dialogService.ShowOpenFileDialogAsync(filter, "Seleccionar archivos de Office");
+        var filter = GetLocalizedString("FilterOfficeFiles");
+        var title = GetLocalizedString("TitleSelectFiles");
+        var files = await _dialogService.ShowOpenFileDialogAsync(filter, title);
 
         if (files is not null && files.Length > 0)
         {
@@ -111,33 +162,46 @@ public partial class MainViewModel : ObservableObject
             var fileInfo = new FileInfo(fileName);
             var extension = fileInfo.Extension.ToLowerInvariant();
 
-            if (!_conversionService.IsValidOfficeFile(extension))
+            if (!_officeService.IsValidOfficeFile(extension))
                 continue;
 
             if (fileInfo.Length > MaxFileSizeBytes)
             {
-                _dialogService.ShowInformation(
-                    $"El archivo '{fileInfo.Name}' excede el l\u00edmite de 500 MB y no se agregar\u00e1.",
-                    "Archivo demasiado grande");
+                var msg = string.Format(GetLocalizedString("MsgFileTooBig"), fileInfo.Name);
+                _dialogService.ShowInformation(msg, GetLocalizedString("MsgWarning"));
                 continue;
             }
 
+            var ext = fileInfo.Extension.TrimStart('.').ToUpper();
             var fileItem = new FileItem
             {
                 Name = fileInfo.Name,
                 Path = fileName,
                 Size = FormatFileSize(fileInfo.Length),
                 SizeInBytes = fileInfo.Length,
-                Extension = fileInfo.Extension.TrimStart('.').ToUpper(),
+                Extension = ext,
                 State = FileConversionState.Pending,
-                StateMessage = "Pendiente"
+                StateMessage = GetLocalizedString("StatePending"),
+                Options = new ConversionOptions { OutputFormat = DefaultOutputFormat }
             };
 
             SelectedFiles.Add(fileItem);
             _selectedFilePaths.Add(fileName);
+
+            _ = LoadThumbnailAsync(fileItem);
         }
 
         UpdateTotals();
+        PersistQueue();
+    }
+
+    private async Task LoadThumbnailAsync(FileItem fileItem)
+    {
+        var thumbnail = await ThumbnailService.GetThumbnailAsync(fileItem.Path, 48, 48);
+        if (thumbnail is not null)
+        {
+            fileItem.Thumbnail = thumbnail;
+        }
     }
 
     [RelayCommand]
@@ -148,6 +212,7 @@ public partial class MainViewModel : ObservableObject
             SelectedFiles.Remove(file);
             _selectedFilePaths.Remove(file.Path);
             UpdateTotals();
+            PersistQueue();
         }
     }
 
@@ -157,14 +222,14 @@ public partial class MainViewModel : ObservableObject
         if (IsConverting)
         {
             _dialogService.ShowInformation(
-                "No se puede limpiar mientras se est\u00e1 convirtiendo.",
-                "Advertencia");
+                GetLocalizedString("MsgCannotClearConverting"),
+                GetLocalizedString("MsgWarning"));
             return;
         }
 
         if (SelectedFiles.Count == 0)
         {
-            _dialogService.ShowInformation("No hay archivos para borrar.");
+            _dialogService.ShowInformation(GetLocalizedString("MsgNoFilesToClear"));
             return;
         }
 
@@ -172,6 +237,7 @@ public partial class MainViewModel : ObservableObject
         _selectedFilePaths.Clear();
         UpdateTotals();
         ResetProgress();
+        _queueService.ClearQueue();
     }
 
     #endregion
@@ -181,7 +247,8 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task SelectOutputFolderAsync()
     {
-        var folder = await _dialogService.ShowFolderBrowserDialogAsync("Seleccionar carpeta de destino");
+        var folder = await _dialogService.ShowFolderBrowserDialogAsync(
+            GetLocalizedString("TitleSelectOutputFolder"));
 
         if (!string.IsNullOrEmpty(folder))
         {
@@ -199,6 +266,19 @@ public partial class MainViewModel : ObservableObject
 
     #endregion
 
+    #region Format Selection
+
+    partial void OnDefaultOutputFormatChanged(OutputFormat value)
+    {
+        foreach (var file in SelectedFiles)
+        {
+            var available = OutputFormatHelper.GetFormatsForExtension(file.Extension);
+            file.Options.OutputFormat = available.Contains(value) ? value : OutputFormat.PDF;
+        }
+    }
+
+    #endregion
+
     #region Conversion Process
 
     [RelayCommand]
@@ -209,31 +289,73 @@ public partial class MainViewModel : ObservableObject
 
         if (SelectedFiles.Count == 0)
         {
-            _dialogService.ShowInformation("No hay archivos seleccionados.");
+            _dialogService.ShowInformation(GetLocalizedString("MsgNoFiles"));
             return;
         }
 
         if (!await EnsureOutputFolderSelectedAsync())
             return;
 
-        if (!_conversionService.IsOfficeInstalled())
+        // Check for available conversion engine
+        bool officeAvailable = _officeService.IsOfficeInstalled();
+        bool libreOfficeAvailable = _libreOfficeService.IsOfficeInstalled();
+
+        if (!officeAvailable && !libreOfficeAvailable)
         {
             _dialogService.ShowError(
-                "Microsoft Office no est\u00e1 instalado o no se puede acceder.\n\n" +
-                "Esta aplicaci\u00f3n requiere Microsoft Office (Word, Excel y/o PowerPoint) " +
-                "instalado en el sistema para convertir archivos a PDF.\n\n" +
-                "Por favor, instale Microsoft Office e intente nuevamente.",
-                "Office no encontrado");
+                GetLocalizedString("MsgNoConverterAvailable"),
+                GetLocalizedString("MsgError"));
             return;
         }
 
-        await PerformConversionAsync();
+        if (!officeAvailable)
+        {
+            Log.Warning("Office no disponible, usando LibreOffice como alternativa");
+        }
+
+        await PerformConversionAsync(officeAvailable);
     }
 
     [RelayCommand]
     private void CancelConversion()
     {
         _cancellationTokenSource?.Cancel();
+        _pauseEvent.Set(); // Unblock paused threads
+        IsPaused = false;
+    }
+
+    [RelayCommand]
+    private void PauseConversion()
+    {
+        if (IsConverting && !IsPaused)
+        {
+            _pauseEvent.Reset();
+            IsPaused = true;
+            Log.Information("Conversión pausada");
+
+            foreach (var file in SelectedFiles.Where(f => f.State == FileConversionState.Pending))
+            {
+                file.State = FileConversionState.Paused;
+                file.StateMessage = GetLocalizedString("StatePaused");
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void ResumeConversion()
+    {
+        if (IsConverting && IsPaused)
+        {
+            IsPaused = false;
+            _pauseEvent.Set();
+            Log.Information("Conversión reanudada");
+
+            foreach (var file in SelectedFiles.Where(f => f.State == FileConversionState.Paused))
+            {
+                file.State = FileConversionState.Pending;
+                file.StateMessage = GetLocalizedString("StatePending");
+            }
+        }
     }
 
     private async Task<bool> EnsureOutputFolderSelectedAsync()
@@ -242,15 +364,14 @@ public partial class MainViewModel : ObservableObject
             return true;
 
         var shouldSelect = await _dialogService.ShowConfirmationAsync(
-            "No has seleccionado una carpeta de destino.\n\n" +
-            "\u00bfDeseas seleccionar una carpeta para guardar los archivos PDF convertidos?",
-            "Seleccionar carpeta de destino");
+            GetLocalizedString("MsgSelectOutputFolder"),
+            GetLocalizedString("MsgSelectOutputFolderTitle"));
 
         if (!shouldSelect)
             return false;
 
         var folder = await _dialogService.ShowFolderBrowserDialogAsync(
-            "Seleccionar carpeta de destino para archivos PDF");
+            GetLocalizedString("TitleSelectOutputFolder"));
 
         if (string.IsNullOrEmpty(folder))
             return false;
@@ -260,11 +381,15 @@ public partial class MainViewModel : ObservableObject
         return true;
     }
 
-    private async Task PerformConversionAsync()
+    private async Task PerformConversionAsync(bool officeAvailable)
     {
         IsConverting = true;
+        IsPaused = false;
+        _pauseEvent.Set();
         _cancellationTokenSource = new CancellationTokenSource();
+        _parallelSemaphore = new SemaphoreSlim(MaxParallelConversions, MaxParallelConversions);
         var errors = new List<string>();
+        var ct = _cancellationTokenSource.Token;
 
         try
         {
@@ -274,71 +399,181 @@ public partial class MainViewModel : ObservableObject
             foreach (var file in SelectedFiles)
             {
                 file.State = FileConversionState.Pending;
-                file.StateMessage = "Pendiente";
+                file.StateMessage = GetLocalizedString("StatePending");
+                file.RetryCount = 0;
             }
 
-            for (int i = 0; i < SelectedFiles.Count; i++)
+            var tasks = SelectedFiles.Select(async (fileItem, index) =>
             {
-                if (_cancellationTokenSource.Token.IsCancellationRequested)
+                await _parallelSemaphore.WaitAsync(ct);
+                try
                 {
-                    for (int j = i; j < SelectedFiles.Count; j++)
+                    // Wait if paused
+                    await Task.Run(() => _pauseEvent.Wait(ct), ct);
+
+                    if (ct.IsCancellationRequested)
                     {
-                        SelectedFiles[j].State = FileConversionState.Skipped;
-                        SelectedFiles[j].StateMessage = "Cancelado";
+                        fileItem.State = FileConversionState.Skipped;
+                        fileItem.StateMessage = GetLocalizedString("StateCancelled");
+                        return;
                     }
-                    break;
+
+                    // Validate file
+                    fileItem.State = FileConversionState.Validating;
+                    fileItem.StateMessage = GetLocalizedString("StateValidating");
+
+                    var validationResult = _validationService.Validate(fileItem.Path);
+                    if (!validationResult.IsValid)
+                    {
+                        fileItem.State = FileConversionState.Error;
+                        fileItem.StateMessage = GetLocalizedString("StateError");
+                        fileItem.ValidationMessage = validationResult.ErrorMessage ?? "";
+                        lock (errors) errors.Add($"{fileItem.Name}: {validationResult.ErrorMessage}");
+                        AddHistoryEntry(fileItem, null, validationResult.ErrorMessage);
+                        IncrementProgress();
+                        return;
+                    }
+
+                    // Convert
+                    fileItem.State = FileConversionState.Converting;
+                    fileItem.StateMessage = GetLocalizedString("StateConverting");
+
+                    var outputPath = GetOutputPath(fileItem);
+                    var result = await ConvertWithRetryAsync(fileItem, outputPath, officeAvailable, ct);
+
+                    if (result.Success)
+                    {
+                        fileItem.State = FileConversionState.Completed;
+                        fileItem.StateMessage = GetLocalizedString("StateCompleted");
+                    }
+                    else
+                    {
+                        fileItem.State = FileConversionState.Error;
+                        fileItem.StateMessage = GetLocalizedString("StateError");
+                        lock (errors) errors.Add($"{fileItem.Name}: {result.ErrorMessage}");
+                    }
+
+                    AddHistoryEntry(fileItem, result, null);
+                    IncrementProgress();
                 }
-
-                var fileItem = SelectedFiles[i];
-
-                fileItem.State = FileConversionState.Converting;
-                fileItem.StateMessage = "Convirtiendo...";
-
-                var outputFileName = Path.ChangeExtension(fileItem.Name, ".pdf");
-                var pdfPath = GetSafeOutputPath(OutputFolder, outputFileName);
-
-                var result = await _conversionService.ConvertToPdfAsync(
-                    fileItem.Path,
-                    pdfPath,
-                    cancellationToken: _cancellationTokenSource.Token);
-
-                if (result.Success)
+                finally
                 {
-                    fileItem.State = FileConversionState.Completed;
-                    fileItem.StateMessage = "Completado";
+                    _parallelSemaphore.Release();
                 }
-                else
-                {
-                    fileItem.State = FileConversionState.Error;
-                    fileItem.StateMessage = "Error";
-                    errors.Add($"{fileItem.Name}: {result.ErrorMessage}");
-                }
+            }).ToArray();
 
-                UpdateProgress(i + 1);
-            }
+            await Task.WhenAll(tasks);
 
             ShowConversionSummary(errors);
 
-            if (errors.Count == 0 && !_cancellationTokenSource.Token.IsCancellationRequested)
+            if (errors.Count == 0 && !ct.IsCancellationRequested)
             {
                 SelectedFiles.Clear();
                 _selectedFilePaths.Clear();
                 UpdateTotals();
+                _queueService.ClearQueue();
             }
+
+            // Send notification
+            if (ShowNotifications)
+            {
+                OnConversionCompleted?.Invoke(this, new ConversionCompletedEventArgs
+                {
+                    SuccessCount = SuccessfulConversions,
+                    ErrorCount = FailedConversions
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            foreach (var f in SelectedFiles.Where(f => f.State is FileConversionState.Pending or FileConversionState.Paused))
+            {
+                f.State = FileConversionState.Skipped;
+                f.StateMessage = GetLocalizedString("StateCancelled");
+            }
+            ShowConversionSummary(errors);
         }
         catch (Exception ex)
         {
-            _dialogService.ShowError(
-                $"Error general durante la conversi\u00f3n:\n\n{ex.Message}",
-                "Error");
+            Log.Error(ex, "Error general durante la conversión");
+            _dialogService.ShowError($"Error general:\n\n{ex.Message}", GetLocalizedString("MsgError"));
         }
         finally
         {
             IsConverting = false;
+            IsPaused = false;
             _cancellationTokenSource?.Dispose();
             _cancellationTokenSource = null;
+            _parallelSemaphore?.Dispose();
+            _parallelSemaphore = null;
             ResetProgress();
         }
+    }
+
+    private async Task<ConversionResult> ConvertWithRetryAsync(
+        FileItem file, string outputPath, bool officeAvailable, CancellationToken ct)
+    {
+        int maxRetries = AutoRetryEnabled ? MaxRetryCount : 0;
+        ConversionResult result = ConversionResult.Failed("No intentado");
+
+        IFileConversionService service = officeAvailable
+            ? _officeService
+            : _libreOfficeService;
+
+        for (int attempt = 0; attempt <= maxRetries; attempt++)
+        {
+            if (attempt > 0)
+            {
+                file.State = FileConversionState.Retrying;
+                file.StateMessage = $"{GetLocalizedString("StateRetrying")} ({attempt}/{maxRetries})";
+                file.RetryCount = attempt;
+                Log.Information("Reintentando conversión de {File}, intento {Attempt}/{Max}",
+                    file.Name, attempt, maxRetries);
+
+                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt - 1)), ct);
+            }
+
+            // Wait if paused
+            await Task.Run(() => _pauseEvent.Wait(ct), ct);
+
+            var progress = new Progress<ConversionProgress>(p =>
+            {
+                file.StateMessage = $"{GetLocalizedString("StateConverting")} {p.CurrentFile}/{p.TotalFiles}";
+            });
+
+            result = await service.ConvertAsync(file.Path, outputPath, file.Options, progress, ct);
+
+            if (result.Success) break;
+
+            // If Office fails and LibreOffice is available, try LibreOffice
+            if (officeAvailable && !result.Success && attempt == maxRetries && _libreOfficeService.IsOfficeInstalled())
+            {
+                Log.Information("Intentando con LibreOffice como fallback para {File}", file.Name);
+                file.StateMessage = GetLocalizedString("MsgLibreOfficeFallback");
+                result = await _libreOfficeService.ConvertAsync(file.Path, outputPath, file.Options, progress, ct);
+                if (result.Success) break;
+            }
+        }
+
+        return result;
+    }
+
+    private string GetOutputPath(FileItem fileItem)
+    {
+        var format = fileItem.Options.OutputFormat;
+
+        if (format is OutputFormat.PNG or OutputFormat.JPG &&
+            fileItem.Extension.ToUpper() is "PPT" or "PPTX")
+        {
+            var folderName = Path.GetFileNameWithoutExtension(fileItem.Name);
+            var outputDir = Path.Combine(OutputFolder, folderName);
+            Directory.CreateDirectory(outputDir);
+            return outputDir;
+        }
+
+        var ext = OutputFormatHelper.GetFileExtension(format);
+        var outputFileName = Path.ChangeExtension(fileItem.Name, ext);
+        return GetSafeOutputPath(OutputFolder, outputFileName);
     }
 
     private static string GetSafeOutputPath(string outputFolder, string fileName)
@@ -373,27 +608,26 @@ public partial class MainViewModel : ObservableObject
 
         if (errors.Count > 0)
         {
-            ConversionResultTitle = "Conversi\u00f3n finalizada con errores";
-            ConversionResultMessage = $"Se convirtieron {SuccessfulConversions} archivo(s) exitosamente.\n" +
-                                    $"Fallaron {FailedConversions} archivo(s).\n\n" +
-                                    $"Archivos guardados en: {OutputFolder}";
+            ConversionResultTitle = GetLocalizedString("MsgConversionErrors");
+            ConversionResultMessage = string.Format(GetLocalizedString("MsgFilesConverted"), SuccessfulConversions) + "\n" +
+                                    string.Format(GetLocalizedString("MsgFilesFailed"), FailedConversions) + "\n\n" +
+                                    string.Format(GetLocalizedString("MsgFilesSavedTo"), OutputFolder);
 
             ConversionErrors.Clear();
             foreach (var error in errors)
-            {
                 ConversionErrors.Add(error);
-            }
             HasConversionErrors = true;
         }
         else
         {
-            ConversionResultTitle = "Conversi\u00f3n exitosa";
-            ConversionResultMessage = $"Se convirtieron {SuccessfulConversions} archivo(s) exitosamente.\n\n" +
-                                    $"Archivos guardados en:\n{OutputFolder}";
+            ConversionResultTitle = GetLocalizedString("MsgConversionSuccess");
+            ConversionResultMessage = string.Format(GetLocalizedString("MsgFilesConverted"), SuccessfulConversions) + "\n\n" +
+                                    string.Format(GetLocalizedString("MsgFilesSavedTo"), OutputFolder);
             HasConversionErrors = false;
         }
 
         ShowConversionResults = true;
+        Log.Information("Conversión completada: {Success} exitosas, {Failed} fallidas", SuccessfulConversions, FailedConversions);
     }
 
     [RelayCommand]
@@ -408,6 +642,210 @@ public partial class MainViewModel : ObservableObject
 
     #endregion
 
+    #region History
+
+    private void AddHistoryEntry(FileItem file, ConversionResult? result, string? validationError)
+    {
+        var entry = new ConversionHistoryEntry
+        {
+            SourcePath = file.Path,
+            SourceFileName = file.Name,
+            OutputPath = result?.OutputPath ?? "",
+            Format = file.Options.OutputFormat,
+            Success = result?.Success ?? false,
+            ErrorMessage = result?.ErrorMessage ?? validationError,
+            DurationSeconds = result?.Duration.TotalSeconds ?? 0,
+            FileSizeBytes = file.SizeInBytes
+        };
+
+        _historyService.AddEntry(entry);
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            ConversionHistory.Insert(0, entry);
+            if (ConversionHistory.Count > 500) ConversionHistory.RemoveAt(ConversionHistory.Count - 1);
+        });
+    }
+
+    private void RefreshHistory()
+    {
+        var history = _historyService.GetHistory();
+        ConversionHistory = new ObservableCollection<ConversionHistoryEntry>(history.Take(500));
+    }
+
+    [RelayCommand]
+    private void ClearHistory()
+    {
+        _historyService.ClearHistory();
+        ConversionHistory.Clear();
+    }
+
+    [RelayCommand]
+    private async Task ExportHistoryCsvAsync()
+    {
+        var path = await _dialogService.ShowSaveFileDialogAsync(
+            GetLocalizedString("FilterCsv"),
+            GetLocalizedString("BtnExportCsv"),
+            "historial_conversiones.csv");
+
+        if (!string.IsNullOrEmpty(path))
+        {
+            _historyService.ExportToCsv(path);
+            Log.Information("Historial exportado a CSV: {Path}", path);
+        }
+    }
+
+    [RelayCommand]
+    private async Task ExportHistoryTxtAsync()
+    {
+        var path = await _dialogService.ShowSaveFileDialogAsync(
+            GetLocalizedString("FilterTxt"),
+            GetLocalizedString("BtnExportTxt"),
+            "historial_conversiones.txt");
+
+        if (!string.IsNullOrEmpty(path))
+        {
+            _historyService.ExportToTxt(path);
+            Log.Information("Historial exportado a TXT: {Path}", path);
+        }
+    }
+
+    #endregion
+
+    #region Settings
+
+    private void LoadSettings()
+    {
+        var settings = _settingsService.Load();
+        SelectedTheme = settings.Theme;
+        SelectedLanguage = settings.Language;
+        MaxParallelConversions = settings.MaxParallelConversions;
+        AutoRetryEnabled = settings.AutoRetryEnabled;
+        MaxRetryCount = settings.MaxRetryCount;
+        MinimizeToTray = settings.MinimizeToTray;
+        ShowNotifications = settings.ShowNotifications;
+        DefaultOutputFormat = settings.DefaultOutputFormat;
+        IsContextMenuRegistered = ShellIntegrationService.IsRegistered();
+
+        if (!string.IsNullOrEmpty(settings.LastOutputFolder) && Directory.Exists(settings.LastOutputFolder))
+        {
+            OutputFolder = settings.LastOutputFolder;
+            UseCustomOutputFolder = true;
+        }
+    }
+
+    public void SaveSettings()
+    {
+        var settings = new AppSettings
+        {
+            Theme = SelectedTheme,
+            Language = SelectedLanguage,
+            MaxParallelConversions = MaxParallelConversions,
+            AutoRetryEnabled = AutoRetryEnabled,
+            MaxRetryCount = MaxRetryCount,
+            MinimizeToTray = MinimizeToTray,
+            ShowNotifications = ShowNotifications,
+            LastOutputFolder = OutputFolder,
+            DefaultOutputFormat = DefaultOutputFormat
+        };
+        _settingsService.Save(settings);
+    }
+
+    partial void OnSelectedThemeChanged(string value)
+    {
+        ApplyTheme(value);
+        SaveSettings();
+    }
+
+    partial void OnSelectedLanguageChanged(string value)
+    {
+        ApplyLanguage(value);
+        SaveSettings();
+    }
+
+    partial void OnMaxParallelConversionsChanged(int value) => SaveSettings();
+    partial void OnAutoRetryEnabledChanged(bool value) => SaveSettings();
+    partial void OnMaxRetryCountChanged(int value) => SaveSettings();
+    partial void OnMinimizeToTrayChanged(bool value) => SaveSettings();
+    partial void OnShowNotificationsChanged(bool value) => SaveSettings();
+
+    private static void ApplyTheme(string theme)
+    {
+        if (theme == "System")
+        {
+            Wpf.Ui.Appearance.ApplicationThemeManager.ApplySystemTheme();
+        }
+        else
+        {
+            var appTheme = theme == "Dark"
+                ? Wpf.Ui.Appearance.ApplicationTheme.Dark
+                : Wpf.Ui.Appearance.ApplicationTheme.Light;
+            Wpf.Ui.Appearance.ApplicationThemeManager.Apply(appTheme);
+        }
+    }
+
+    private static void ApplyLanguage(string language)
+    {
+        var cultureName = language == "en" ? "en-US" : "es-ES";
+        var newDict = new ResourceDictionary
+        {
+            Source = new Uri($"pack://application:,,,/Lang/{cultureName}.xaml")
+        };
+
+        var existing = Application.Current.Resources.MergedDictionaries
+            .FirstOrDefault(d => d.Source?.OriginalString.Contains("/Lang/") == true);
+
+        if (existing is not null)
+            Application.Current.Resources.MergedDictionaries.Remove(existing);
+
+        Application.Current.Resources.MergedDictionaries.Add(newDict);
+    }
+
+    [RelayCommand]
+    private void RegisterContextMenu()
+    {
+        ShellIntegrationService.Register();
+        IsContextMenuRegistered = true;
+    }
+
+    [RelayCommand]
+    private void UnregisterContextMenu()
+    {
+        ShellIntegrationService.Unregister();
+        IsContextMenuRegistered = false;
+    }
+
+    #endregion
+
+    #region Queue Persistence
+
+    private void PersistQueue()
+    {
+        _queueService.SaveQueue(SelectedFiles.Select(f => f.Path));
+    }
+
+    private void LoadPersistedQueue()
+    {
+        var paths = _queueService.LoadQueue();
+        if (paths.Count > 0)
+        {
+            AddFiles(paths);
+        }
+    }
+
+    #endregion
+
+    #region Events
+
+    public event EventHandler<ConversionCompletedEventArgs>? OnConversionCompleted;
+
+    public class ConversionCompletedEventArgs : EventArgs
+    {
+        public int SuccessCount { get; init; }
+        public int ErrorCount { get; init; }
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private void UpdateTotals()
@@ -417,11 +855,16 @@ public partial class MainViewModel : ObservableObject
         TotalSize = FormatFileSize(totalBytes);
     }
 
-    private void UpdateProgress(int current)
+    private void IncrementProgress()
     {
-        ProgressValue = current;
-        var percentage = (int)Math.Round(((double)current / SelectedFiles.Count) * 100);
-        ProgressPercentage = $"{percentage}%";
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            ProgressValue++;
+            var percentage = ProgressMaximum > 0
+                ? (int)Math.Round(((double)ProgressValue / ProgressMaximum) * 100)
+                : 0;
+            ProgressPercentage = $"{percentage}%";
+        });
     }
 
     private void ResetProgress()
@@ -446,12 +889,14 @@ public partial class MainViewModel : ObservableObject
         return $"{len:0.##} {sizes[order]}";
     }
 
+    private static string GetLocalizedString(string key)
+    {
+        return Application.Current.TryFindResource(key) as string ?? key;
+    }
+
     public bool CanClose()
     {
-        if (!IsConverting)
-            return true;
-
-        return false;
+        return !IsConverting;
     }
 
     #endregion

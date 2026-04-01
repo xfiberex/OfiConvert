@@ -15,7 +15,10 @@ namespace OfiConvert.Converters
                 return state switch
                 {
                     FileConversionState.Pending => SymbolRegular.Clock24,
+                    FileConversionState.Validating => SymbolRegular.ShieldCheckmark24,
                     FileConversionState.Converting => SymbolRegular.ArrowSync24,
+                    FileConversionState.Retrying => SymbolRegular.ArrowRepeatAll24,
+                    FileConversionState.Paused => SymbolRegular.Pause24,
                     FileConversionState.Completed => SymbolRegular.CheckmarkCircle24,
                     FileConversionState.Error => SymbolRegular.ErrorCircle24,
                     FileConversionState.Skipped => SymbolRegular.DismissCircle24,

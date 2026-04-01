@@ -1,5 +1,8 @@
 ﻿using Microsoft.Win32;
 using System.Windows;
+using MessageBox = System.Windows.MessageBox;
+using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
+using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
 
 namespace OfiConvert.Services;
 
@@ -36,6 +39,21 @@ public class DialogService : IDialogService
             }
 
             return null as string;
+        }).Task;
+    }
+
+    public Task<string?> ShowSaveFileDialogAsync(string filter, string title, string defaultFileName = "")
+    {
+        return Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            var dialog = new SaveFileDialog
+            {
+                Filter = filter,
+                Title = title,
+                FileName = defaultFileName
+            };
+
+            return dialog.ShowDialog() == true ? dialog.FileName : null as string;
         }).Task;
     }
 

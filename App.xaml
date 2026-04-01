@@ -9,6 +9,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ui:ThemesDictionary Theme="Dark" />
                 <ui:ControlsDictionary />
+                <ResourceDictionary Source="pack://application:,,,/Lang/es-ES.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <SolidColorBrush x:Key="SuccessColorBrush" Color="#10B981"/>
             <SolidColorBrush x:Key="WarningColorBrush" Color="#F59E0B"/>

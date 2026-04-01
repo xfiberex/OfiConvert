@@ -1,0 +1,136 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=System.Runtime">
+
+    <!-- App -->
+    <system:String x:Key="AppTitle">OfiConvert - Office File Converter</system:String>
+
+    <!-- Tabs -->
+    <system:String x:Key="TabConversion">Conversion</system:String>
+    <system:String x:Key="TabHistory">History</system:String>
+    <system:String x:Key="TabSettings">Settings</system:String>
+
+    <!-- Action Buttons -->
+    <system:String x:Key="BtnSelectFile">File</system:String>
+    <system:String x:Key="BtnConvert">Convert</system:String>
+    <system:String x:Key="BtnCancel">Cancel</system:String>
+    <system:String x:Key="BtnPause">Pause</system:String>
+    <system:String x:Key="BtnResume">Resume</system:String>
+    <system:String x:Key="BtnClear">Clear</system:String>
+    <system:String x:Key="BtnExport">Export</system:String>
+
+    <!-- Labels -->
+    <system:String x:Key="LblSelectFiles">Select:</system:String>
+    <system:String x:Key="LblFormat">Format:</system:String>
+    <system:String x:Key="LblOutputFolder">Output folder:</system:String>
+    <system:String x:Key="LblDefaultFolder">Same location as original files</system:String>
+    <system:String x:Key="BtnSelectFolder">Select</system:String>
+    <system:String x:Key="TipDefaultFolder">Use default location</system:String>
+    <system:String x:Key="LblDocumentsHeader">Selected documents</system:String>
+    <system:String x:Key="LblDragHint"> (Drag files here)</system:String>
+    <system:String x:Key="LblEmptyTitle">No files selected</system:String>
+    <system:String x:Key="LblEmptySubtitle">Click 'File' or drag files here</system:String>
+    <system:String x:Key="LblTotalSize">Total Size:</system:String>
+    <system:String x:Key="LblFileCount">File count:</system:String>
+    <system:String x:Key="LblErrorsDetected">Errors detected:</system:String>
+    <system:String x:Key="TipClose">Close</system:String>
+
+    <!-- Per-file options -->
+    <system:String x:Key="LblPageRange">Page range:</system:String>
+    <system:String x:Key="LblSheetNames">Sheets (names):</system:String>
+    <system:String x:Key="LblSlideRange">Slide range:</system:String>
+    <system:String x:Key="LblImageQuality">Image quality:</system:String>
+    <system:String x:Key="LblImageDpi">DPI:</system:String>
+    <system:String x:Key="TipPageRange">Ex: 1-5 or 1,3,5</system:String>
+    <system:String x:Key="TipSheetNames">Comma-separated sheet names</system:String>
+    <system:String x:Key="TipSlideRange">Ex: 1-10 or 1,3,5</system:String>
+
+    <!-- States -->
+    <system:String x:Key="StatePending">Pending</system:String>
+    <system:String x:Key="StateValidating">Validating...</system:String>
+    <system:String x:Key="StateConverting">Converting...</system:String>
+    <system:String x:Key="StateRetrying">Retrying...</system:String>
+    <system:String x:Key="StatePaused">Paused</system:String>
+    <system:String x:Key="StateCompleted">Completed</system:String>
+    <system:String x:Key="StateError">Error</system:String>
+    <system:String x:Key="StateSkipped">Skipped</system:String>
+    <system:String x:Key="StateCancelled">Cancelled</system:String>
+
+    <!-- Settings -->
+    <system:String x:Key="LblTheme">Theme:</system:String>
+    <system:String x:Key="LblThemeSystem">System</system:String>
+    <system:String x:Key="LblThemeDark">Dark</system:String>
+    <system:String x:Key="LblThemeLight">Light</system:String>
+    <system:String x:Key="LblLanguage">Language:</system:String>
+    <system:String x:Key="LblSpanish">Español</system:String>
+    <system:String x:Key="LblEnglish">English</system:String>
+    <system:String x:Key="LblParallelConversions">Parallel conversions:</system:String>
+    <system:String x:Key="LblAutoRetry">Auto retry:</system:String>
+    <system:String x:Key="LblMaxRetries">Max retries:</system:String>
+    <system:String x:Key="LblMinimizeToTray">Minimize to tray:</system:String>
+    <system:String x:Key="LblShowNotifications">Show notifications:</system:String>
+    <system:String x:Key="LblContextMenu">Explorer context menu:</system:String>
+    <system:String x:Key="BtnRegisterMenu">Register</system:String>
+    <system:String x:Key="BtnUnregisterMenu">Unregister</system:String>
+    <system:String x:Key="LblDefaultFormat">Default format:</system:String>
+
+    <!-- History -->
+    <system:String x:Key="BtnExportCsv">Export CSV</system:String>
+    <system:String x:Key="BtnExportTxt">Export TXT</system:String>
+    <system:String x:Key="BtnClearHistory">Clear history</system:String>
+    <system:String x:Key="LblDate">Date</system:String>
+    <system:String x:Key="LblSourceFile">Source file</system:String>
+    <system:String x:Key="LblDestination">Destination</system:String>
+    <system:String x:Key="LblResult">Result</system:String>
+    <system:String x:Key="LblDuration">Duration</system:String>
+    <system:String x:Key="LblSuccess">Success</system:String>
+    <system:String x:Key="LblNoHistory">No conversion records</system:String>
+
+    <!-- Tray -->
+    <system:String x:Key="TrayShow">Show</system:String>
+    <system:String x:Key="TrayStartConversion">Start conversion</system:String>
+    <system:String x:Key="TrayExit">Exit</system:String>
+
+    <!-- Messages -->
+    <system:String x:Key="MsgNoFiles">No files selected.</system:String>
+    <system:String x:Key="MsgFileTooBig">The file '{0}' exceeds the 500 MB limit and will not be added.</system:String>
+    <system:String x:Key="MsgOfficeNotFound">Microsoft Office is not installed or cannot be accessed.
+
+This application requires Microsoft Office (Word, Excel and/or PowerPoint) installed on the system.
+
+LibreOffice will be used as an alternative if available.</system:String>
+    <system:String x:Key="MsgSelectOutputFolder">You have not selected an output folder.
+
+Would you like to select a folder to save the converted files?</system:String>
+    <system:String x:Key="MsgSelectOutputFolderTitle">Select output folder</system:String>
+    <system:String x:Key="MsgConversionSuccess">Conversion successful</system:String>
+    <system:String x:Key="MsgConversionErrors">Conversion finished with errors</system:String>
+    <system:String x:Key="MsgFilesConverted">{0} file(s) converted successfully.</system:String>
+    <system:String x:Key="MsgFilesFailed">{0} file(s) failed.</system:String>
+    <system:String x:Key="MsgFilesSavedTo">Files saved to: {0}</system:String>
+    <system:String x:Key="MsgCancelConfirm">A conversion is in progress. If you close now, Office processes may remain open.
+
+Do you want to cancel the conversion and exit?</system:String>
+    <system:String x:Key="MsgCancelConfirmTitle">Confirm close</system:String>
+    <system:String x:Key="MsgCannotClearConverting">Cannot clear while converting.</system:String>
+    <system:String x:Key="MsgNoFilesToClear">No files to clear.</system:String>
+    <system:String x:Key="MsgConversionComplete">Conversion complete!</system:String>
+    <system:String x:Key="MsgPasswordProtected">The file is password-protected.</system:String>
+    <system:String x:Key="MsgCorruptFile">The file appears to be corrupt.</system:String>
+    <system:String x:Key="MsgFileLocked">The file is locked by another process.</system:String>
+    <system:String x:Key="MsgFileNotFound">The file does not exist.</system:String>
+    <system:String x:Key="MsgLibreOfficeFallback">Using LibreOffice as an alternative...</system:String>
+    <system:String x:Key="MsgNoConverterAvailable">No conversion engine available. Install Microsoft Office or LibreOffice.</system:String>
+    <system:String x:Key="MsgWarning">Warning</system:String>
+    <system:String x:Key="MsgInfo">Information</system:String>
+    <system:String x:Key="MsgError">Error</system:String>
+    <system:String x:Key="MsgConfirmation">Confirmation</system:String>
+
+    <!-- Filter -->
+    <system:String x:Key="FilterOfficeFiles">Office Files|*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx|Word Files (*.docx)|*.docx|Excel Files (*.xlsx)|*.xlsx|PowerPoint Files (*.pptx)|*.pptx|All files|*.*</system:String>
+    <system:String x:Key="FilterCsv">CSV File|*.csv</system:String>
+    <system:String x:Key="FilterTxt">Text File|*.txt</system:String>
+    <system:String x:Key="TitleSelectFiles">Select Office files</system:String>
+    <system:String x:Key="TitleSelectOutputFolder">Select output folder for converted files</system:String>
+
+</ResourceDictionary>
