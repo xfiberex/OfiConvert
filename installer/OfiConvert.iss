@@ -5,7 +5,8 @@
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "Ricky Angel Jimenez Bueno"
 #define MyAppExeName "OfiConvert.exe"
-#define MyAppDescription "Convertidor de archivos Office a PDF"
+#define MyAppDescription "Convertidor de archivos Office a múltiples formatos"
+#define MyAppIcon "..\publish\Assets\app.ico"
 
 [Setup]
 AppId={{B2E8F4A1-3C7D-4E9F-A1B2-6D8E0F3C5A7B}
@@ -17,10 +18,10 @@ AppCopyright=Copyright (c) 2026 {#MyAppPublisher}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
-OutputDir=..\installer\Output
+OutputDir=Output
 OutputBaseFilename=OfiConvert_Setup_{#MyAppVersion}
-SetupIconFile=..\publish\win-x64\convert_icon_244196.ico
-UninstallDisplayIcon={app}\convert_icon_244196.ico
+SetupIconFile={#MyAppIcon}
+UninstallDisplayIcon={app}\Assets\app.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
@@ -37,18 +38,22 @@ VersionInfoProductName={#MyAppName}
 [Languages]
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "portuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
+Name: "french"; MessagesFile: "compiler:Languages\French.isl"
+Name: "german"; MessagesFile: "compiler:Languages\German.isl"
+Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "..\publish\win-x64\OfiConvert.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\publish\win-x64\convert_icon_244196.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\publish\OfiConvert.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\publish\Assets\app.ico"; DestDir: "{app}\Assets"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\convert_icon_244196.ico"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\Assets\app.ico"
 Name: "{group}\Desinstalar {#MyAppName}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\convert_icon_244196.ico"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\Assets\app.ico"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

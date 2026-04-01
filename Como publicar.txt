@@ -1,0 +1,8 @@
+dotnet publish OfiConvert.csproj -c Release -r win-x64 --self-contained `
+    -p:PublishSingleFile=true `
+    -p:IncludeNativeLibrariesForSelfExtract=true `
+    -p:PublishReadyToRun=true `
+    -o ./publish
+
+New-Item -ItemType Directory -Force publish\Assets
+Copy-Item Assets\app.ico publish\Assets\

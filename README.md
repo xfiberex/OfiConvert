@@ -1,6 +1,6 @@
 ﻿# OfiConvert
 
-Aplicación de escritorio para convertir documentos de Microsoft Office (Word, Excel, PowerPoint) a formato PDF.
+Aplicación de escritorio para convertir documentos de Microsoft Office (Word, Excel, PowerPoint) a múltiples formatos de salida: **PDF, HTML, CSV, PNG y JPG**.
 
 Construida con WPF + WPF UI (Fluent Design) y patrón MVVM.
 
@@ -30,15 +30,22 @@ Office Online / Office web **no es compatible**.
 
 ## Características
 
-- Conversión por lotes de múltiples archivos a PDF.
+- Conversión por lotes de múltiples archivos a PDF, HTML, CSV, PNG y JPG.
+- Selección de formato de salida predeterminado.
 - Drag & Drop de archivos sobre la ventana.
 - Selección de carpeta de destino personalizada.
 - Barra de progreso con porcentaje.
-- Cancelación de conversión en curso.
+- Pausar, reanudar y cancelar conversiones en curso.
 - Indicadores visuales de estado por archivo (pendiente, convirtiendo, completado, error).
+- Reintentos automáticos configurables ante fallos.
+- Conversiones paralelas con límite configurable.
+- Historial de conversiones exportable (CSV/TXT).
 - Protección contra macros: documentos abiertos en modo solo lectura con macros deshabilitadas.
 - Prevención de sobrescritura de archivos existentes (renombrado automático).
-- Interfaz moderna Fluent Design con tema oscuro.
+- Minimización a bandeja del sistema con notificaciones.
+- Integración con el menú contextual del Explorador de Windows.
+- Interfaz moderna Fluent Design con soporte de tema claro, oscuro y sistema.
+- Soporte multiidioma: español, inglés, portugués, francés, alemán, italiano, chino y japonés.
 
 ---
 
@@ -53,20 +60,24 @@ Office Online / Office web **no es compatible**.
 
 ## Compilar desde Código Fuente
 
-```bash
+```powershell
 # Clonar repositorio
 git clone <url-repositorio>
 cd OfiConvert
 
-# Restaurar paquetes y compilar
+# Restaurar paquetes y compilar (verificación rápida)
 dotnet build -c Release
 
 # Publicar (self-contained, single-file, win-x64)
-dotnet publish -c Release -r win-x64 --self-contained true `
+dotnet publish OfiConvert.csproj -c Release -r win-x64 --self-contained `
     -p:PublishSingleFile=true `
     -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:PublishReadyToRun=true `
-    -o ./publish/win-x64
+    -o ./publish
+
+# Copiar recursos necesarios para el instalador
+New-Item -ItemType Directory -Force publish\Assets
+Copy-Item Assets\app.ico publish\Assets\
 ```
 
 ---
@@ -74,10 +85,10 @@ dotnet publish -c Release -r win-x64 --self-contained true `
 ## Crear Instalador (InnoSetup)
 
 1. Instala [Inno Setup 6+](https://jrsoftware.org/isinfo.php).
-2. Publica el proyecto (ver sección anterior).
-3. Abre `installer/OfiConvert.iss` con Inno Setup.
-4. Compila el script (Ctrl+F9).
-5. El instalador se genera en `installer/Output/`.
+2. Publica el proyecto y copia los assets (ver sección anterior).
+3. Abre `installer/OfiConvert.iss` con Inno Setup (doble clic o desde el IDE).
+4. Compila el script: **Build → Compile** o `Ctrl+F9`.
+5. El instalador se genera en `installer/Output/OfiConvert_Setup_1.0.0.exe`.
 
 ---
 
@@ -85,14 +96,16 @@ dotnet publish -c Release -r win-x64 --self-contained true `
 
 ```
 OfiConvert/
++-- Assets/             # Icono de la aplicación (app.ico)
 +-- Behaviors/          # Comportamientos XAML (Drag & Drop)
 +-- Converters/         # Value Converters para bindings
++-- installer/          # Script InnoSetup (.iss) y Output/
++-- Lang/               # Recursos de idioma (es, en, pt, fr, de, it, zh, ja)
 +-- Models/             # Modelos y enumeraciones
 +-- Properties/         # Recursos embebidos
-+-- Resources/          # Iconos de la aplicación
++-- Resources/          # Recursos adicionales
 +-- Services/           # Interfaces e implementaciones de servicios
 +-- ViewModels/         # ViewModels (MVVM)
-+-- installer/          # Script InnoSetup
 +-- App.xaml(.cs)       # Punto de entrada, recursos globales
 +-- MainWindow.xaml(.cs)# Ventana principal
 ```
