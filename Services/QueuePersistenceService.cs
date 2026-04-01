@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using Serilog;
 
 namespace OfiConvert.Services;
 
@@ -18,10 +19,19 @@ public class QueuePersistenceService
             if (File.Exists(QueuePath))
             {
                 var json = File.ReadAllText(QueuePath);
-                return JsonSerializer.Deserialize<List<string>>(json, JsonOptions) ?? [];
+                var paths = JsonSerializer.Deserialize<List<string>>(json, JsonOptions) ?? [];
+                return paths
+                    .Where(p => !string.IsNullOrWhiteSpace(p)
+                        && Path.IsPathRooted(p)
+                        && !p.StartsWith(@"\\", StringComparison.Ordinal)
+                        && File.Exists(p))
+                    .ToList();
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Error loading persisted queue");
+        }
         return [];
     }
 
@@ -33,7 +43,10 @@ public class QueuePersistenceService
             var json = JsonSerializer.Serialize(filePaths.ToList(), JsonOptions);
             File.WriteAllText(QueuePath, json);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Error saving queue");
+        }
     }
 
     public void ClearQueue()
@@ -43,6 +56,9 @@ public class QueuePersistenceService
             if (File.Exists(QueuePath))
                 File.Delete(QueuePath);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Error clearing queue");
+        }
     }
 }

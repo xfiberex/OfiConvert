@@ -90,6 +90,8 @@
     <system:String x:Key="TrayShow">Mostrar</system:String>
     <system:String x:Key="TrayStartConversion">Iniciar conversión</system:String>
     <system:String x:Key="TrayExit">Salir</system:String>
+    <system:String x:Key="TrayNotifSuccess">Conversión completada: {0} archivo(s) convertidos.</system:String>
+    <system:String x:Key="TrayNotifErrors">Conversión completada: {0} exitosos, {1} con errores.</system:String>
 
     <!-- Messages -->
     <system:String x:Key="MsgNoFiles">No hay archivos seleccionados.</system:String>
@@ -125,6 +127,8 @@ Se intentará usar LibreOffice como alternativa si está disponible.</system:Str
     <system:String x:Key="MsgInfo">Información</system:String>
     <system:String x:Key="MsgError">Error</system:String>
     <system:String x:Key="MsgConfirmation">Confirmación</system:String>
+    <system:String x:Key="MsgContextMenuRegistered">Menú contextual registrado correctamente.</system:String>
+    <system:String x:Key="MsgContextMenuUnregistered">Menú contextual desregistrado correctamente.</system:String>
 
     <!-- Filter -->
     <system:String x:Key="FilterOfficeFiles">Archivos Office|*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx|Archivos Word (*.docx)|*.docx|Archivos Excel (*.xlsx)|*.xlsx|Archivos PowerPoint (*.pptx)|*.pptx|Todos los archivos|*.*</system:String>

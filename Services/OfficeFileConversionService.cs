@@ -15,18 +15,22 @@ public class OfficeFileConversionService : IFileConversionService
     {
         try
         {
-            var wordType = Type.GetTypeFromProgID("Word.Application");
-            if (wordType == null)
-                return false;
+            string[] registryPaths =
+            [
+                @"SOFTWARE\Microsoft\Office\ClickToRun\Configuration",
+                @"SOFTWARE\Microsoft\Office\16.0\Word\InstallRoot",
+                @"SOFTWARE\Microsoft\Office\15.0\Word\InstallRoot",
+                @"SOFTWARE\Microsoft\Office\14.0\Word\InstallRoot",
+            ];
 
-            var wordApp = Activator.CreateInstance(wordType);
-            if (wordApp is not null)
+            foreach (var path in registryPaths)
             {
-                Marshal.ReleaseComObject(wordApp);
-                return true;
+                using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(path);
+                if (key is not null)
+                    return true;
             }
 
-            return false;
+            return Type.GetTypeFromProgID("Word.Application") is not null;
         }
         catch
         {

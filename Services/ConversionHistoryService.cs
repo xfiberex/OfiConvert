@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using OfiConvert.Models;
+using Serilog;
 
 namespace OfiConvert.Services;
 
@@ -19,6 +20,7 @@ public class ConversionHistoryService : IConversionHistoryService
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OfiConvert");
     private static readonly string HistoryPath = Path.Combine(HistoryFolder, "history.json");
 
+    private readonly object _lock = new();
     private List<ConversionHistoryEntry> _history = [];
     private bool _loaded;
 
@@ -29,42 +31,67 @@ public class ConversionHistoryService : IConversionHistoryService
 
     public List<ConversionHistoryEntry> GetHistory()
     {
-        if (!_loaded) LoadHistory();
-        return [.. _history];
+        lock (_lock)
+        {
+            if (!_loaded) LoadHistory();
+            return [.. _history];
+        }
     }
 
     public void AddEntry(ConversionHistoryEntry entry)
     {
-        if (!_loaded) LoadHistory();
-        _history.Insert(0, entry);
-        if (_history.Count > 1000) _history.RemoveRange(1000, _history.Count - 1000);
-        SaveHistory();
+        lock (_lock)
+        {
+            if (!_loaded) LoadHistory();
+            _history.Insert(0, entry);
+            if (_history.Count > 1000) _history.RemoveRange(1000, _history.Count - 1000);
+            SaveHistory();
+        }
     }
 
     public void ClearHistory()
     {
-        _history.Clear();
-        SaveHistory();
+        lock (_lock)
+        {
+            _history.Clear();
+            SaveHistory();
+        }
     }
 
     public void ExportToCsv(string filePath)
     {
-        if (!_loaded) LoadHistory();
-        var lines = new List<string>
+        lock (_lock)
         {
-            "Fecha,Archivo,Salida,Formato,Resultado,Error,Duración(s),Tamaño(bytes)"
-        };
-        foreach (var entry in _history)
-        {
-            var error = (entry.ErrorMessage ?? "").Replace("\"", "'");
-            lines.Add($"\"{entry.Timestamp:yyyy-MM-dd HH:mm:ss}\",\"{entry.SourceFileName}\",\"{entry.OutputPath}\",{entry.Format},{(entry.Success ? "OK" : "Error")},\"{error}\",{entry.DurationSeconds:F1},{entry.FileSizeBytes}");
+            if (!_loaded) LoadHistory();
+            var lines = new List<string>
+            {
+                "Fecha,Archivo,Salida,Formato,Resultado,Error,Duración(s),Tamaño(bytes)"
+            };
+            foreach (var entry in _history)
+            {
+                var source = SanitizeCsvField(entry.SourceFileName);
+                var output = SanitizeCsvField(entry.OutputPath);
+                var error = SanitizeCsvField(entry.ErrorMessage);
+                lines.Add($"\"{entry.Timestamp:yyyy-MM-dd HH:mm:ss}\",\"{source}\",\"{output}\",{entry.Format},{(entry.Success ? "OK" : "Error")},\"{error}\",{entry.DurationSeconds:F1},{entry.FileSizeBytes}");
+            }
+            File.WriteAllLines(filePath, lines, System.Text.Encoding.UTF8);
         }
-        File.WriteAllLines(filePath, lines, System.Text.Encoding.UTF8);
+    }
+
+    private static string SanitizeCsvField(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return "";
+        var sanitized = value.Replace("\"", "\"\"");
+        if (sanitized[0] is '=' or '+' or '-' or '@' or '\t' or '\r')
+            sanitized = "'" + sanitized;
+        return sanitized;
     }
 
     public void ExportToTxt(string filePath)
     {
-        if (!_loaded) LoadHistory();
+        lock (_lock)
+        {
+            if (!_loaded) LoadHistory();
         var lines = new List<string>
         {
             "╔══════════════════════════════════════════════════════════════╗",
@@ -86,7 +113,8 @@ public class ConversionHistoryService : IConversionHistoryService
         }
 
         lines.Add($"Total: {_history.Count} conversiones | {_history.Count(e => e.Success)} exitosas | {_history.Count(e => !e.Success)} fallidas");
-        File.WriteAllLines(filePath, lines, System.Text.Encoding.UTF8);
+            File.WriteAllLines(filePath, lines, System.Text.Encoding.UTF8);
+        }
     }
 
     private void LoadHistory()
@@ -99,7 +127,11 @@ public class ConversionHistoryService : IConversionHistoryService
                 _history = JsonSerializer.Deserialize<List<ConversionHistoryEntry>>(json, JsonOptions) ?? [];
             }
         }
-        catch { _history = []; }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Error loading conversion history");
+            _history = [];
+        }
         _loaded = true;
     }
 
@@ -111,7 +143,10 @@ public class ConversionHistoryService : IConversionHistoryService
             var json = JsonSerializer.Serialize(_history, JsonOptions);
             File.WriteAllText(HistoryPath, json);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error saving conversion history");
+        }
     }
 
     private static string FormatSize(long bytes)

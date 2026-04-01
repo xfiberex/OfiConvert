@@ -24,9 +24,33 @@ public partial class MainWindow : FluentWindow
     {
         InitializeTrayIcon();
         ViewModel.OnConversionCompleted += OnConversionCompleted;
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
 
-        // Watch for system theme changes (applies when theme is "System")
-        Wpf.Ui.Appearance.SystemThemeWatcher.Watch(this);
+        // Only watch system theme changes when theme is "System"
+        UpdateThemeWatcher(ViewModel.SelectedTheme);
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MainViewModel.SelectedTheme))
+        {
+            UpdateThemeWatcher(ViewModel.SelectedTheme);
+        }
+    }
+
+    private void UpdateThemeWatcher(string theme)
+    {
+        if (theme == "System")
+        {
+            Wpf.Ui.Appearance.SystemThemeWatcher.Watch(
+                this,
+                Wpf.Ui.Controls.WindowBackdropType.Mica,
+                updateAccents: true);
+        }
+        else
+        {
+            Wpf.Ui.Appearance.SystemThemeWatcher.UnWatch(this);
+        }
     }
 
     private void InitializeTrayIcon()
@@ -52,9 +76,9 @@ public partial class MainWindow : FluentWindow
         _trayIcon.DoubleClick += (_, _) => RestoreFromTray();
 
         var contextMenu = new System.Windows.Forms.ContextMenuStrip();
-        contextMenu.Items.Add("Mostrar OfiConvert", null, (_, _) => RestoreFromTray());
+        contextMenu.Items.Add(GetLocalizedString("TrayShow"), null, (_, _) => RestoreFromTray());
         contextMenu.Items.Add("-");
-        contextMenu.Items.Add("Salir", null, (_, _) =>
+        contextMenu.Items.Add(GetLocalizedString("TrayExit"), null, (_, _) =>
         {
             _trayIcon.Visible = false;
             System.Windows.Application.Current.Shutdown();
@@ -69,8 +93,8 @@ public partial class MainWindow : FluentWindow
 
         var title = "OfiConvert";
         var text = e.ErrorCount == 0
-            ? $"Conversión completada: {e.SuccessCount} archivo(s) convertidos."
-            : $"Conversión completada: {e.SuccessCount} exitosos, {e.ErrorCount} con errores.";
+            ? string.Format(GetLocalizedString("TrayNotifSuccess"), e.SuccessCount)
+            : string.Format(GetLocalizedString("TrayNotifErrors"), e.SuccessCount, e.ErrorCount);
 
         var icon = e.ErrorCount == 0
             ? System.Windows.Forms.ToolTipIcon.Info
@@ -82,13 +106,15 @@ public partial class MainWindow : FluentWindow
         // Hide tray icon after a short delay if window is visible
         if (Visibility == Visibility.Visible)
         {
-            Task.Delay(5000).ContinueWith(_ =>
-                Dispatcher.Invoke(() =>
-                {
-                    if (Visibility == Visibility.Visible)
-                        _trayIcon.Visible = false;
-                }));
+            HideTrayIconAfterDelayAsync();
         }
+    }
+
+    private async void HideTrayIconAfterDelayAsync()
+    {
+        await Task.Delay(5000);
+        if (Visibility == Visibility.Visible && _trayIcon is not null)
+            _trayIcon.Visible = false;
     }
 
     private void RestoreFromTray()
@@ -138,8 +164,10 @@ public partial class MainWindow : FluentWindow
 
         // Cleanup
         Wpf.Ui.Appearance.SystemThemeWatcher.UnWatch(this);
+        ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
         ViewModel.OnConversionCompleted -= OnConversionCompleted;
         ViewModel.SaveSettings();
+        ViewModel.Dispose();
 
         if (_trayIcon is not null)
         {
@@ -147,6 +175,11 @@ public partial class MainWindow : FluentWindow
             _trayIcon.Dispose();
             _trayIcon = null;
         }
+    }
+
+    private static string GetLocalizedString(string key)
+    {
+        return System.Windows.Application.Current.TryFindResource(key) as string ?? key;
     }
 }
 

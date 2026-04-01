@@ -9,7 +9,7 @@ using Serilog;
 
 namespace OfiConvert.ViewModels;
 
-public partial class MainViewModel : ObservableObject
+public partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly IFileConversionService _officeService;
     private readonly LibreOfficeConversionService _libreOfficeService;
@@ -197,10 +197,17 @@ public partial class MainViewModel : ObservableObject
 
     private async Task LoadThumbnailAsync(FileItem fileItem)
     {
-        var thumbnail = await ThumbnailService.GetThumbnailAsync(fileItem.Path, 48, 48);
-        if (thumbnail is not null)
+        try
         {
-            fileItem.Thumbnail = thumbnail;
+            var thumbnail = await ThumbnailService.GetThumbnailAsync(fileItem.Path, 48, 48);
+            if (thumbnail is not null)
+            {
+                fileItem.Thumbnail = thumbnail;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Error loading thumbnail for {File}", fileItem.Name);
         }
     }
 
@@ -779,7 +786,10 @@ public partial class MainViewModel : ObservableObject
             var appTheme = theme == "Dark"
                 ? Wpf.Ui.Appearance.ApplicationTheme.Dark
                 : Wpf.Ui.Appearance.ApplicationTheme.Light;
-            Wpf.Ui.Appearance.ApplicationThemeManager.Apply(appTheme);
+            Wpf.Ui.Appearance.ApplicationThemeManager.Apply(
+                appTheme,
+                Wpf.Ui.Controls.WindowBackdropType.Mica,
+                true);
         }
     }
 
@@ -805,6 +815,9 @@ public partial class MainViewModel : ObservableObject
     {
         ShellIntegrationService.Register();
         IsContextMenuRegistered = true;
+        _dialogService.ShowInformation(
+            GetLocalizedString("MsgContextMenuRegistered"),
+            GetLocalizedString("MsgInfo"));
     }
 
     [RelayCommand]
@@ -812,6 +825,9 @@ public partial class MainViewModel : ObservableObject
     {
         ShellIntegrationService.Unregister();
         IsContextMenuRegistered = false;
+        _dialogService.ShowInformation(
+            GetLocalizedString("MsgContextMenuUnregistered"),
+            GetLocalizedString("MsgInfo"));
     }
 
     #endregion
@@ -897,6 +913,22 @@ public partial class MainViewModel : ObservableObject
     public bool CanClose()
     {
         return !IsConverting;
+    }
+
+    #endregion
+
+    #region IDisposable
+
+    private bool _disposed;
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _pauseEvent.Dispose();
+        _cancellationTokenSource?.Dispose();
+        _parallelSemaphore?.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     #endregion

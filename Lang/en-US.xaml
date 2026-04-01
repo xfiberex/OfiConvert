@@ -90,6 +90,8 @@
     <system:String x:Key="TrayShow">Show</system:String>
     <system:String x:Key="TrayStartConversion">Start conversion</system:String>
     <system:String x:Key="TrayExit">Exit</system:String>
+    <system:String x:Key="TrayNotifSuccess">Conversion complete: {0} file(s) converted.</system:String>
+    <system:String x:Key="TrayNotifErrors">Conversion complete: {0} successful, {1} with errors.</system:String>
 
     <!-- Messages -->
     <system:String x:Key="MsgNoFiles">No files selected.</system:String>
@@ -125,6 +127,8 @@ Do you want to cancel the conversion and exit?</system:String>
     <system:String x:Key="MsgInfo">Information</system:String>
     <system:String x:Key="MsgError">Error</system:String>
     <system:String x:Key="MsgConfirmation">Confirmation</system:String>
+    <system:String x:Key="MsgContextMenuRegistered">Context menu registered successfully.</system:String>
+    <system:String x:Key="MsgContextMenuUnregistered">Context menu unregistered successfully.</system:String>
 
     <!-- Filter -->
     <system:String x:Key="FilterOfficeFiles">Office Files|*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx|Word Files (*.docx)|*.docx|Excel Files (*.xlsx)|*.xlsx|PowerPoint Files (*.pptx)|*.pptx|All files|*.*</system:String>

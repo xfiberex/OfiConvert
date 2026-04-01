@@ -14,6 +14,8 @@
         Height="800" Width="1050"
         MinHeight="700" MinWidth="800"
         ExtendsContentIntoTitleBar="True"
+        WindowBackdropType="Mica"
+        WindowCornerPreference="Round"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}">
 
@@ -38,45 +40,7 @@
         </Grid.RowDefinitions>
 
         <!-- Title Bar -->
-        <ui:TitleBar Grid.Row="0" Title="{DynamicResource AppTitle}">
-            <ui:TitleBar.Header>
-                <StackPanel Orientation="Horizontal" Margin="16,0,0,0">
-                    <!-- Language Selector -->
-                    <ComboBox Width="90" Margin="0,0,8,0"
-                              VerticalAlignment="Center"
-                              SelectedValue="{Binding SelectedLanguage}"
-                              SelectedValuePath="Tag">
-                        <ComboBoxItem Content="Español" Tag="es"/>
-                        <ComboBoxItem Content="English" Tag="en"/>
-                    </ComboBox>
-
-                    <!-- Theme Selector -->
-                    <ComboBox Width="110"
-                              VerticalAlignment="Center"
-                              SelectedValue="{Binding SelectedTheme}"
-                              SelectedValuePath="Tag">
-                        <ComboBoxItem Tag="System">
-                            <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Symbol="Desktop24" FontSize="14" Margin="0,0,6,0"/>
-                                <TextBlock Text="{DynamicResource LblThemeSystem}"/>
-                            </StackPanel>
-                        </ComboBoxItem>
-                        <ComboBoxItem Tag="Light">
-                            <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Symbol="WeatherSunny24" FontSize="14" Margin="0,0,6,0"/>
-                                <TextBlock Text="{DynamicResource LblThemeLight}"/>
-                            </StackPanel>
-                        </ComboBoxItem>
-                        <ComboBoxItem Tag="Dark">
-                            <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Symbol="WeatherMoon24" FontSize="14" Margin="0,0,6,0"/>
-                                <TextBlock Text="{DynamicResource LblThemeDark}"/>
-                            </StackPanel>
-                        </ComboBoxItem>
-                    </ComboBox>
-                </StackPanel>
-            </ui:TitleBar.Header>
-        </ui:TitleBar>
+        <ui:TitleBar Grid.Row="0" Title="{DynamicResource AppTitle}"/>
 
         <!-- Tab Control -->
         <TabControl Grid.Row="1" Margin="12,4,12,12">
@@ -320,10 +284,11 @@
 
                                                 <!-- Retry Count -->
                                                 <TextBlock Grid.Column="4" VerticalAlignment="Center" Margin="4,0"
-                                                          FontSize="10" Foreground="{DynamicResource TextFillColorTertiaryBrush}">
+                                                          FontSize="10" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                          Text="{Binding RetryCount, StringFormat='↻ {0}'}">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
-                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Setter Property="Visibility" Value="Visible"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding RetryCount}" Value="0">
                                                                     <Setter Property="Visibility" Value="Collapsed"/>
@@ -546,7 +511,7 @@
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding Success}" Value="False">
                                                                     <Setter Property="Symbol" Value="ErrorCircle24"/>
-                                                                    <Setter Property="Foreground" Value="#C42B1C"/>
+                                                                    <Setter Property="Foreground" Value="{DynamicResource ErrorColorBrush}"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -566,7 +531,7 @@
                                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontWeight="SemiBold"/>
                                                     </StackPanel>
                                                     <TextBlock Text="{Binding ErrorMessage}" FontSize="10"
-                                                               Foreground="#C42B1C" TextTrimming="CharacterEllipsis"
+                                                               Foreground="{DynamicResource ErrorColorBrush}" TextTrimming="CharacterEllipsis"
                                                                Margin="0,2,0,0">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
@@ -610,7 +575,7 @@
                 </TabItem.Header>
 
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="8">
-                    <StackPanel MaxWidth="600" HorizontalAlignment="Left">
+                    <StackPanel MaxWidth="600" HorizontalAlignment="Center">
 
                         <!-- Theme -->
                         <ui:Card Margin="0,0,0,10" Padding="16">

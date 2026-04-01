@@ -44,6 +44,9 @@ public class LibreOfficeConversionService : IFileConversionService
             var outputDir = Path.GetDirectoryName(outputPath) ?? Path.GetTempPath();
             var formatArg = GetLibreOfficeFormatArg(options.OutputFormat);
 
+            if (sourcePath.IndexOf('"') >= 0 || outputDir.IndexOf('"') >= 0)
+                return ConversionResult.Failed("La ruta contiene caracteres no válidos.");
+
             Log.Information("LibreOffice: Convirtiendo {Source} a {Format}", sourcePath, formatArg);
 
             var psi = new ProcessStartInfo

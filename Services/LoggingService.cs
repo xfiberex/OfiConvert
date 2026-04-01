@@ -13,7 +13,11 @@ public static class LoggingService
         Directory.CreateDirectory(LogFolder);
 
         Log.Logger = new LoggerConfiguration()
+#if DEBUG
             .MinimumLevel.Debug()
+#else
+            .MinimumLevel.Information()
+#endif
             .WriteTo.File(
                 Path.Combine(LogFolder, "oficonvert-.log"),
                 rollingInterval: RollingInterval.Day,

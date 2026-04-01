@@ -23,7 +23,10 @@ namespace OfiConvert
                 var theme = settings.Theme == "Dark"
                     ? Wpf.Ui.Appearance.ApplicationTheme.Dark
                     : Wpf.Ui.Appearance.ApplicationTheme.Light;
-                Wpf.Ui.Appearance.ApplicationThemeManager.Apply(theme);
+                Wpf.Ui.Appearance.ApplicationThemeManager.Apply(
+                    theme,
+                    Wpf.Ui.Controls.WindowBackdropType.Mica,
+                    true);
             }
 
             // Apply language
