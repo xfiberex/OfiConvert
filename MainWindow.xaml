@@ -36,14 +36,48 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
         <!-- Title Bar -->
         <ui:TitleBar Grid.Row="0" Title="{DynamicResource AppTitle}"/>
 
+        <!-- Update notification bar -->
+        <ui:Card x:Name="cardUpdate"
+                 Grid.Row="1"
+                 Visibility="Collapsed"
+                 Margin="12,4,12,0"
+                 Padding="12,8"
+                 Background="{DynamicResource SystemAccentColorLight2Brush}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="txtUpdateMessage"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                <ui:Button x:Name="btnDownloadUpdate"
+                           Grid.Column="1"
+                           Content="{DynamicResource BtnDownloadUpdate}"
+                           Appearance="Primary"
+                           Margin="12,0,8,0"
+                           Click="BtnDownloadUpdate_Click" />
+                <ui:Button x:Name="btnCloseUpdate"
+                           Grid.Column="2"
+                           Appearance="Secondary"
+                           Click="BtnCloseUpdate_Click">
+                    <ui:Button.Icon><ui:SymbolIcon Symbol="Dismiss24"/></ui:Button.Icon>
+                </ui:Button>
+            </Grid>
+        </ui:Card>
+
         <!-- Tab Control -->
-        <TabControl Grid.Row="1" Margin="12,4,12,12">
+        <TabControl Grid.Row="2" Margin="12,4,12,12">
 
             <!-- ==================== TAB: CONVERSION ==================== -->
             <TabItem>
@@ -746,6 +780,24 @@
                                     </ui:Button>
                                 </StackPanel>
                             </StackPanel>
+                        </ui:Card>
+
+                        <!-- Check for updates -->
+                        <ui:Card Margin="0,0,0,10" Padding="16">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{DynamicResource LblCheckUpdates}" FontWeight="SemiBold" FontSize="14"
+                                           VerticalAlignment="Center"/>
+                                <ui:Button x:Name="btnBuscarActualizacion"
+                                           Grid.Column="1"
+                                           Content="{DynamicResource BtnCheckUpdate}"
+                                           Click="BtnBuscarActualizacion_Click">
+                                    <ui:Button.Icon><ui:SymbolIcon Symbol="ArrowSync24"/></ui:Button.Icon>
+                                </ui:Button>
+                            </Grid>
                         </ui:Card>
                     </StackPanel>
                 </ScrollViewer>

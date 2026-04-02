@@ -80,6 +80,15 @@
     <system:String x:Key="BtnUnregisterMenu">Deregistrieren</system:String>
     <system:String x:Key="LblDefaultFormat">Standardformat:</system:String>
 
+    <!-- Updates -->
+    <system:String x:Key="LblCheckUpdates">OfiConvert-Updates:</system:String>
+    <system:String x:Key="BtnCheckUpdate">Nach Update suchen...</system:String>
+    <system:String x:Key="BtnDownloadUpdate">Jetzt herunterladen</system:String>
+    <system:String x:Key="TitleUpdateAvailable">Update verfügbar</system:String>
+    <system:String x:Key="TitleNoUpdates">Kein Update</system:String>
+    <system:String x:Key="MsgNoUpdates">OfiConvert ist aktuell. Keine neuen Versionen verfügbar.</system:String>
+    <system:String x:Key="MsgUpdateAvailable">Download-Seite öffnen?</system:String>
+
     <!-- History -->
     <system:String x:Key="BtnExportCsv">CSV exportieren</system:String>
     <system:String x:Key="BtnExportTxt">TXT exportieren</system:String>

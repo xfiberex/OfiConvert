@@ -80,6 +80,15 @@
     <system:String x:Key="BtnUnregisterMenu">取消注册</system:String>
     <system:String x:Key="LblDefaultFormat">默认格式：</system:String>
 
+    <!-- Updates -->
+    <system:String x:Key="LblCheckUpdates">OfiConvert 更新：</system:String>
+    <system:String x:Key="BtnCheckUpdate">检查更新...</system:String>
+    <system:String x:Key="BtnDownloadUpdate">立即下载</system:String>
+    <system:String x:Key="TitleUpdateAvailable">可用更新</system:String>
+    <system:String x:Key="TitleNoUpdates">无更新</system:String>
+    <system:String x:Key="MsgNoUpdates">OfiConvert 已是最新版本。</system:String>
+    <system:String x:Key="MsgUpdateAvailable">是否打开下载页面？</system:String>
+
     <!-- History -->
     <system:String x:Key="BtnExportCsv">导出 CSV</system:String>
     <system:String x:Key="BtnExportTxt">导出 TXT</system:String>

@@ -10,6 +10,7 @@ public partial class MainWindow : FluentWindow
 {
     public MainViewModel ViewModel { get; }
     private System.Windows.Forms.NotifyIcon? _trayIcon;
+    private string? _appUpdateUrl;
 
     public MainWindow()
     {
@@ -28,6 +29,7 @@ public partial class MainWindow : FluentWindow
 
         // Only watch system theme changes when theme is "System"
         UpdateThemeWatcher(ViewModel.SelectedTheme);
+        _ = CheckForAppUpdateAsync();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -181,5 +183,72 @@ public partial class MainWindow : FluentWindow
     {
         return System.Windows.Application.Current.TryFindResource(key) as string ?? key;
     }
-}
 
+    private async Task CheckForAppUpdateAsync()
+    {
+        OfiConvert.Services.GitHubReleaseInfo? info =
+            await OfiConvert.Services.GitHubUpdateService.CheckForUpdateAsync();
+        if (info is null) return;
+
+        _appUpdateUrl = info.HtmlUrl;
+        txtUpdateMessage.Text = $"\u2b06 {GetLocalizedString("TitleUpdateAvailable")}: {info.Version}  —  {GetLocalizedString("MsgUpdateAvailable")}";
+        cardUpdate.Visibility = System.Windows.Visibility.Visible;
+        btnBuscarActualizacion.Content = $"\u2b06 {info.Version}";
+    }
+
+    private void BtnDownloadUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(_appUpdateUrl))
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(_appUpdateUrl) { UseShellExecute = true });
+    }
+
+    private void BtnCloseUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        cardUpdate.Visibility = System.Windows.Visibility.Collapsed;
+    }
+
+    private async void BtnBuscarActualizacion_Click(object sender, RoutedEventArgs e)
+    {
+        btnBuscarActualizacion.IsEnabled = false;
+        string originalContent = btnBuscarActualizacion.Content as string ?? "";
+        btnBuscarActualizacion.Content = GetLocalizedString("MsgCheckingUpdate") is string s && s != "MsgCheckingUpdate"
+            ? s : "Comprobando...";
+        try
+        {
+            OfiConvert.Services.GitHubReleaseInfo? info =
+                await OfiConvert.Services.GitHubUpdateService.CheckForUpdateAsync();
+
+            if (info is null)
+            {
+                btnBuscarActualizacion.Content = originalContent;
+                System.Windows.MessageBox.Show(
+                    GetLocalizedString("MsgNoUpdates"),
+                    GetLocalizedString("TitleNoUpdates"),
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+            }
+            else
+            {
+                _appUpdateUrl = info.HtmlUrl;
+                btnBuscarActualizacion.Content = $"\u2b06 {info.Version}";
+                txtUpdateMessage.Text = $"\u2b06 {GetLocalizedString("TitleUpdateAvailable")}: {info.Version}  —  {GetLocalizedString("MsgUpdateAvailable")}";
+                cardUpdate.Visibility = System.Windows.Visibility.Visible;
+
+                var result = System.Windows.MessageBox.Show(
+                    $"{GetLocalizedString("TitleUpdateAvailable")}: {info.Version}\n\n{GetLocalizedString("MsgUpdateAvailable")}",
+                    GetLocalizedString("TitleUpdateAvailable"),
+                    System.Windows.MessageBoxButton.YesNo,
+                    System.Windows.MessageBoxImage.Information);
+
+                if (result == System.Windows.MessageBoxResult.Yes)
+                    System.Diagnostics.Process.Start(
+                        new System.Diagnostics.ProcessStartInfo(info.HtmlUrl) { UseShellExecute = true });
+            }
+        }
+        finally
+        {
+            btnBuscarActualizacion.IsEnabled = true;
+        }
+    }
+}

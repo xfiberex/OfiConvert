@@ -80,6 +80,15 @@
     <system:String x:Key="BtnUnregisterMenu">登録解除</system:String>
     <system:String x:Key="LblDefaultFormat">デフォルト形式：</system:String>
 
+    <!-- Updates -->
+    <system:String x:Key="LblCheckUpdates">OfiConvert 更新：</system:String>
+    <system:String x:Key="BtnCheckUpdate">更新を確認...</system:String>
+    <system:String x:Key="BtnDownloadUpdate">今すぐダウンロード</system:String>
+    <system:String x:Key="TitleUpdateAvailable">アップデートあり</system:String>
+    <system:String x:Key="TitleNoUpdates">更新なし</system:String>
+    <system:String x:Key="MsgNoUpdates">OfiConvert は最新です。新しいバージョンはありません。</system:String>
+    <system:String x:Key="MsgUpdateAvailable">ダウンロードページを開きますか？</system:String>
+
     <!-- History -->
     <system:String x:Key="BtnExportCsv">CSV エクスポート</system:String>
     <system:String x:Key="BtnExportTxt">TXT エクスポート</system:String>

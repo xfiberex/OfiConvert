@@ -6,7 +6,7 @@
 #define MyAppPublisher "Ricky Angel Jimenez Bueno"
 #define MyAppExeName "OfiConvert.exe"
 #define MyAppDescription "Convertidor de archivos Office a múltiples formatos"
-#define MyAppIcon "..\publish\Assets\app.ico"
+#define MyAppIcon "..\Assets\app.ico"
 
 [Setup]
 AppId={{B2E8F4A1-3C7D-4E9F-A1B2-6D8E0F3C5A7B}
@@ -14,6 +14,9 @@ AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
+AppPublisherURL=https://github.com/xfiberex/OfiConvert
+AppSupportURL=https://github.com/xfiberex/OfiConvert/issues
+AppUpdatesURL=https://github.com/xfiberex/OfiConvert/releases
 AppCopyright=Copyright (c) 2026 {#MyAppPublisher}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
@@ -21,7 +24,7 @@ DisableProgramGroupPage=yes
 OutputDir=Output
 OutputBaseFilename=OfiConvert_Setup_{#MyAppVersion}
 SetupIconFile={#MyAppIcon}
-UninstallDisplayIcon={app}\Assets\app.ico
+UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
@@ -29,7 +32,10 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-LicenseFile=
+CloseApplications=yes
+CloseApplicationsFilter=*{#MyAppExeName}*
+UsePreviousAppDir=yes
+UsePreviousGroup=yes
 MinVersion=10.0
 VersionInfoVersion={#MyAppVersion}
 VersionInfoDescription={#MyAppDescription}
@@ -47,13 +53,13 @@ Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "..\publish\OfiConvert.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\publish\Assets\app.ico"; DestDir: "{app}\Assets"; Flags: ignoreversion
+Source: "..\publish\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\publish\*.dll"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\Assets\app.ico"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{group}\Desinstalar {#MyAppName}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\Assets\app.ico"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
