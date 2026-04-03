@@ -1,91 +1,149 @@
-﻿using Microsoft.Win32;
-using System.Windows;
-using MessageBox = System.Windows.MessageBox;
-using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
-using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
+﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
 
 namespace OfiConvert.Services;
 
 public class DialogService : IDialogService
 {
-    public Task<string[]?> ShowOpenFileDialogAsync(string filter, string title)
+    private static nint GetWindowHandle()
     {
-        return Application.Current.Dispatcher.InvokeAsync(() =>
-        {
-            var dialog = new OpenFileDialog
-            {
-                Filter = filter,
-                Multiselect = true,
-                Title = title
-            };
-
-            return dialog.ShowDialog() == true ? dialog.FileNames : null;
-        }).Task;
+        var window = App.MainWindow;
+        return window is not null ? WindowNative.GetWindowHandle(window) : nint.Zero;
     }
 
-    public Task<string?> ShowFolderBrowserDialogAsync(string title)
+    public async Task<string[]?> ShowOpenFileDialogAsync(string filter, string title)
     {
-        return Application.Current.Dispatcher.InvokeAsync(() =>
-        {
-            var dialog = new OpenFolderDialog
-            {
-                Title = title,
-                Multiselect = false
-            };
+        var picker = new FileOpenPicker();
+        InitializeWithWindow.Initialize(picker, GetWindowHandle());
+        picker.ViewMode = PickerViewMode.List;
+        picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
 
-            if (dialog.ShowDialog() == true)
+        // Parse WPF-style filter and add extensions
+        ParseFilterExtensions(filter, picker);
+
+        var files = await picker.PickMultipleFilesAsync();
+        if (files is not null && files.Count > 0)
+            return files.Select(f => f.Path).ToArray();
+
+        return null;
+    }
+
+    public async Task<string?> ShowFolderBrowserDialogAsync(string title)
+    {
+        var picker = new FolderPicker();
+        InitializeWithWindow.Initialize(picker, GetWindowHandle());
+        picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+        picker.FileTypeFilter.Add("*");
+
+        var folder = await picker.PickSingleFolderAsync();
+        return folder?.Path;
+    }
+
+    public async Task<string?> ShowSaveFileDialogAsync(string filter, string title, string defaultFileName = "")
+    {
+        var picker = new FileSavePicker();
+        InitializeWithWindow.Initialize(picker, GetWindowHandle());
+        picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+        picker.SuggestedFileName = defaultFileName;
+
+        // Parse WPF-style filter
+        ParseSaveFilterExtensions(filter, picker);
+
+        var file = await picker.PickSaveFileAsync();
+        return file?.Path;
+    }
+
+    public async void ShowInformation(string message, string title = "Información")
+    {
+        await ShowDialogAsync(title, message);
+    }
+
+    public async void ShowError(string message, string title = "Error")
+    {
+        await ShowDialogAsync(title, message);
+    }
+
+    public async Task<bool> ShowConfirmationAsync(string message, string title = "Confirmación")
+    {
+        var window = App.MainWindow;
+        if (window?.Content?.XamlRoot is null) return false;
+
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = message,
+            PrimaryButtonText = "Sí",
+            CloseButtonText = "No",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot
+        };
+
+        var result = await dialog.ShowAsync();
+        return result == ContentDialogResult.Primary;
+    }
+
+    private static async Task ShowDialogAsync(string title, string message)
+    {
+        var window = App.MainWindow;
+        if (window?.Content?.XamlRoot is null) return;
+
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = message,
+            CloseButtonText = "Aceptar",
+            XamlRoot = window.Content.XamlRoot
+        };
+
+        await dialog.ShowAsync();
+    }
+
+    private static void ParseFilterExtensions(string filter, FileOpenPicker picker)
+    {
+        // Parse "Desc|*.ext1;*.ext2|Desc2|*.ext3" WPF format
+        var parts = filter.Split('|');
+        var added = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        for (int i = 1; i < parts.Length; i += 2)
+        {
+            foreach (var ext in parts[i].Split(';'))
             {
-                return dialog.FolderName;
+                var trimmed = ext.Trim();
+                if (trimmed == "*.*")
+                {
+                    if (added.Count == 0) picker.FileTypeFilter.Add("*");
+                }
+                else if (trimmed.StartsWith("*."))
+                {
+                    var extension = trimmed[1..]; // ".ext"
+                    if (added.Add(extension))
+                        picker.FileTypeFilter.Add(extension);
+                }
             }
+        }
 
-            return null as string;
-        }).Task;
+        if (picker.FileTypeFilter.Count == 0)
+            picker.FileTypeFilter.Add("*");
     }
 
-    public Task<string?> ShowSaveFileDialogAsync(string filter, string title, string defaultFileName = "")
+    private static void ParseSaveFilterExtensions(string filter, FileSavePicker picker)
     {
-        return Application.Current.Dispatcher.InvokeAsync(() =>
+        var parts = filter.Split('|');
+        for (int i = 0; i + 1 < parts.Length; i += 2)
         {
-            var dialog = new SaveFileDialog
-            {
-                Filter = filter,
-                Title = title,
-                FileName = defaultFileName
-            };
+            var desc = parts[i].Trim();
+            var extensions = parts[i + 1].Split(';')
+                .Select(e => e.Trim().TrimStart('*'))
+                .Where(e => e.StartsWith('.'))
+                .ToList();
 
-            return dialog.ShowDialog() == true ? dialog.FileName : null as string;
-        }).Task;
-    }
+            if (extensions.Count > 0)
+                picker.FileTypeChoices.Add(desc, extensions);
+        }
 
-    public void ShowInformation(string message, string title = "Información")
-    {
-        Application.Current.Dispatcher.Invoke(() =>
-        {
-            MessageBox.Show(message, title,
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-        });
-    }
-
-    public void ShowError(string message, string title = "Error")
-    {
-        Application.Current.Dispatcher.Invoke(() =>
-        {
-            MessageBox.Show(message, title,
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-        });
-    }
-
-    public Task<bool> ShowConfirmationAsync(string message, string title = "Confirmación")
-    {
-        return Application.Current.Dispatcher.InvokeAsync(() =>
-        {
-            var result = MessageBox.Show(message, title,
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            return result == MessageBoxResult.Yes;
-        }).Task;
+        if (picker.FileTypeChoices.Count == 0)
+            picker.FileTypeChoices.Add("Archivo", [".pdf"]);
     }
 }

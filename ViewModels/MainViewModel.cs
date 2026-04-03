@@ -2,7 +2,8 @@
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Windows;
+using Microsoft.UI.Dispatching;
+using OfiConvert.Helpers;
 using OfiConvert.Models;
 using OfiConvert.Services;
 using Serilog;
@@ -666,11 +667,20 @@ public partial class MainViewModel : ObservableObject, IDisposable
         };
 
         _historyService.AddEntry(entry);
-        Application.Current.Dispatcher.Invoke(() =>
+        var dq = DispatcherQueue.GetForCurrentThread();
+        if (dq is not null)
+        {
+            dq.TryEnqueue(() =>
+            {
+                ConversionHistory.Insert(0, entry);
+                if (ConversionHistory.Count > 500) ConversionHistory.RemoveAt(ConversionHistory.Count - 1);
+            });
+        }
+        else
         {
             ConversionHistory.Insert(0, entry);
             if (ConversionHistory.Count > 500) ConversionHistory.RemoveAt(ConversionHistory.Count - 1);
-        });
+        }
     }
 
     private void RefreshHistory()
@@ -777,47 +787,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private static void ApplyTheme(string theme)
     {
-        if (theme == "System")
-        {
-            Wpf.Ui.Appearance.ApplicationThemeManager.ApplySystemTheme();
-        }
-        else
-        {
-            var appTheme = theme == "Dark"
-                ? Wpf.Ui.Appearance.ApplicationTheme.Dark
-                : Wpf.Ui.Appearance.ApplicationTheme.Light;
-            Wpf.Ui.Appearance.ApplicationThemeManager.Apply(
-                appTheme,
-                Wpf.Ui.Controls.WindowBackdropType.Mica,
-                true);
-        }
+        // Theme application is handled by MainWindow.xaml.cs via PropertyChanged event
     }
 
     private static void ApplyLanguage(string language)
     {
-        var cultureName = language switch
-        {
-            "en" => "en-US",
-            "pt" => "pt-BR",
-            "fr" => "fr-FR",
-            "de" => "de-DE",
-            "it" => "it-IT",
-            "zh" => "zh-CN",
-            "ja" => "ja-JP",
-            _ => "es-ES"
-        };
-        var newDict = new ResourceDictionary
-        {
-            Source = new Uri($"pack://application:,,,/Lang/{cultureName}.xaml")
-        };
-
-        var existing = Application.Current.Resources.MergedDictionaries
-            .FirstOrDefault(d => d.Source?.OriginalString.Contains("/Lang/") == true);
-
-        if (existing is not null)
-            Application.Current.Resources.MergedDictionaries.Remove(existing);
-
-        Application.Current.Resources.MergedDictionaries.Add(newDict);
+        LocalizationService.Instance.LoadLanguage(language);
     }
 
     [RelayCommand]
@@ -883,14 +858,26 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private void IncrementProgress()
     {
-        Application.Current.Dispatcher.Invoke(() =>
+        var dq = DispatcherQueue.GetForCurrentThread();
+        if (dq is not null)
+        {
+            dq.TryEnqueue(() =>
+            {
+                ProgressValue++;
+                var percentage = ProgressMaximum > 0
+                    ? (int)Math.Round(((double)ProgressValue / ProgressMaximum) * 100)
+                    : 0;
+                ProgressPercentage = $"{percentage}%";
+            });
+        }
+        else
         {
             ProgressValue++;
             var percentage = ProgressMaximum > 0
                 ? (int)Math.Round(((double)ProgressValue / ProgressMaximum) * 100)
                 : 0;
             ProgressPercentage = $"{percentage}%";
-        });
+        }
     }
 
     private void ResetProgress()
@@ -917,7 +904,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private static string GetLocalizedString(string key)
     {
-        return Application.Current.TryFindResource(key) as string ?? key;
+        return LocalizationService.Instance[key];
     }
 
     public bool CanClose()

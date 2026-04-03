@@ -1,34 +1,69 @@
 ﻿using System.ComponentModel;
-using System.Drawing;
-using System.Windows;
-using Wpf.Ui.Controls;
+using Microsoft.UI;
+using Microsoft.UI.Windowing;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using OfiConvert.Behaviors;
+using OfiConvert.Helpers;
+using OfiConvert.Models;
 using OfiConvert.ViewModels;
+using Windows.Graphics;
+using WinRT.Interop;
 
 namespace OfiConvert;
 
-public partial class MainWindow : FluentWindow
+public sealed partial class MainWindow : Window
 {
     public MainViewModel ViewModel { get; }
-    private System.Windows.Forms.NotifyIcon? _trayIcon;
+    private H.NotifyIcon.TaskbarIcon? _trayIcon;
     private string? _appUpdateUrl;
+    private AppWindow _appWindow = null!;
 
     public MainWindow()
     {
         ViewModel = new MainViewModel();
-        DataContext = ViewModel;
         InitializeComponent();
-        Closing += OnWindowClosing;
-        Loaded += OnWindowLoaded;
+
+        // Set DataContext for Binding (x:Bind on Window not supported - Window is not FrameworkElement)
+        if (Content is FrameworkElement root)
+            root.DataContext = ViewModel;
+
+        // Set up AppWindow reference
+        var hWnd = WindowNative.GetWindowHandle(this);
+        var windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
+        _appWindow = AppWindow.GetFromWindowId(windowId);
+
+        // Custom title bar
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(AppTitleBar);
+
+        // Mica backdrop
+        SystemBackdrop = new MicaBackdrop();
+
+        // Window size
+        _appWindow.Resize(new SizeInt32(1050, 800));
+
+        // Window closing event
+        _appWindow.Closing += OnAppWindowClosing;
+
+        // Setup drag-drop on the DropZone border
+        DropZone.Loaded += (_, _) => FileDragDropBehavior.Attach(DropZone, ViewModel, DropZone);
+
+        // Set up event handlers after load
+        DropZone.Loaded += OnWindowLoaded;
     }
 
     private void OnWindowLoaded(object sender, RoutedEventArgs e)
     {
-        InitializeTrayIcon();
         ViewModel.OnConversionCompleted += OnConversionCompleted;
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
 
-        // Only watch system theme changes when theme is "System"
-        UpdateThemeWatcher(ViewModel.SelectedTheme);
+        ApplyTheme(ViewModel.SelectedTheme);
+        ApplyFormatSelection(ViewModel.DefaultOutputFormat);
+        ApplyThemeComboSelection(ViewModel.SelectedTheme);
+        ApplyLanguageSelection(ViewModel.SelectedLanguage);
+
         _ = CheckForAppUpdateAsync();
     }
 
@@ -36,136 +71,131 @@ public partial class MainWindow : FluentWindow
     {
         if (e.PropertyName == nameof(MainViewModel.SelectedTheme))
         {
-            UpdateThemeWatcher(ViewModel.SelectedTheme);
+            ApplyTheme(ViewModel.SelectedTheme);
         }
     }
 
-    private void UpdateThemeWatcher(string theme)
+    private void ApplyTheme(string theme)
     {
-        if (theme == "System")
+        if (Content is FrameworkElement rootElement)
         {
-            Wpf.Ui.Appearance.SystemThemeWatcher.Watch(
-                this,
-                Wpf.Ui.Controls.WindowBackdropType.Mica,
-                updateAccents: true);
-        }
-        else
-        {
-            Wpf.Ui.Appearance.SystemThemeWatcher.UnWatch(this);
+            rootElement.RequestedTheme = theme switch
+            {
+                "Light" => ElementTheme.Light,
+                "Dark" => ElementTheme.Dark,
+                _ => ElementTheme.Default
+            };
         }
     }
 
     private void InitializeTrayIcon()
     {
-        _trayIcon = new System.Windows.Forms.NotifyIcon
+        if (_trayIcon is not null) return;
+
+        _trayIcon = new H.NotifyIcon.TaskbarIcon
         {
-            Text = "OfiConvert",
-            Visible = false
+            ToolTipText = "OfiConvert"
         };
 
-        // Use the app icon or a default one
+        // Set icon from exe
         try
         {
             var exePath = Environment.ProcessPath;
             if (!string.IsNullOrEmpty(exePath))
-                _trayIcon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(exePath);
+            {
+                _trayIcon.Icon = new System.Drawing.Icon(
+                    System.Drawing.Icon.ExtractAssociatedIcon(exePath)!, 
+                    new System.Drawing.Size(32, 32));
+            }
         }
         catch
         {
             _trayIcon.Icon = System.Drawing.SystemIcons.Application;
         }
 
-        _trayIcon.DoubleClick += (_, _) => RestoreFromTray();
-
-        var contextMenu = new System.Windows.Forms.ContextMenuStrip();
-        contextMenu.Items.Add(GetLocalizedString("TrayShow"), null, (_, _) => RestoreFromTray());
-        contextMenu.Items.Add("-");
-        contextMenu.Items.Add(GetLocalizedString("TrayExit"), null, (_, _) =>
+        _trayIcon.DoubleClickCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() =>
         {
-            _trayIcon.Visible = false;
-            System.Windows.Application.Current.Shutdown();
+            DispatcherQueue.TryEnqueue(() => RestoreFromTray());
         });
-
-        _trayIcon.ContextMenuStrip = contextMenu;
     }
 
     private void OnConversionCompleted(object? sender, MainViewModel.ConversionCompletedEventArgs e)
     {
-        if (_trayIcon is null || !ViewModel.ShowNotifications) return;
+        if (!ViewModel.ShowNotifications) return;
 
-        var title = "OfiConvert";
-        var text = e.ErrorCount == 0
-            ? string.Format(GetLocalizedString("TrayNotifSuccess"), e.SuccessCount)
-            : string.Format(GetLocalizedString("TrayNotifErrors"), e.SuccessCount, e.ErrorCount);
-
-        var icon = e.ErrorCount == 0
-            ? System.Windows.Forms.ToolTipIcon.Info
-            : System.Windows.Forms.ToolTipIcon.Warning;
-
-        _trayIcon.Visible = true;
-        _trayIcon.ShowBalloonTip(3000, title, text, icon);
-
-        // Hide tray icon after a short delay if window is visible
-        if (Visibility == Visibility.Visible)
+        DispatcherQueue.TryEnqueue(async () =>
         {
-            HideTrayIconAfterDelayAsync();
-        }
-    }
+            var loc = LocalizationService.Instance;
+            var title = "OfiConvert";
+            var text = e.ErrorCount == 0
+                ? string.Format(loc["TrayNotifSuccess"], e.SuccessCount)
+                : string.Format(loc["TrayNotifErrors"], e.SuccessCount, e.ErrorCount);
 
-    private async void HideTrayIconAfterDelayAsync()
-    {
-        await Task.Delay(5000);
-        if (Visibility == Visibility.Visible && _trayIcon is not null)
-            _trayIcon.Visible = false;
+            var dialog = new ContentDialog
+            {
+                Title = title,
+                Content = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap },
+                CloseButtonText = "OK",
+                XamlRoot = Content.XamlRoot,
+                DefaultButton = ContentDialogButton.Close
+            };
+
+            await dialog.ShowAsync();
+        });
     }
 
     private void RestoreFromTray()
     {
-        Show();
-        WindowState = WindowState.Normal;
-        Activate();
+        _appWindow.Show();
         if (_trayIcon is not null)
-            _trayIcon.Visible = false;
+            _trayIcon.Visibility = Visibility.Collapsed;
     }
 
     private void MinimizeToTray()
     {
+        InitializeTrayIcon();
         if (_trayIcon is not null)
         {
-            _trayIcon.Visible = true;
-            Hide();
+            _trayIcon.Visibility = Visibility.Visible;
+            _appWindow.Hide();
         }
     }
 
-    private void OnWindowClosing(object? sender, CancelEventArgs e)
+    private async void OnAppWindowClosing(AppWindow sender, AppWindowClosingEventArgs args)
     {
         // Minimize to tray instead of closing if setting is enabled
         if (ViewModel.MinimizeToTray && ViewModel.CanClose())
         {
-            e.Cancel = true;
+            args.Cancel = true;
             MinimizeToTray();
             return;
         }
 
         if (!ViewModel.CanClose())
         {
-            var result = System.Windows.MessageBox.Show(
-                "Hay una conversión en curso. Si cierras ahora, los procesos de Office podrían quedar abiertos.\n\n¿Deseas cancelar la conversión y salir?",
-                "Confirmar cierre",
-                System.Windows.MessageBoxButton.YesNo,
-                System.Windows.MessageBoxImage.Warning);
+            args.Cancel = true;
 
-            if (result == System.Windows.MessageBoxResult.No)
+            var dialog = new ContentDialog
             {
-                e.Cancel = true;
-                return;
-            }
+                Title = LocalizationService.Instance["TitleConfirmClose"] is string t && t != "TitleConfirmClose" ? t : "Confirmar cierre",
+                Content = new TextBlock
+                {
+                    Text = "Hay una conversi\u00f3n en curso. Si cierras ahora, los procesos de Office podr\u00edan quedar abiertos.\n\n\u00bfDeseas cancelar la conversi\u00f3n y salir?",
+                    TextWrapping = TextWrapping.Wrap
+                },
+                PrimaryButtonText = LocalizationService.Instance["BtnYes"] is string y && y != "BtnYes" ? y : "S\u00ed",
+                CloseButtonText = LocalizationService.Instance["BtnNo"] is string n && n != "BtnNo" ? n : "No",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = Content.XamlRoot
+            };
+
+            var result = await dialog.ShowAsync();
+            if (result != ContentDialogResult.Primary) return;
 
             ViewModel.CancelConversionCommand.Execute(null);
         }
 
         // Cleanup
-        Wpf.Ui.Appearance.SystemThemeWatcher.UnWatch(this);
         ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
         ViewModel.OnConversionCompleted -= OnConversionCompleted;
         ViewModel.SaveSettings();
@@ -173,15 +203,12 @@ public partial class MainWindow : FluentWindow
 
         if (_trayIcon is not null)
         {
-            _trayIcon.Visible = false;
+            _trayIcon.Visibility = Visibility.Collapsed;
             _trayIcon.Dispose();
             _trayIcon = null;
         }
-    }
 
-    private static string GetLocalizedString(string key)
-    {
-        return System.Windows.Application.Current.TryFindResource(key) as string ?? key;
+        Close();
     }
 
     private async Task CheckForAppUpdateAsync()
@@ -191,8 +218,10 @@ public partial class MainWindow : FluentWindow
         if (info is null) return;
 
         _appUpdateUrl = info.HtmlUrl;
-        txtUpdateMessage.Text = $"\u2b06 {GetLocalizedString("TitleUpdateAvailable")}: {info.Version}  —  {GetLocalizedString("MsgUpdateAvailable")}";
-        cardUpdate.Visibility = System.Windows.Visibility.Visible;
+        var loc = LocalizationService.Instance;
+        infoBarUpdate.Title = $"\u2b06 {loc["TitleUpdateAvailable"]}: {info.Version}";
+        infoBarUpdate.Message = loc["MsgUpdateAvailable"];
+        infoBarUpdate.IsOpen = true;
         btnBuscarActualizacion.Content = $"\u2b06 {info.Version}";
     }
 
@@ -203,16 +232,61 @@ public partial class MainWindow : FluentWindow
                 new System.Diagnostics.ProcessStartInfo(_appUpdateUrl) { UseShellExecute = true });
     }
 
-    private void BtnCloseUpdate_Click(object sender, RoutedEventArgs e)
+    private void BtnRemoveFile_Click(object sender, RoutedEventArgs e)
     {
-        cardUpdate.Visibility = System.Windows.Visibility.Collapsed;
+        if (sender is Button btn && btn.Tag is FileItem file)
+        {
+            ViewModel.RemoveFileCommand.Execute(file);
+        }
+    }
+
+    private void CmbFormat_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (cmbFormat.SelectedItem is ComboBoxItem item)
+        {
+            var formatStr = item.Content?.ToString();
+            if (Enum.TryParse<OutputFormat>(formatStr, out var format))
+            {
+                ViewModel.DefaultOutputFormat = format;
+            }
+        }
+    }
+
+    private void CmbTheme_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (cmbTheme.SelectedItem is ComboBoxItem item && item.Tag is string theme)
+        {
+            ViewModel.SelectedTheme = theme;
+        }
+    }
+
+    private void CmbLanguage_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (cmbLanguage.SelectedItem is ComboBoxItem item && item.Tag is string lang)
+        {
+            ViewModel.SelectedLanguage = lang;
+            LocalizationService.Instance.LoadLanguage(lang);
+        }
+    }
+
+    private void CmbDefaultFormat_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (cmbDefaultFormat.SelectedItem is ComboBoxItem item)
+        {
+            var formatStr = item.Content?.ToString();
+            if (Enum.TryParse<OutputFormat>(formatStr, out var format))
+            {
+                ViewModel.DefaultOutputFormat = format;
+            }
+        }
     }
 
     private async void BtnBuscarActualizacion_Click(object sender, RoutedEventArgs e)
     {
         btnBuscarActualizacion.IsEnabled = false;
+        var loc = LocalizationService.Instance;
         string originalContent = btnBuscarActualizacion.Content as string ?? "";
-        btnBuscarActualizacion.Content = GetLocalizedString("MsgCheckingUpdate") is string s && s != "MsgCheckingUpdate"
+        btnBuscarActualizacion.Content = loc["MsgCheckingUpdate"] is string s && s != "MsgCheckingUpdate"
             ? s : "Comprobando...";
         try
         {
@@ -222,26 +296,39 @@ public partial class MainWindow : FluentWindow
             if (info is null)
             {
                 btnBuscarActualizacion.Content = originalContent;
-                System.Windows.MessageBox.Show(
-                    GetLocalizedString("MsgNoUpdates"),
-                    GetLocalizedString("TitleNoUpdates"),
-                    System.Windows.MessageBoxButton.OK,
-                    System.Windows.MessageBoxImage.Information);
+                var dialog = new ContentDialog
+                {
+                    Title = loc["TitleNoUpdates"] is string t && t != "TitleNoUpdates" ? t : "Sin actualizaciones",
+                    Content = new TextBlock { Text = loc["MsgNoUpdates"], TextWrapping = TextWrapping.Wrap },
+                    CloseButtonText = "OK",
+                    XamlRoot = Content.XamlRoot
+                };
+                await dialog.ShowAsync();
             }
             else
             {
                 _appUpdateUrl = info.HtmlUrl;
                 btnBuscarActualizacion.Content = $"\u2b06 {info.Version}";
-                txtUpdateMessage.Text = $"\u2b06 {GetLocalizedString("TitleUpdateAvailable")}: {info.Version}  —  {GetLocalizedString("MsgUpdateAvailable")}";
-                cardUpdate.Visibility = System.Windows.Visibility.Visible;
+                infoBarUpdate.Title = $"\u2b06 {loc["TitleUpdateAvailable"]}: {info.Version}";
+                infoBarUpdate.Message = loc["MsgUpdateAvailable"];
+                infoBarUpdate.IsOpen = true;
 
-                var result = System.Windows.MessageBox.Show(
-                    $"{GetLocalizedString("TitleUpdateAvailable")}: {info.Version}\n\n{GetLocalizedString("MsgUpdateAvailable")}",
-                    GetLocalizedString("TitleUpdateAvailable"),
-                    System.Windows.MessageBoxButton.YesNo,
-                    System.Windows.MessageBoxImage.Information);
+                var dialog = new ContentDialog
+                {
+                    Title = loc["TitleUpdateAvailable"],
+                    Content = new TextBlock
+                    {
+                        Text = $"{loc["TitleUpdateAvailable"]}: {info.Version}\n\n{loc["MsgUpdateAvailable"]}",
+                        TextWrapping = TextWrapping.Wrap
+                    },
+                    PrimaryButtonText = loc["BtnYes"] is string y && y != "BtnYes" ? y : "S\u00ed",
+                    CloseButtonText = loc["BtnNo"] is string n && n != "BtnNo" ? n : "No",
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = Content.XamlRoot
+                };
 
-                if (result == System.Windows.MessageBoxResult.Yes)
+                var result = await dialog.ShowAsync();
+                if (result == ContentDialogResult.Primary)
                     System.Diagnostics.Process.Start(
                         new System.Diagnostics.ProcessStartInfo(info.HtmlUrl) { UseShellExecute = true });
             }
@@ -249,6 +336,45 @@ public partial class MainWindow : FluentWindow
         finally
         {
             btnBuscarActualizacion.IsEnabled = true;
+        }
+    }
+
+    private void ApplyFormatSelection(OutputFormat format)
+    {
+        var idx = format switch
+        {
+            OutputFormat.PDF => 0,
+            OutputFormat.HTML => 1,
+            OutputFormat.CSV => 2,
+            OutputFormat.PNG => 3,
+            OutputFormat.JPG => 4,
+            _ => 0
+        };
+        if (cmbFormat.Items.Count > idx) cmbFormat.SelectedIndex = idx;
+        if (cmbDefaultFormat.Items.Count > idx) cmbDefaultFormat.SelectedIndex = idx;
+    }
+
+    private void ApplyThemeComboSelection(string theme)
+    {
+        for (int i = 0; i < cmbTheme.Items.Count; i++)
+        {
+            if (cmbTheme.Items[i] is ComboBoxItem item && item.Tag as string == theme)
+            {
+                cmbTheme.SelectedIndex = i;
+                break;
+            }
+        }
+    }
+
+    private void ApplyLanguageSelection(string lang)
+    {
+        for (int i = 0; i < cmbLanguage.Items.Count; i++)
+        {
+            if (cmbLanguage.Items[i] is ComboBoxItem item && item.Tag as string == lang)
+            {
+                cmbLanguage.SelectedIndex = i;
+                break;
+            }
         }
     }
 }

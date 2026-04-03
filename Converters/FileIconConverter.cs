@@ -1,31 +1,30 @@
-using System;
-using System.Globalization;
-using System.Windows.Data;
-using Wpf.Ui.Controls;
+using Microsoft.UI.Xaml.Data;
 
-namespace OfiConvert.Converters
+namespace OfiConvert.Converters;
+
+/// <summary>
+/// Converts a file extension string to a Segoe Fluent Icons glyph string.
+/// </summary>
+public class FileIconConverter : IValueConverter
 {
-    public class FileIconConverter : IValueConverter
+    public object Convert(object value, Type targetType, object parameter, string language)
     {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        if (value is string extension)
         {
-            if (value is string extension)
+            return extension.ToUpper() switch
             {
-                return extension.ToUpper() switch
-                {
-                    "DOC" or "DOCX" => SymbolRegular.DocumentText24,
-                    "XLS" or "XLSX" => SymbolRegular.TableSimple24,
-                    "PPT" or "PPTX" => SymbolRegular.Presenter24,
-                    "PDF" => SymbolRegular.DocumentPdf24,
-                    _ => SymbolRegular.Document24
-                };
-            }
-            return SymbolRegular.Document24;
+                "DOC" or "DOCX" => "\uE8A5",   // Document
+                "XLS" or "XLSX" => "\uE80A",   // Table
+                "PPT" or "PPTX" => "\uECA5",   // Slideshow
+                "PDF" => "\uEA90",              // PDF
+                _ => "\uE7C3"                   // Page
+            };
         }
+        return "\uE7C3";
+    }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
+    public object ConvertBack(object value, Type targetType, object parameter, string language)
+    {
+        throw new NotImplementedException();
     }
 }

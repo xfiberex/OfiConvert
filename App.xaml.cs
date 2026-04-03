@@ -1,60 +1,34 @@
-﻿using System.Windows;
+﻿using Microsoft.UI.Xaml;
 using OfiConvert.Services;
 
-namespace OfiConvert
+namespace OfiConvert;
+
+public partial class App : Application
 {
-    public partial class App : System.Windows.Application
+    private Window? _window;
+    private readonly string[] _args;
+
+    public static Window? MainWindow { get; private set; }
+
+    public App(string[] args)
     {
-        protected override void OnStartup(StartupEventArgs e)
+        _args = args;
+        InitializeComponent();
+        UnhandledException += (s, e) =>
         {
-            base.OnStartup(e);
-            LoggingService.Initialize();
+            File.WriteAllText(
+                Path.Combine(AppContext.BaseDirectory, "crash.log"),
+                $"UnhandledException: {e.Exception}");
+            e.Handled = true;
+        };
+    }
 
-            // Load saved settings and apply theme/language
-            var settings = new SettingsService().Load();
+    protected override void OnLaunched(LaunchActivatedEventArgs args)
+    {
+        LoggingService.Initialize();
 
-            // Apply theme (System = auto-detect from Windows)
-            if (settings.Theme == "System")
-            {
-                Wpf.Ui.Appearance.ApplicationThemeManager.ApplySystemTheme();
-            }
-            else
-            {
-                var theme = settings.Theme == "Dark"
-                    ? Wpf.Ui.Appearance.ApplicationTheme.Dark
-                    : Wpf.Ui.Appearance.ApplicationTheme.Light;
-                Wpf.Ui.Appearance.ApplicationThemeManager.Apply(
-                    theme,
-                    Wpf.Ui.Controls.WindowBackdropType.Mica,
-                    true);
-            }
-
-            // Apply language
-            var cultureName = settings.Language == "en" ? "en-US" : "es-ES";
-            var langDict = new ResourceDictionary
-            {
-                Source = new System.Uri($"pack://application:,,,/Lang/{cultureName}.xaml")
-            };
-            var existing = Resources.MergedDictionaries
-                .FirstOrDefault(d => d.Source?.OriginalString.Contains("/Lang/") == true);
-            if (existing is not null)
-                Resources.MergedDictionaries.Remove(existing);
-            Resources.MergedDictionaries.Add(langDict);
-
-            // Handle command-line arguments (from Explorer context menu)
-            if (e.Args.Length > 0)
-            {
-                var mainWindow = new MainWindow();
-                mainWindow.ViewModel.AddFiles(e.Args);
-                MainWindow = mainWindow;
-                mainWindow.Show();
-            }
-        }
-
-        protected override void OnExit(ExitEventArgs e)
-        {
-            LoggingService.Shutdown();
-            base.OnExit(e);
-        }
+        _window = new MainWindow();
+        MainWindow = _window;
+        _window.Activate();
     }
 }

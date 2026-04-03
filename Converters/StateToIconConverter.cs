@@ -1,36 +1,35 @@
-using System;
-using System.Globalization;
-using System.Windows.Data;
-using Wpf.Ui.Controls;
+using Microsoft.UI.Xaml.Data;
 using OfiConvert.Models;
 
-namespace OfiConvert.Converters
-{
-    public class StateToIconConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            if (value is FileConversionState state)
-            {
-                return state switch
-                {
-                    FileConversionState.Pending => SymbolRegular.Clock24,
-                    FileConversionState.Validating => SymbolRegular.ShieldCheckmark24,
-                    FileConversionState.Converting => SymbolRegular.ArrowSync24,
-                    FileConversionState.Retrying => SymbolRegular.ArrowRepeatAll24,
-                    FileConversionState.Paused => SymbolRegular.Pause24,
-                    FileConversionState.Completed => SymbolRegular.CheckmarkCircle24,
-                    FileConversionState.Error => SymbolRegular.ErrorCircle24,
-                    FileConversionState.Skipped => SymbolRegular.DismissCircle24,
-                    _ => SymbolRegular.Circle24
-                };
-            }
-            return SymbolRegular.Circle24;
-        }
+namespace OfiConvert.Converters;
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+/// <summary>
+/// Converts FileConversionState to a Segoe Fluent Icons glyph string.
+/// </summary>
+public class StateToIconConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        if (value is FileConversionState state)
         {
-            throw new NotImplementedException();
+            return state switch
+            {
+                FileConversionState.Pending => "\uE823",     // Clock
+                FileConversionState.Validating => "\uEA18",  // Shield
+                FileConversionState.Converting => "\uE895",  // Sync
+                FileConversionState.Retrying => "\uE72C",    // Repeat
+                FileConversionState.Paused => "\uE769",      // Pause
+                FileConversionState.Completed => "\uE73E",   // Checkmark
+                FileConversionState.Error => "\uEA39",       // Error
+                FileConversionState.Skipped => "\uE711",     // Dismiss
+                _ => "\uEA3A"                                // Circle
+            };
         }
+        return "\uEA3A";
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language)
+    {
+        throw new NotImplementedException();
     }
 }

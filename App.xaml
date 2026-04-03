@@ -1,15 +1,12 @@
-﻿<Application x:Class="OfiConvert.App"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:OfiConvert"
-             StartupUri="MainWindow.xaml"
-             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Application
+    x:Class="OfiConvert.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ui:ThemesDictionary Theme="Dark" />
-                <ui:ControlsDictionary />
-                <ResourceDictionary Source="pack://application:,,,/Lang/es-ES.xaml" />
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
             <SolidColorBrush x:Key="SuccessColorBrush" Color="#10B981"/>
             <SolidColorBrush x:Key="WarningColorBrush" Color="#F59E0B"/>

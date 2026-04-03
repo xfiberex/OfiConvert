@@ -1,5 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using System.Windows.Media.Imaging;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace OfiConvert.Models;
 
@@ -23,7 +23,7 @@ public partial class FileItem : ObservableObject
     private ConversionOptions _options = new();
 
     [ObservableProperty]
-    private BitmapSource? _thumbnail;
+    private BitmapImage? _thumbnail;
 
     [ObservableProperty]
     private int _retryCount;

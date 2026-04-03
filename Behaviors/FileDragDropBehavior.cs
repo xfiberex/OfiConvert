@@ -1,120 +1,82 @@
-using System.Windows;
-using System.Windows.Controls;
-using Microsoft.Xaml.Behaviors;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Windows.ApplicationModel.DataTransfer;
 using OfiConvert.ViewModels;
 
 namespace OfiConvert.Behaviors;
 
-public class FileDragDropBehavior : Behavior<FrameworkElement>
+/// <summary>
+/// Provides file drag-and-drop support for WinUI 3.
+/// Attach via code-behind: FileDragDropBehavior.Attach(element, viewModel, highlightBorder);
+/// </summary>
+public static class FileDragDropBehavior
 {
-    public static readonly DependencyProperty ViewModelProperty =
-        DependencyProperty.Register(
-            nameof(ViewModel),
-            typeof(MainViewModel),
-            typeof(FileDragDropBehavior),
-            new PropertyMetadata(null));
-
-    public MainViewModel? ViewModel
+    public static void Attach(UIElement element, MainViewModel viewModel, Border? highlightBorder)
     {
-        get => (MainViewModel?)GetValue(ViewModelProperty);
-        set => SetValue(ViewModelProperty, value);
-    }
+        element.AllowDrop = true;
 
-    public static readonly DependencyProperty HighlightBorderProperty =
-        DependencyProperty.Register(
-            nameof(HighlightBorder),
-            typeof(Border),
-            typeof(FileDragDropBehavior),
-            new PropertyMetadata(null));
-
-    public Border? HighlightBorder
-    {
-        get => (Border?)GetValue(HighlightBorderProperty);
-        set => SetValue(HighlightBorderProperty, value);
-    }
-
-    protected override void OnAttached()
-    {
-        base.OnAttached();
-
-        AssociatedObject.AllowDrop = true;
-        AssociatedObject.DragEnter += OnDragEnter;
-        AssociatedObject.DragLeave += OnDragLeave;
-        AssociatedObject.Drop += OnDrop;
-        AssociatedObject.DragOver += OnDragOver;
-    }
-
-    protected override void OnDetaching()
-    {
-        AssociatedObject.DragEnter -= OnDragEnter;
-        AssociatedObject.DragLeave -= OnDragLeave;
-        AssociatedObject.Drop -= OnDrop;
-        AssociatedObject.DragOver -= OnDragOver;
-
-        base.OnDetaching();
-    }
-
-    private void OnDragEnter(object sender, DragEventArgs e)
-    {
-        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        element.DragEnter += (s, e) =>
         {
-            e.Effects = DragDropEffects.Copy;
-            SetHighlightState(true);
-        }
-        else
-        {
-            e.Effects = DragDropEffects.None;
-        }
-        e.Handled = true;
-    }
-
-    private void OnDragLeave(object sender, DragEventArgs e)
-    {
-        SetHighlightState(false);
-        e.Handled = true;
-    }
-
-    private void OnDragOver(object sender, DragEventArgs e)
-    {
-        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) 
-            ? DragDropEffects.Copy 
-            : DragDropEffects.None;
-        e.Handled = true;
-    }
-
-    private void OnDrop(object sender, DragEventArgs e)
-    {
-        SetHighlightState(false);
-
-        if (e.Data.GetDataPresent(DataFormats.FileDrop))
-        {
-            var files = (string[])e.Data.GetData(DataFormats.FileDrop);
-            if (files is not null && files.Length > 0 && ViewModel is not null)
+            if (e.DataView.Contains(StandardDataFormats.StorageItems))
             {
-                ViewModel.AddFiles(files);
+                e.AcceptedOperation = DataPackageOperation.Copy;
+                SetHighlightState(highlightBorder, true);
             }
-        }
+            else
+            {
+                e.AcceptedOperation = DataPackageOperation.None;
+            }
+        };
 
-        e.Handled = true;
+        element.DragLeave += (s, e) =>
+        {
+            SetHighlightState(highlightBorder, false);
+        };
+
+        element.DragOver += (s, e) =>
+        {
+            e.AcceptedOperation = e.DataView.Contains(StandardDataFormats.StorageItems)
+                ? DataPackageOperation.Copy
+                : DataPackageOperation.None;
+        };
+
+        element.Drop += async (s, e) =>
+        {
+            SetHighlightState(highlightBorder, false);
+
+            if (e.DataView.Contains(StandardDataFormats.StorageItems))
+            {
+                var items = await e.DataView.GetStorageItemsAsync();
+                var files = items
+                    .OfType<Windows.Storage.StorageFile>()
+                    .Select(f => f.Path)
+                    .ToArray();
+
+                if (files.Length > 0)
+                {
+                    viewModel.AddFiles(files);
+                }
+            }
+        };
     }
 
-    private void SetHighlightState(bool isHighlighted)
+    private static void SetHighlightState(Border? border, bool isHighlighted)
     {
-        if (HighlightBorder is null) return;
+        if (border is null) return;
 
         if (isHighlighted)
         {
-            HighlightBorder.BorderBrush = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(0, 120, 212));
-            HighlightBorder.BorderThickness = new Thickness(3);
+            border.BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 0, 120, 212));
+            border.BorderThickness = new Thickness(3);
         }
         else
         {
-            HighlightBorder.BorderBrush = Application.Current.TryFindResource("ControlStrokeColorDefaultBrush") 
-                as System.Windows.Media.Brush 
-                ?? new System.Windows.Media.SolidColorBrush(
-                    System.Windows.Media.Color.FromRgb(224, 224, 224));
-            HighlightBorder.BorderThickness = new Thickness(2);
+            border.BorderBrush = Microsoft.UI.Xaml.Application.Current.Resources.TryGetValue(
+                "CardStrokeColorDefaultBrush", out var brush) && brush is Brush b
+                ? b
+                : new SolidColorBrush(Windows.UI.Color.FromArgb(255, 224, 224, 224));
+            border.BorderThickness = new Thickness(2);
         }
     }
 }

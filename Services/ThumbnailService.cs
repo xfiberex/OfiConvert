@@ -1,7 +1,5 @@
 using System.Runtime.InteropServices;
-using System.Windows;
-using System.Windows.Interop;
-using System.Windows.Media.Imaging;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace OfiConvert.Services;
 
@@ -29,44 +27,76 @@ public static class ThumbnailService
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool DeleteObject(IntPtr hObject);
 
-    private const int SIIGBF_THUMBNAILONLY = 0x02;
     private const int SIIGBF_BIGGERSIZEOK = 0x01;
 
-    public static BitmapSource? GetThumbnail(string filePath, int width = 64, int height = 64)
+    public static async Task<BitmapImage?> GetThumbnailAsync(string filePath, int width = 64, int height = 64)
     {
-        try
+        return await Task.Run(() =>
         {
-            if (!System.IO.File.Exists(filePath)) return null;
+            try
+            {
+                if (!File.Exists(filePath)) return null;
 
-            var guid = typeof(IShellItemImageFactory).GUID;
-            SHCreateItemFromParsingName(filePath, IntPtr.Zero, ref guid, out var factory);
+                var guid = typeof(IShellItemImageFactory).GUID;
+                SHCreateItemFromParsingName(filePath, IntPtr.Zero, ref guid, out var factory);
 
-            var size = new NativeSize { Width = width, Height = height };
-            var hr = factory.GetImage(size, SIIGBF_BIGGERSIZEOK, out var hBitmap);
+                var size = new NativeSize { Width = width, Height = height };
+                var hr = factory.GetImage(size, SIIGBF_BIGGERSIZEOK, out var hBitmap);
 
-            if (hr != 0) return null;
+                if (hr != 0) return null;
+
+                try
+                {
+                    // Save HBITMAP to a temp file, then load as BitmapImage
+                    var tempPath = Path.Combine(Path.GetTempPath(), $"oficonvert_thumb_{Guid.NewGuid():N}.png");
+                    SaveHBitmapToFile(hBitmap, tempPath);
+                    return tempPath;
+                }
+                finally
+                {
+                    DeleteObject(hBitmap);
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }).ContinueWith(async task =>
+        {
+            var tempPath = task.Result;
+            if (tempPath is null) return null;
 
             try
             {
-                var source = Imaging.CreateBitmapSourceFromHBitmap(
-                    hBitmap, IntPtr.Zero, Int32Rect.Empty,
-                    BitmapSizeOptions.FromEmptyOptions());
-                source.Freeze();
-                return source;
+                var bitmap = new BitmapImage();
+                bitmap.UriSource = new Uri(tempPath);
+                return bitmap;
+            }
+            catch
+            {
+                return null;
             }
             finally
             {
-                DeleteObject(hBitmap);
+                try { File.Delete(tempPath); } catch { }
             }
-        }
-        catch
-        {
-            return null;
-        }
+        }, TaskScheduler.Default).Unwrap();
     }
 
-    public static async Task<BitmapSource?> GetThumbnailAsync(string filePath, int width = 64, int height = 64)
+    [DllImport("ole32.dll")]
+    private static extern int CreateStreamOnHGlobal(IntPtr hGlobal, bool fDeleteOnRelease, out IStream ppstm);
+
+    [ComImport, Guid("0000000c-0000-0000-C000-000000000046"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IStream
     {
-        return await Task.Run(() => GetThumbnail(filePath, width, height));
+        void Read(byte[] pv, int cb, IntPtr pcbRead);
+        void Write(byte[] pv, int cb, IntPtr pcbWritten);
+    }
+
+    private static void SaveHBitmapToFile(IntPtr hBitmap, string filePath)
+    {
+        // Use GDI+ to save the HBITMAP as PNG
+        using var bitmap = System.Drawing.Image.FromHbitmap(hBitmap);
+        bitmap.Save(filePath, System.Drawing.Imaging.ImageFormat.Png);
     }
 }
