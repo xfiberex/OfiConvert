@@ -24,6 +24,7 @@
     <FileVersion>2.0.0.0</FileVersion>
     <AssemblyTitle>OfiConvert</AssemblyTitle>
     <Product>OfiConvert</Product>
+    <EnableMsixTooling>true</EnableMsixTooling>
   </PropertyGroup>
 
   <ItemGroup>
@@ -35,6 +36,7 @@
     </Content>
     <Content Include="Lang\**\*.xaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
   </ItemGroup>
 
@@ -58,6 +60,15 @@
     </ItemGroup>
     <Copy SourceFiles="@(_AppPri)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(_XbfFiles)" DestinationFiles="@(_XbfFiles->'$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- Copy Lang files to publish output (CopyToPublishDirectory is filtered by WinUI 3 tooling) -->
+  <Target Name="CopyLangFilesToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <_LangFiles Include="$(MSBuildProjectDirectory)\Lang\*.xaml" />
+    </ItemGroup>
+    <MakeDir Directories="$(PublishDir)Lang" />
+    <Copy SourceFiles="@(_LangFiles)" DestinationFolder="$(PublishDir)Lang" SkipUnchangedFiles="true" />
   </Target>
 
 </Project>

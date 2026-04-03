@@ -69,15 +69,12 @@ cd OfiConvert
 dotnet build -c Release
 
 # Publicar (self-contained, single-file, win-x64)
+# EnableMsixTooling ya está definido en OfiConvert.csproj (requerido por WinUI 3)
 dotnet publish OfiConvert.csproj -c Release -r win-x64 --self-contained `
     -p:PublishSingleFile=true `
     -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:PublishReadyToRun=true `
     -o ./publish
-
-# Copiar recursos necesarios para el instalador
-New-Item -ItemType Directory -Force publish\Assets
-Copy-Item Assets\app.ico publish\Assets\
 ```
 
 ---
