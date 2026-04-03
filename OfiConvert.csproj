@@ -19,9 +19,9 @@
     <SignAssembly>false</SignAssembly>
     <Copyright>Ricky Angel Jimenez Bueno</Copyright>
     <Description>Convertidor de archivos Office a PDF</Description>
-    <Version>1.0.0</Version>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <Version>2.0.0</Version>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
     <AssemblyTitle>OfiConvert</AssemblyTitle>
     <Product>OfiConvert</Product>
   </PropertyGroup>

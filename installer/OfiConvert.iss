@@ -2,7 +2,7 @@
 ; Requiere Inno Setup 6.x o superior
 
 #define MyAppName "OfiConvert"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "2.0.0"
 #define MyAppPublisher "Ricky Angel Jimenez Bueno"
 #define MyAppExeName "OfiConvert.exe"
 #define MyAppDescription "Convertidor de archivos Office a múltiples formatos"
