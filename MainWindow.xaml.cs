@@ -217,7 +217,7 @@ public sealed partial class MainWindow : Window
             await OfiConvert.Services.GitHubUpdateService.CheckForUpdateAsync();
         if (info is null) return;
 
-        _appUpdateUrl = info.HtmlUrl;
+        _appUpdateUrl = info.DownloadUrl;
         var loc = LocalizationService.Instance;
         infoBarUpdate.Title = $"\u2b06 {loc["TitleUpdateAvailable"]}: {info.Version}";
         infoBarUpdate.Message = loc["MsgUpdateAvailable"];
@@ -225,11 +225,44 @@ public sealed partial class MainWindow : Window
         btnBuscarActualizacion.Content = $"\u2b06 {info.Version}";
     }
 
-    private void BtnDownloadUpdate_Click(object sender, RoutedEventArgs e)
+    private async void BtnDownloadUpdate_Click(object sender, RoutedEventArgs e)
     {
-        if (!string.IsNullOrEmpty(_appUpdateUrl))
-            System.Diagnostics.Process.Start(
-                new System.Diagnostics.ProcessStartInfo(_appUpdateUrl) { UseShellExecute = true });
+        if (string.IsNullOrEmpty(_appUpdateUrl)) return;
+
+        btnInstalarUpdate.IsEnabled = false;
+        btnInstalarUpdate.Content = "Descargando...";
+        pbUpdate.Visibility = Visibility.Visible;
+        infoBarUpdate.IsClosable = false;
+
+        var progress = new Progress<double>(p =>
+        {
+            pbUpdate.Value = p;
+            infoBarUpdate.Message = $"Descargando... {p:P0}";
+        });
+
+        try
+        {
+            string installerPath = await OfiConvert.Services.GitHubUpdateService
+                .DownloadInstallerAsync(_appUpdateUrl, progress);
+            infoBarUpdate.Message = "Instalando... La aplicaci\u00f3n se reiniciar\u00e1 autom\u00e1ticamente.";
+
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(installerPath)
+            {
+                Arguments = "/VERYSILENT /NORESTART /autoinstall=1",
+                UseShellExecute = true
+            });
+            await Task.Delay(1500);
+            Application.Current.Exit();
+        }
+        catch (Exception ex)
+        {
+            pbUpdate.Visibility = Visibility.Collapsed;
+            btnInstalarUpdate.IsEnabled = true;
+            btnInstalarUpdate.Content = "Instalar ahora";
+            infoBarUpdate.IsClosable = true;
+            infoBarUpdate.Severity = InfoBarSeverity.Error;
+            infoBarUpdate.Message = $"Error al descargar: {ex.Message}";
+        }
     }
 
     private void BtnRemoveFile_Click(object sender, RoutedEventArgs e)
@@ -307,7 +340,7 @@ public sealed partial class MainWindow : Window
             }
             else
             {
-                _appUpdateUrl = info.HtmlUrl;
+                _appUpdateUrl = info.DownloadUrl;
                 btnBuscarActualizacion.Content = $"\u2b06 {info.Version}";
                 infoBarUpdate.Title = $"\u2b06 {loc["TitleUpdateAvailable"]}: {info.Version}";
                 infoBarUpdate.Message = loc["MsgUpdateAvailable"];
@@ -329,8 +362,7 @@ public sealed partial class MainWindow : Window
 
                 var result = await dialog.ShowAsync();
                 if (result == ContentDialogResult.Primary)
-                    System.Diagnostics.Process.Start(
-                        new System.Diagnostics.ProcessStartInfo(info.HtmlUrl) { UseShellExecute = true });
+                    BtnDownloadUpdate_Click(sender, e);
             }
         }
         finally

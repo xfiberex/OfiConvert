@@ -50,9 +50,17 @@
                      Severity="Informational"
                      IsClosable="True"
                      Margin="0,0,0,8">
+                <InfoBar.Content>
+                    <ProgressBar x:Name="pbUpdate"
+                                 Visibility="Collapsed"
+                                 Minimum="0" Maximum="1"
+                                 IsIndeterminate="False"
+                                 Margin="0,4,0,4" />
+                </InfoBar.Content>
                 <InfoBar.ActionButton>
-                    <HyperlinkButton Content="Descargar ahora"
-                                     Click="BtnDownloadUpdate_Click" />
+                    <Button x:Name="btnInstalarUpdate"
+                            Content="Instalar ahora"
+                            Click="BtnDownloadUpdate_Click" />
                 </InfoBar.ActionButton>
             </InfoBar>
 

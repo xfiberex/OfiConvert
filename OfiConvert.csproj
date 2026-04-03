@@ -29,7 +29,7 @@
   <ItemGroup>
     <!-- Exclude Lang files from XAML compilation (they are parsed manually by LocalizationService) -->
     <None Remove="Lang\**\*.xaml" />
-    <Page Remove="Lang\**\*.xaml" />
+    <Page Remove="Lang\**\*.xaml;publish\**\*.xaml" />
     <Content Include="Assets\app.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
