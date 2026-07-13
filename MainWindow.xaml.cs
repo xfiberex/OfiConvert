@@ -19,6 +19,7 @@ public sealed partial class MainWindow : Window
     private H.NotifyIcon.TaskbarIcon? _trayIcon;
     private string? _appUpdateUrl;
     private AppWindow _appWindow = null!;
+    private nint _hWnd;
 
     public MainWindow()
     {
@@ -30,8 +31,8 @@ public sealed partial class MainWindow : Window
             root.DataContext = ViewModel;
 
         // Set up AppWindow reference
-        var hWnd = WindowNative.GetWindowHandle(this);
-        var windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
+        _hWnd = WindowNative.GetWindowHandle(this);
+        var windowId = Win32Interop.GetWindowIdFromWindow(_hWnd);
         _appWindow = AppWindow.GetFromWindowId(windowId);
 
         // Custom title bar
@@ -123,25 +124,37 @@ public sealed partial class MainWindow : Window
     {
         if (!ViewModel.ShowNotifications) return;
 
-        DispatcherQueue.TryEnqueue(async () =>
+        // El resultado ya se muestra en el panel de la propia ventana; esto solo reclama la atención
+        // de quien se fue a otra cosa. Notifier no hace nada si la ventana está en primer plano.
+        DispatcherQueue.TryEnqueue(() => Notifier.NotifyCompleted(_hWnd, e.ErrorCount > 0));
+    }
+
+    /// <summary>
+    /// Encola los archivos de una activación (menú contextual del Explorador, "Abrir con", o una
+    /// segunda instancia redirigida a esta) y trae la ventana al frente.
+    /// </summary>
+    public void EnqueueFromActivation(IReadOnlyList<string> files)
+    {
+        if (files.Count == 0) return;
+
+        ViewModel.AddFiles(files);
+        BringToFront();
+    }
+
+    private void BringToFront()
+    {
+        if (_trayIcon is not null)
         {
-            var loc = LocalizationService.Instance;
-            var title = "OfiConvert";
-            var text = e.ErrorCount == 0
-                ? string.Format(loc["TrayNotifSuccess"], e.SuccessCount)
-                : string.Format(loc["TrayNotifErrors"], e.SuccessCount, e.ErrorCount);
+            _trayIcon.Visibility = Visibility.Collapsed;
+            _appWindow.Show();
+        }
 
-            var dialog = new ContentDialog
-            {
-                Title = title,
-                Content = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap },
-                CloseButtonText = "OK",
-                XamlRoot = Content.XamlRoot,
-                DefaultButton = ContentDialogButton.Close
-            };
+        // Restore() es lo que saca la ventana de minimizada y la pone al frente; AppWindow.Show() sola
+        // no lo hace si el usuario la había minimizado.
+        if (_appWindow.Presenter is OverlappedPresenter presenter)
+            presenter.Restore();
 
-            await dialog.ShowAsync();
-        });
+        Activate();
     }
 
     private void RestoreFromTray()

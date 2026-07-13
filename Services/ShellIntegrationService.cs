@@ -1,5 +1,6 @@
 using Microsoft.Win32;
 using System.Diagnostics;
+using OfiConvert.Models;
 using Serilog;
 
 namespace OfiConvert.Services;
@@ -9,7 +10,7 @@ public static class ShellIntegrationService
     private const string MenuName = "OfiConvert";
     private const string MenuText = "Convertir con OfiConvert";
 
-    private static readonly string[] Extensions = [".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"];
+    private static readonly string[] Extensions = OfficeFormats.SupportedExtensions;
 
     public static bool IsRegistered()
     {

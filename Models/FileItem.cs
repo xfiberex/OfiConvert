@@ -13,21 +13,32 @@ public partial class FileItem : ObservableObject
 
     public OutputFormat[] AvailableFormats => OutputFormatHelper.GetFormatsForExtension(Extension);
 
-    [ObservableProperty]
-    private FileConversionState _state = FileConversionState.Pending;
+    // Propiedades parciales, no campos (MVVMTK0045: sobre campo, el código generado no es
+    // AOT-compatible en WinUI 3). No admiten inicializador: los valores por defecto van al constructor.
 
     [ObservableProperty]
-    private string _stateMessage = "Pendiente";
+    public partial FileConversionState State { get; set; }
 
     [ObservableProperty]
-    private ConversionOptions _options = new();
+    public partial string StateMessage { get; set; }
 
     [ObservableProperty]
-    private BitmapImage? _thumbnail;
+    public partial ConversionOptions Options { get; set; }
 
     [ObservableProperty]
-    private int _retryCount;
+    public partial BitmapImage? Thumbnail { get; set; }
 
     [ObservableProperty]
-    private string _validationMessage = string.Empty;
+    public partial int RetryCount { get; set; }
+
+    [ObservableProperty]
+    public partial string ValidationMessage { get; set; }
+
+    public FileItem()
+    {
+        State = FileConversionState.Pending;
+        StateMessage = "Pendiente";
+        Options = new ConversionOptions();
+        ValidationMessage = string.Empty;
+    }
 }

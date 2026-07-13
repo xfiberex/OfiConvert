@@ -8,9 +8,6 @@ namespace OfiConvert.Services;
 
 public class OfficeFileConversionService : IFileConversionService
 {
-    private static readonly string[] SupportedExtensions =
-        [".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"];
-
     public bool IsOfficeInstalled()
     {
         try
@@ -38,10 +35,7 @@ public class OfficeFileConversionService : IFileConversionService
         }
     }
 
-    public bool IsValidOfficeFile(string extension)
-    {
-        return SupportedExtensions.Contains(extension.ToLowerInvariant());
-    }
+    public bool IsValidOfficeFile(string extension) => OfficeFormats.IsSupported(extension);
 
     public async Task<ConversionResult> ConvertToPdfAsync(
         string sourcePath,

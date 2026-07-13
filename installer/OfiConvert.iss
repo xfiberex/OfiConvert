@@ -1,11 +1,22 @@
 ; OfiConvert - InnoSetup Installer Script
 ; Requiere Inno Setup 6.x o superior
+;
+; NO se compila a mano: lo hace installer\build-installer.ps1, que pasa la versión leída del .csproj
+; (/DMyAppVersion) y la carpeta del publish (/DPublishDir). Los valores de abajo son solo el respaldo
+; para cuando alguien abre este archivo en el IDE de Inno Setup — y ENVEJECEN. La fuente de la versión
+; es <Version> en OfiConvert.csproj.
+
+#ifndef MyAppVersion
+  #define MyAppVersion "0.0.0-local"
+#endif
+#ifndef PublishDir
+  #define PublishDir "..\publish"
+#endif
 
 #define MyAppName "OfiConvert"
-#define MyAppVersion "2.0.0"
 #define MyAppPublisher "Ricky Angel Jimenez Bueno"
 #define MyAppExeName "OfiConvert.exe"
-#define MyAppDescription "Convertidor de archivos Office a múltiples formatos"
+#define MyAppDescription "Convertidor por lotes de documentos Office a PDF, HTML, CSV, PNG y JPG"
 #define MyAppIcon "..\Assets\app.ico"
 
 [Setup]
@@ -53,8 +64,11 @@ Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-; Self-contained publish: copia todo el contenido recursivamente (incluye runtime .NET 10)
-Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+; Self-contained publish: copia todo el contenido recursivamente (incluye runtime .NET 10).
+; PublishDir lo inyecta build-installer.ps1 apuntando a %TEMP% — ver la nota de MAX_PATH allí.
+; OJO: sin 'skipifsourcedoesntexist' a propósito. Antes lo llevaba, y eso convertía un publish
+; ausente o vacío en un instalador que se generaba "bien"… sin la aplicación dentro.
+Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

@@ -1,3 +1,4 @@
+using OfiConvert.Helpers;
 using Serilog;
 using System.IO;
 
@@ -5,8 +6,7 @@ namespace OfiConvert.Services;
 
 public static class LoggingService
 {
-    private static readonly string LogFolder = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OfiConvert", "logs");
+    private static readonly string LogFolder = AppPaths.LogFolder;
 
     public static void Initialize()
     {

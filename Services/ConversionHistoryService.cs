@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using OfiConvert.Helpers;
 using OfiConvert.Models;
 using Serilog;
 
@@ -16,9 +17,8 @@ public interface IConversionHistoryService
 
 public class ConversionHistoryService : IConversionHistoryService
 {
-    private static readonly string HistoryFolder = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OfiConvert");
-    private static readonly string HistoryPath = Path.Combine(HistoryFolder, "history.json");
+    private static readonly string HistoryFolder = AppPaths.DataFolder;
+    private static readonly string HistoryPath = AppPaths.History;
 
     private readonly object _lock = new();
     private List<ConversionHistoryEntry> _history = [];

@@ -4,23 +4,36 @@ namespace OfiConvert.Models;
 
 public partial class ConversionOptions : ObservableObject
 {
-    [ObservableProperty]
-    private OutputFormat _outputFormat = OutputFormat.PDF;
+    // Propiedades parciales, no campos (MVVMTK0045). No admiten inicializador: los valores por
+    // defecto van al constructor.
 
     [ObservableProperty]
-    private string _pageRange = string.Empty;
+    public partial OutputFormat OutputFormat { get; set; }
 
     [ObservableProperty]
-    private string _sheetNames = string.Empty;
+    public partial string PageRange { get; set; }
 
     [ObservableProperty]
-    private string _slideRange = string.Empty;
+    public partial string SheetNames { get; set; }
 
     [ObservableProperty]
-    private int _imageQuality = 90;
+    public partial string SlideRange { get; set; }
 
     [ObservableProperty]
-    private int _imageDpi = 150;
+    public partial int ImageQuality { get; set; }
+
+    [ObservableProperty]
+    public partial int ImageDpi { get; set; }
+
+    public ConversionOptions()
+    {
+        OutputFormat = OutputFormat.PDF;
+        PageRange = string.Empty;
+        SheetNames = string.Empty;
+        SlideRange = string.Empty;
+        ImageQuality = 90;
+        ImageDpi = 150;
+    }
 
     public ConversionOptions Clone() => new()
     {

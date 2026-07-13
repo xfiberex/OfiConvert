@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using OfiConvert.Helpers;
 using OfiConvert.Models;
 using Serilog;
 
@@ -7,9 +8,8 @@ namespace OfiConvert.Services;
 
 public class SettingsService
 {
-    private static readonly string SettingsFolder = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OfiConvert");
-    private static readonly string SettingsPath = Path.Combine(SettingsFolder, "settings.json");
+    private static readonly string SettingsFolder = AppPaths.DataFolder;
+    private static readonly string SettingsPath = AppPaths.Settings;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -54,8 +54,8 @@ public class SettingsService
         settings.MaxRetryCount = Math.Clamp(settings.MaxRetryCount, 1, 10);
         if (settings.Theme is not ("System" or "Dark" or "Light"))
             settings.Theme = "System";
-        if (settings.Language is not ("es" or "en"))
-            settings.Language = "es";
+        if (!LocalizationService.IsSupported(settings.Language))
+            settings.Language = LocalizationService.DefaultLanguage;
         return settings;
     }
 }

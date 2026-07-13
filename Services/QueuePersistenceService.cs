@@ -1,14 +1,14 @@
 using System.IO;
 using System.Text.Json;
+using OfiConvert.Helpers;
 using Serilog;
 
 namespace OfiConvert.Services;
 
 public class QueuePersistenceService
 {
-    private static readonly string QueueFolder = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OfiConvert");
-    private static readonly string QueuePath = Path.Combine(QueueFolder, "queue.json");
+    private static readonly string QueueFolder = AppPaths.DataFolder;
+    private static readonly string QueuePath = AppPaths.Queue;
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 

@@ -13,8 +13,20 @@ public sealed class LocalizationService : INotifyPropertyChanged
     private static readonly Lazy<LocalizationService> _instance = new(() => new LocalizationService());
     public static LocalizationService Instance => _instance.Value;
 
+    /// <summary>
+    /// Idiomas admitidos. Fuente única: cualquier código fuera de esta lista cae a español, y
+    /// <see cref="Services.SettingsService"/> valida contra ella (antes solo aceptaba es/en, y los
+    /// otros seis no sobrevivían a un reinicio).
+    /// </summary>
+    public static readonly string[] SupportedLanguages = ["es", "en", "pt", "fr", "de", "it", "zh", "ja"];
+
+    public const string DefaultLanguage = "es";
+
+    public static bool IsSupported(string? languageCode) =>
+        languageCode is not null && SupportedLanguages.Contains(languageCode);
+
     private Dictionary<string, string> _strings = new();
-    private string _currentLanguage = "es";
+    private string _currentLanguage = DefaultLanguage;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -22,13 +34,16 @@ public sealed class LocalizationService : INotifyPropertyChanged
 
     public LocalizationService()
     {
-        LoadLanguage("es");
+        LoadLanguage(DefaultLanguage);
     }
 
     public string CurrentLanguage => _currentLanguage;
 
     public void LoadLanguage(string languageCode)
     {
+        if (!IsSupported(languageCode))
+            languageCode = DefaultLanguage;
+
         _currentLanguage = languageCode;
         var cultureName = languageCode switch
         {

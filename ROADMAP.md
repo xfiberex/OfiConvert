@@ -18,53 +18,66 @@
 | Tier | Tema | Estado | Versión objetivo* |
 |---|---|---|---|
 | **0** | Docs vivos (`CONTEXT.md` + `ROADMAP.md`) | ✅ Completado (2026-07-13) | — |
-| **A** | Higiene: bugs de la auditoría, README real, `LICENSE`, build 0/0 | ⬜ Pendiente | 2.1.0 |
-| **B** | Pipeline de release: instalador scriptado + release en un paso + `.sha256` | ⬜ Pendiente | — |
-| **C** | Actualización confiable: verificar el instalador antes de ejecutarlo | ⬜ Pendiente *(requiere B)* | 2.2.0 |
+| **A** | Higiene: bugs de la auditoría, README real, `LICENSE`, build 0/0 | ✅ Completado (2026-07-13) | 2.1.0 *(sin publicar)* |
+| **B** | Pipeline de release: instalador scriptado + release en un paso + `.sha256` | ✅ Completado (2026-07-13) | — |
+| **C** | Actualización confiable: verificar el instalador antes de ejecutarlo | ⬜ **Siguiente** *(ya desbloqueado)* | 2.2.0 |
 | **D** | Pruebas: extraer `Core/`, unitarios xUnit, UI tests FlaUI | ⬜ Pendiente | 2.3.0 |
 | **E** | Cara pública: README de usuario, capturas reproducibles, legal in-app | ⬜ Pendiente | 2.4.0 |
 | **F** | Infraestructura agéntica (`.claude`, skills, codegraph) | ⬜ Pendiente | — |
 
-\* Orientativas. Orden recomendado: **A → B → C → D → E** (F puede ir en cualquier momento). C sin B
-es imposible: la verificación necesita el asset `.sha256` que genera el pipeline. Idealmente D iría
-antes que C, pero C puede llevar sus propios tests, como hicieron los hermanos.
+\* Orientativas. Orden recomendado: **A → B → C → D → E** (F puede ir en cualquier momento). Idealmente
+D iría antes que C, pero C puede llevar sus propios tests, como hicieron los hermanos.
 
 ---
 
-## 🧹 Tier A — Higiene y bugs reales (auditoría 2026-07-13)
+## ✅ Tier A — Higiene y bugs reales *(completado 2026-07-13)*
 
-Todo confirmado contra el código; el detalle de cada hallazgo está en `CONTEXT.md` §6.
+Los 8 hallazgos de la auditoría, cerrados salvo el del updater (que necesita el `.sha256` del Tier B).
+El porqué de cada decisión y las trampas que costó, en [`CONTEXT.md`](CONTEXT.md) (§4 y el registro).
 
 | # | Ítem | Dónde |
 |---|------|-------|
-| 1 | **Persistir los 8 idiomas** — hoy `ValidateSettings` resetea a `es` los 6 que no sean es/en | `Services/SettingsService.cs` |
-| 2 | **Procesar los argumentos del menú contextual**: encolar el `%1` al arrancar (y decidir instancia única vs. una ventana por archivo) | `App.xaml.cs`, `ViewModels/MainViewModel.cs` |
-| 3 | **README y metadatos veraces**: stack WinUI 3 real, paquetes actuales, `<Description>` con los 5 formatos | `README.md`, `OfiConvert.csproj` |
-| 4 | **`LICENSE` (MIT)** en la raíz — el README ya lo promete | raíz del repo |
-| 5 | **Build con 0 advertencias**: `[ObservableProperty]` → propiedades parciales (39 × MVVMTK0045) | `ViewModels/MainViewModel.cs` |
-| 6 | **Notificación honesta al terminar**: hoy es un `ContentDialog` modal con claves `TrayNotif*`; elegir entre notificación de bandeja real (H.NotifyIcon la soporta) o renombrado honesto | `MainWindow.xaml.cs` |
-| 7 | *(Opcional)* `crash.log` a `%AppData%\OfiConvert\` en vez de junto al `.exe` | `Program.cs`, `App.xaml.cs` |
+| 1 | ✅ **Los 8 idiomas persisten** — `SettingsService` tenía su propia lista (`es`/`en`) y reseteaba los otros seis **al cargar**, pisando la elección del usuario en disco | `Services/SettingsService.cs`, `Helpers/LocalizationService.cs` |
+| 2 | ✅ **Menú contextual funcionando, con INSTANCIA ÚNICA**: la segunda invocación redirige su activación a la ventana abierta y se cierra sin abrir otra | `Program.cs`, `App.xaml.cs`, `Helpers/ActivationArguments.cs` |
+| 3 | ✅ **README y metadatos veraces** (describían el stack **WPF** de la v1.0) | `README.md`, `OfiConvert.csproj` |
+| 4 | ✅ **`LICENSE` (MIT)** — el README lo prometía y no existía | raíz del repo |
+| 5 | ✅ **Build 0/0**: `[ObservableProperty]` → propiedades parciales. Obligó a subir `CommunityToolkit.Mvvm` a **8.4.2**: la 8.4.0 las ignora en silencio | `ViewModels/`, `Models/`, `OfiConvert.csproj` |
+| 6 | ✅ **Aviso honesto al terminar**: sonido + parpadeo de la barra de tareas, solo si la ventana no está delante. Fuera el `ContentDialog` modal | `Helpers/Notifier.cs`, `MainWindow.xaml.cs` |
+| 7 | ✅ `crash.log` a `%AppData%\OfiConvert\`; rutas de datos y extensiones admitidas unificadas | `Helpers/AppPaths.cs`, `Models/OfficeFormats.cs` |
+
+> **Dos bugs latentes destapados de camino** (ninguno estaba en el plan):
+> - Los **defaults pisaban los ajustes del usuario**: al mover los valores por defecto al constructor,
+>   cada asignación disparaba un guardado con el estado **a medio cargar**.
+> - **Los archivos añadidos a mitad de un lote se borraban sin convertir** — este ya estaba en
+>   producción y afectaba al *drag & drop*, no solo al menú contextual nuevo. El lote se fija al empezar.
 
 ---
 
-## 🚀 Tier B — Pipeline de release *(portar de los hermanos)*
+## ✅ Tier B — Pipeline de release *(completado 2026-07-13)*
 
-Hoy el corte es artesanal: bump de versión en dos archivos, compilar el `.iss` a mano y subir el
-instalador al release. Portar los scripts con sus lecciones **ya pagadas** (BOM UTF-8 en los `.ps1`,
-lectura del `.csproj` conservando el BOM, `Invoke-Git` para el stderr de git, publish a `%TEMP%` por
-MAX_PATH).
+El corte era artesanal: bump a mano **en dos archivos**, compilar el `.iss` desde el IDE y subir el
+instalador al release. Ahora: `.\release.ps1 -Version X.Y.Z`. Portado de los hermanos **con sus
+lecciones ya pagadas** (BOM UTF-8 en los `.ps1`, lectura del `.csproj` conservando el BOM, `Invoke-Git`
+para el stderr normal de git, publish a `%TEMP%` por MAX_PATH).
 
-| # | Ítem | Fuente |
-|---|------|--------|
-| 1 | `installer/build-installer.ps1`: publish a `%TEMP%` (MAX_PATH: los nombres del Windows App SDK llegan a 76 caracteres y aquí el publish es self-contained), **versión leída del `.csproj`** (adiós a la doble fuente con el `.iss`), genera el **`.sha256`**, firma opcional | FormatDiskPro (self-contained, como aquí) |
-| 2 | `release.ps1`: validar → tests → bump (`Version` + `AssemblyVersion` + `FileVersion`, conservando BOM) → instalador → commit + tag `vX.Y.Z` → push → `gh release create` con `.exe` **y** `.sha256` | WingetUSoft (bump triple) |
-| 3 | Guardas: `-DryRun`, `-AllowDirty`, abortar si falta el `.sha256`; documentar que solo hace `git add -u` (los archivos nuevos se añaden antes) | ambos |
+| # | Ítem | Dónde |
+|---|------|-------|
+| 1 | ✅ **`build-installer.ps1`**: publish self-contained a `%TEMP%` → instalador → **`.sha256`**; versión leída del `.csproj` (**fuente única**: se acabó la doble fuente con el `.iss`); firma opcional | `installer/build-installer.ps1`, `installer/OfiConvert.iss` |
+| 2 | ✅ **`release.ps1`**: validar → compilar y probar → bump de **las tres** etiquetas de versión → instalador → commit + tag `vX.Y.Z` → push → `gh release create` con `.exe` **y** `.sha256` | `release.ps1` |
+| 3 | ✅ Guardas: `-DryRun` (compila el instalador de verdad y revierte el `.csproj`), `-AllowDirty`, aborta si falta el `.sha256`, avisa de los archivos sin rastrear (solo hace `git add -u`) | `release.ps1` |
 
-> **Primer corte con el pipeline:** publicar los 3 commits que `main` acumula sobre `v2.0.0`.
+> **Tres guardas que no estaban en el plan**, todas contra el mismo fallo —*el corte "sale bien" y lo
+> que se rompe es el equipo del usuario*—: el **publish se verifica** antes de empaquetar (`.exe` +
+> `.pri` + los 8 idiomas); fuera el `skipifsourcedoesntexist` del `.iss`, que dejaba compilar un
+> instalador **sin la app dentro**; y **las tres etiquetas de versión suben juntas** (el updater compara
+> contra `<AssemblyVersion>`).
+>
+> **Primer corte con el pipeline:** la **2.1.0**, con los Tiers A y B y los 3 commits que `main` ya
+> acumulaba sobre `v2.0.0`.
 
 ---
 
-## 🔐 Tier C — Actualización confiable *(requiere Tier B)*
+## 🔐 Tier C — Actualización confiable *(SIGUIENTE — ya desbloqueado por el Tier B)*
 
 `GitHubUpdateService` descarga el instalador y **lo ejecuta sin comprobar nada** — el mismo agujero
 que ambos hermanos cerraron y marcaron como NO ROMPER.

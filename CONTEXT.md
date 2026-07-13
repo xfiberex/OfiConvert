@@ -17,11 +17,11 @@
 | | |
 |---|---|
 | **Repositorio** | https://github.com/xfiberex/OfiConvert |
-| **Versión publicada** | **2.0.0** (2026-04-03) — instalador sin firmar y **sin `.sha256`** |
-| **En `main`, sin publicar** | 3 commits posteriores al tag `v2.0.0` (publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga del updater) |
-| **Estado** | Funcional; hoja de ruta **ABIERTA** — deuda de infraestructura frente a los hermanos |
+| **Versión publicada** | **2.1.0** (2026-07-13) — Tiers A y B. Instalador sin firmar, **con `.sha256`** |
+| **En `main`, sin publicar** | *(nada)* |
+| **Estado** | Funcional; hoja de ruta **ABIERTA** — Tiers A y B ✅, quedan C–F |
 | **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · Inno Setup 6 |
-| **Licencia** | MIT según el README — ⚠️ **sin archivo `LICENSE`** en el repo (Tier A) |
+| **Licencia** | **MIT** ([`LICENSE`](LICENSE)) |
 | **Pruebas** | **Ninguna** (Tier D) |
 | **Hoja de ruta** | [`ROADMAP.md`](ROADMAP.md) — abierta, plan por tiers |
 | **Última actualización** | 2026-07-13 |
@@ -46,8 +46,8 @@ paquetes (eso es territorio de FormatDiskPro y WingetUSoft).
 
 ```
 OfiConvert/                    (proyecto único en la raíz del repo; no hay src/ ni tests/)
-├─ Program.cs                  Main propio (DISABLE_XAML_GENERATED_MAIN); crash.log si el arranque revienta
-├─ App.xaml(.cs)               UnhandledException → crash.log; inicializa Serilog; guarda args (⚠️ sin usar, §6)
+├─ Program.cs                  Main propio (DISABLE_XAML_GENERATED_MAIN) + INSTANCIA ÚNICA (redirección)
+├─ App.xaml(.cs)               Activaciones (propias y redirigidas) → encola archivos; Serilog; crash.log
 ├─ MainWindow.xaml(.cs)        Ventana única: cola, formatos, ajustes, updater (InfoBar), bandeja, Mica
 ├─ ViewModels/
 │  └─ MainViewModel.cs         Orquestación completa: cola, conversión paralela + pausa + reintentos,
@@ -58,18 +58,26 @@ OfiConvert/                    (proyecto único en la raíz del repo; no hay src
 │  ├─ FileValidationService.cs         Magic bytes OLE/ZIP: corrupto, con contraseña, bloqueado, vacío
 │  ├─ GitHubUpdateService.cs           Consulta releases y descarga el instalador (⚠️ SIN verificarlo — Tier C)
 │  ├─ ConversionHistoryService.cs      history.json (máx. 1000) + export CSV (fórmulas neutralizadas) y TXT
-│  ├─ SettingsService.cs               settings.json, validado al cargar (⚠️ bug de idiomas, §6)
+│  ├─ SettingsService.cs               settings.json, validado al cargar
 │  ├─ QueuePersistenceService.cs       queue.json: la cola sobrevive al cierre (filtra UNC/relativas/inexistentes)
 │  ├─ ShellIntegrationService.cs       Menú contextual del Explorador (HKCU, por extensión)
 │  ├─ ThumbnailService.cs              Miniaturas del shell para la lista
 │  ├─ DialogService.cs                 Pickers de archivo/carpeta y diálogos
 │  └─ LoggingService.cs                Serilog → %AppData%\OfiConvert\logs (diario, 30 días, 10 MB)
-├─ Models/                     FileItem, ConversionOptions/Result/Progress, OutputFormat(+Helper), AppSettings…
-├─ Helpers/LocalizationService.cs   8 idiomas (ES/EN/PT/FR/DE/IT/ZH/JA) — ver §4 Localización
+├─ Models/                     FileItem, ConversionOptions/Result/Progress, OutputFormat(+Helper),
+│                              OfficeFormats (extensiones admitidas: fuente única), AppSettings…
+├─ Helpers/
+│  ├─ LocalizationService.cs   8 idiomas (ES/EN/PT/FR/DE/IT/ZH/JA) — ver §4 Localización
+│  ├─ AppPaths.cs              Rutas de %AppData%\OfiConvert (fuente única) + volcado del crash.log
+│  ├─ ActivationArguments.cs   Línea de comandos de una activación → archivos Office (lógica PURA)
+│  └─ Notifier.cs              Aviso al terminar: sonido + parpadeo en la barra de tareas (Win32)
 ├─ Behaviors/ · Converters/    Drag & drop de archivos · converters de binding
 ├─ Lang/*.xaml                 Diccionarios de idioma (viajan junto al .exe, parseados en runtime)
 ├─ Assets/app.ico
-└─ installer/OfiConvert.iss    Inno Setup — hoy se compila A MANO (Tier B)
+├─ installer/
+│  ├─ OfiConvert.iss           Inno Setup (la versión se la inyecta el script; no editarla a mano)
+│  └─ build-installer.ps1      Publish self-contained → instalador → .sha256 (+ firma opcional)
+└─ release.ps1                 Corte de versión en un paso (build + instalador + tag + GitHub Release)
 ```
 
 **Regla de oro de los hermanos, aquí PENDIENTE:** no existe `Core/`. La lógica pura y testeable
@@ -82,11 +90,23 @@ versiones) vive mezclada en `Services/` y `MainViewModel`. Extraerla es la prime
 
 | | |
 |---|---|
-| Build | `dotnet build -c Release`: 0 errores / **39 advertencias** MVVMTK0045 (ver §6.6) |
+| Build | `dotnet build -c Release`: **0 errores / 0 advertencias** |
 | Pruebas | No existe proyecto de tests |
-| Publicado | v2.0.0 (releases v1.0.0 y v2.0.0 en GitHub, con instalador) |
+| Publicado | **v2.1.0** — primer release cortado con `release.ps1` (dos assets: instalador + `.sha256`) |
 | Updater | Funciona de punta a punta, pero **no verifica** lo que descarga y ejecuta |
-| Pendiente de release | 3 commits en `main` posteriores al tag `v2.0.0` |
+| Pendiente de release | *(nada)* |
+
+**Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md))
+
+| Tier | Tema | Estado |
+|---|---|---|
+| 0 | Docs vivos (`CONTEXT.md` + `ROADMAP.md`) | ✅ |
+| **A** | **Higiene: bugs de la auditoría, README real, `LICENSE`, build 0/0** | ✅ |
+| **B** | **Pipeline de release (instalador scriptado, `.sha256`)** | ✅ |
+| C | Verificar el instalador antes de ejecutarlo *(ya desbloqueado por B)* | ⬜ |
+| D | Pruebas (extraer `Core/`, xUnit, FlaUI) | ⬜ |
+| E | Cara pública (README de usuario, capturas, legal in-app) | ⬜ |
+| F | Infraestructura agéntica | ⬜ |
 
 ---
 
@@ -104,6 +124,17 @@ versiones) vive mezclada en `Services/` y `MainViewModel`. Extraerla es la prime
 - **Bandeja del sistema** (H.NotifyIcon.WinUI): con la opción activa, cerrar minimiza a la bandeja.
 - **Cierre protegido:** con una conversión en curso, cerrar pide confirmación y cancela primero —
   los procesos de Office huérfanos son EL riesgo de esta app.
+- **INSTANCIA ÚNICA (desde el Tier A).** La app se registra con `AppInstance.FindOrRegisterForKey`; una
+  segunda invocación (el menú contextual del Explorador con la app ya abierta) **redirige su activación
+  a la primera y se cierra sin abrir ventana**. Es lo correcto para una app con **cola persistente**:
+  seleccionar 5 archivos en el Explorador los encola todos en la MISMA ventana, y no hay 5 procesos
+  peleándose por el mismo `queue.json`. Detalles de implementación en §4 *Activación*.
+- **Aviso al terminar = sonido + parpadeo de la barra de tareas**, y **solo si la ventana no está en
+  primer plano** (`Helpers/Notifier`). Si está delante, el panel de resultados ya lo dice y no se
+  interrumpe a nadie. **No se usa un toast de Windows**, por la misma razón que los hermanos lo
+  descartaron: en una app *unpackaged* exige registrar un servidor COM del `AppNotificationManager`,
+  mucha fontanería para un beneficio marginal. Antes esto era un `ContentDialog` **modal**, pese a que
+  sus claves de localización se llamaban `TrayNotif*`.
 
 ### Conversión COM (no romper)
 
@@ -121,6 +152,20 @@ versiones) vive mezclada en `Services/` y `MainViewModel`. Extraerla es la prime
   individuales.
 - Excel→CSV exporta **una hoja** (la activa, o la indicada en `ConversionOptions.SheetNames`);
   PPT→PNG/JPG exporta **todas las diapositivas** a una subcarpeta con el nombre del archivo.
+
+### Activación (menú contextual del Explorador) — trampas ya pagadas
+
+- **`RedirectActivationToAsync` NO se puede esperar desde el hilo STA de `Main`:** la redirección
+  necesita bombear mensajes COM y el `await` se bloquea contra sí mismo (la app se queda colgada sin
+  abrir nada). Se despacha a un hilo del pool y se espera con un semáforo — es el patrón del sample
+  oficial del Windows App SDK, y por eso ese código parece más raro de lo que debería.
+- **En una app unpackaged, los argumentos de la activación llegan como UNA cadena que incluye la ruta
+  del propio `.exe`** como primer token (en la empaquetada, no). Por eso `ActivationArguments` **no**
+  descarta el primer token a ciegas: tokeniza respetando comillas (las rutas del Explorador vienen
+  entrecomilladas y casi siempre llevan espacios) y filtra por **extensión admitida + el archivo
+  existe** — el `.exe` se cae solo con ese filtro.
+- El evento `AppInstance.Activated` **llega en un hilo del pool**, no en el de la UI: hay que volver al
+  `DispatcherQueue` antes de tocar el ViewModel.
 
 ### Seguridad
 
@@ -159,27 +204,80 @@ versiones) vive mezclada en `Services/` y `MainViewModel`. Extraerla es la prime
   van con `admin`. Avisa si no detecta Office, pero deja instalar (LibreOffice puede cubrir).
   `CloseApplications=yes`; el flujo silencioso del updater pasa `/VERYSILENT /NORESTART /autoinstall=1`
   y el `[Run]` con `Check: IsAutoUpdate` relanza la app.
-- ⚠️ **La versión vive en DOS sitios:** `<Version>` del `.csproj` **y** `#define MyAppVersion` del
-  `.iss`. Hoy se actualizan a mano y pueden divergir; el Tier B lo resuelve como los hermanos (el
-  script del instalador lee la versión del `.csproj`).
+- **La versión tiene UNA fuente: el `.csproj`** — y hay que subir **las TRES etiquetas** (`<Version>`,
+  `<AssemblyVersion>`, `<FileVersion>`), cosa que `release.ps1` hace de golpe. **El updater compara el
+  tag del release contra `Assembly.GetName().Version`, que sale de `<AssemblyVersion>`:** si esa se
+  queda atrás, la app publicada se cree más vieja de lo que es y se ofrece a sí misma, en bucle, una
+  actualización que ya tiene. (WingetUSoft lo cazó justo antes de su primer corte.)
+  `build-installer.ps1` inyecta la versión en el `.iss` con `/DMyAppVersion`; el `#define` que queda en
+  el archivo es **solo un respaldo para abrirlo en el IDE de Inno Setup**, y envejece.
+- **`build-installer.ps1` verifica el publish antes de empaquetar:** que estén `OfiConvert.exe`, el
+  **`.pri`** y los **8 idiomas**. Si un cambio de SDK rompiera alguno de los dos targets del `.csproj`,
+  el instalador se generaría "bien" y la app **crashearía al iniciar** en el equipo del usuario (sin el
+  `.pri`, WinUI no resuelve el XAML) o abriría sin traducciones. Mejor romper el corte que el equipo
+  del usuario.
+- **`[Files]` del `.iss` ya NO lleva `skipifsourcedoesntexist`:** con esa bandera, un publish ausente o
+  vacío producía un instalador que se compilaba sin quejarse… **y no llevaba la aplicación dentro**.
+
+### Trampas de PowerShell 5.1 (las tres las pagaron los hermanos; aquí entraron ya resueltas)
+
+- **Los `.ps1` van con BOM UTF-8.** Sin él, PS 5.1 los lee con la página de códigos ANSI y los acentos
+  o un `—` **rompen el tokenizer** ("Falta el paréntesis de cierre"), con un error que no señala la
+  causa.
+- **El `.csproj` NO se lee con `Get-Content -Raw`.** Sin BOM, PS 5.1 lo lee en ANSI: los bytes UTF-8 de
+  `é` se vuelven `Ã©` y, al reescribirlo, la corrupción **queda grabada**. Como el bump ocurre en
+  **cada** release, el daño se acumula capa sobre capa — a FormatDiskPro le destrozó el nombre del
+  autor en `<Authors>`/`<Copyright>`, y de ahí en las **propiedades del `.exe` publicado**, a lo largo
+  de 14 versiones sin que nadie lo viera. `release.ps1` usa `[System.IO.File]::ReadAllText` (detecta el
+  BOM) y reescribe **conservándolo**. Cualquier script que toque el `.csproj` debe hacer lo mismo.
+- **git + salida capturada = trampa.** git escribe por stderr en su operación **normal** (el resumen
+  del `push`, los avisos de CRLF), sin que nada falle. Si la salida del script **se captura**
+  (`| Tee-Object`, `2>&1 |`, un wrapper), PS 5.1 convierte cada línea de stderr de un exe nativo en un
+  `NativeCommandError` y, con `$ErrorActionPreference = "Stop"`, **aborta aunque git devuelva 0**. En
+  un `push` eso deja el release **a medias**: rama subida, sin tag ni GitHub Release. Por eso los git
+  que mutan estado van por **`Invoke-Git`**, que baja la preferencia mientras corre git y decide por
+  `$LASTEXITCODE`.
+
+### MVVM
+
+- **`[ObservableProperty]` va sobre PROPIEDADES PARCIALES, nunca sobre campos** (`public partial string
+  X { get; set; }`). Sobre un campo, el código generado **no es AOT-compatible en WinUI 3**
+  (MVVMTK0045: CsWinRT no puede producir el marshalling WinRT). Consecuencias:
+  - **`CommunityToolkit.Mvvm` debe ser ≥ 8.4.2.** La **8.4.0 ignora las propiedades parciales en
+    silencio** —sin error ni diagnóstico propio— y el build muere con 33 × `CS9248` ("la propiedad
+    parcial debe tener una parte de implementación"), que apunta al síntoma y no a la causa. No bajar
+    de 8.4.2.
+  - **Una propiedad parcial no admite inicializador:** los valores por defecto van al **constructor**
+    (`MainViewModel`, `FileItem`, `ConversionOptions`).
+- **`LoadSettings` corre con `_isLoadingSettings = true`.** Al pasar los defaults de campo al
+  constructor, cada asignación dispara su `OnXChanged` → `SaveSettings`, y eso **escribía en disco el
+  estado a medio cargar**: el guardado disparado por `SelectedTheme` llevaba todavía el
+  `DefaultOutputFormat` y el `LastOutputFolder` por defecto, **pisando los del usuario**. El guardado
+  se ignora mientras se carga (y de paso desaparecen 7 escrituras redundantes en cada arranque).
 
 ### Localización
 
 - **8 idiomas** (ES/EN/PT/FR/DE/IT/ZH/JA) en `Lang/*.xaml`, parseados **en runtime** con `XDocument`
   (no son ResourceDictionary compilados) y refrescados por binding al indexer
   (`{Binding [Clave], Source={StaticResource Loc}}`). Si falta el archivo del idioma, cae a `es-ES`.
+- **`LocalizationService.SupportedLanguages` es la fuente única.** `SettingsService` valida contra ella:
+  antes tenía su propia lista `("es" or "en")` y **reseteaba a español los otros seis** al cargar —
+  elegir francés funcionaba hasta reiniciar. Al añadir un idioma, tocar **solo** esa lista.
 - ⚠️ **El indexer devuelve la propia clave si no la conoce** — la misma trampa que el `L.T` de los
   hermanos: un typo no rompe el build ni nada visible salvo texto raro en la UI. El test de completitud
   (cada clave en los 8 archivos + cada clave usada en el código existe) es parte del Tier D.
-- **No hay detección del idioma del sistema:** arranca en español salvo ajuste guardado. Y el ajuste
-  **solo persiste es/en** — bug real, ver §6.1.
+- **No hay detección del idioma del sistema:** arranca en español salvo ajuste guardado.
 
 ### Datos del usuario
 
-- Todo en `%AppData%\OfiConvert\`: `settings.json` (validado al cargar con `Math.Clamp`),
-  `history.json` (máx. 1000 entradas), `queue.json` (la cola sobrevive al cierre; al cargar filtra
-  rutas no absolutas, UNC e inexistentes) y `logs\` (Serilog diario, 30 días, 10 MB por archivo).
-- `crash.log` se escribe junto al `.exe` (`AppContext.BaseDirectory`) — matiz en §6.8.
+- Todo en `%AppData%\OfiConvert\` — **las rutas salen de `Helpers/AppPaths`, fuente única**:
+  `settings.json` (validado al cargar con `Math.Clamp`), `history.json` (máx. 1000 entradas),
+  `queue.json` (la cola sobrevive al cierre; al cargar filtra rutas no absolutas, UNC e inexistentes),
+  `crash.log` y `logs\` (Serilog diario, 30 días, 10 MB por archivo).
+- **El lote de conversión se FIJA al empezar** (`var batch = SelectedFiles.ToList()`). La cola sigue
+  viva mientras corre: se pueden soltar archivos nuevos, o llegar por el menú contextual, y **no entran
+  en el lote en curso ni se tocan al acabar**. Antes se iteraba y se limpiaba `SelectedFiles`
+  directamente, así que un archivo añadido a mitad de un lote **se borraba sin convertir**.
 - Límite de entrada: archivos de hasta **500 MB** (`MaxFileSizeBytes`).
 
 ---
@@ -188,43 +286,41 @@ versiones) vive mezclada en `Services/` y `MainViewModel`. Extraerla es la prime
 
 | Tarea | Comando |
 |-------|---------|
-| Compilar | `dotnet build OfiConvert.csproj -c Release` |
+| Compilar | `dotnet build OfiConvert.slnx -c Release` |
 | Ejecutar | `dotnet run --project OfiConvert.csproj` |
-| Publicar | `dotnet publish OfiConvert.csproj -c Release -r win-x64 --self-contained -o ./publish` |
-| Instalador | **Manual:** compilar `installer/OfiConvert.iss` con Inno Setup (ISCC o IDE) → `installer/Output/` |
-| Publicar versión | **Manual:** bump en `.csproj` **y** `.iss` → publish → instalador → subir al release de GitHub |
+| Instalador | `.\installer\build-installer.ps1` (`-CertThumbprint <huella>` para firmar) |
+| **Publicar versión** | `.\release.ps1 -Version X.Y.Z` (`-DryRun` para simular) |
 
-> El README documenta además `-p:PublishSingleFile=true` en el publish; queda por verificar en el
-> Tier B (el instalador copia `publish\*` recursivo, así que single-file no es requisito).
-> El pipeline en un paso (`release.ps1`) es el **Tier B** de la hoja de ruta.
+`release.ps1` hace: validar → compilar (+ pruebas, cuando existan) → bump de `<Version>`,
+`<AssemblyVersion>` y `<FileVersion>` → instalador (+ `.sha256`) → commit + tag `vX.Y.Z` → push →
+`gh release create` con **los dos assets**. Flags: `-DryRun`, `-SkipTests`, `-AllowDirty`, `-NotesFile`
+y los de firma.
+
+> **`-DryRun` sí compila el instalador** (con el bump aplicado, para que lo que se prueba sea lo que
+> se publicaría) y **revierte el `.csproj` al salir**. Lo único que no toca es git y GitHub.
+>
+> **Solo hace `git add -u`**, así que los archivos **nuevos** hay que `git add`earlos antes o el
+> release saldría sin ellos.
 
 ---
 
-## 6. Pendientes — hallazgos de la auditoría (2026-07-13)
+## 6. Pendientes
 
-El plan por tiers está en [`ROADMAP.md`](ROADMAP.md). Estos son los hallazgos **confirmados contra el
-código**, con su tier asignado:
+El plan por tiers está en [`ROADMAP.md`](ROADMAP.md).
 
-1. **6 de los 8 idiomas no persisten.** `SettingsService.ValidateSettings` resetea a `"es"` todo
-   idioma que no sea `es`/`en`, mientras el combo ofrece 8 y `LocalizationService` los soporta todos:
-   elegir francés funciona… hasta reiniciar. *(Tier A)*
-2. **El menú contextual del Explorador no hace nada útil.** `ShellIntegrationService` registra
-   `"OfiConvert.exe" "%1"`, pero `App` guarda los `args` y **nunca los procesa**: la app abre vacía en
-   vez de encolar el archivo. *(Tier A)*
-3. **Updater sin verificación** (ver §4 Seguridad). *(Tier C — requiere el `.sha256` del Tier B)*
-4. **README desfasado:** describe el stack **WPF** de la v1.0.x (WPF-UI, Behaviors.Wpf), el instalador
-   "1.0.0" compilado a mano, y la `<Description>` del `.csproj` dice "a PDF" cuando hay 5 formatos.
-   *(Tier A)*
-5. **`LICENSE` y `THIRD-PARTY-NOTICES.txt` no existen**, aunque el README declara MIT. *(El archivo
-   `LICENSE`, Tier A; avisos de terceros in-app, Tier E)*
-6. **39 advertencias MVVMTK0045:** `[ObservableProperty]` sobre campos no es AOT-compatible en
-   WinUI 3; migrar a propiedades parciales. Los hermanos exigen build 0/0. *(Tier A)*
-7. **"Notificaciones" que son un diálogo modal:** al terminar un lote con `ShowNotifications` activo se
-   muestra un `ContentDialog` (las claves se llaman `TrayNotif*`, pero no hay notificación de bandeja).
-   Decidir: notificación de bandeja real (H.NotifyIcon la soporta) o renombrado honesto. *(Tier A)*
-8. **`crash.log` junto al `.exe`:** con la instalación per-user (la ruta por defecto) funciona; si el
-   usuario eligió elevar la instalación a Archivos de programa, la escritura falla y el crash se
-   pierde. Menor. *(Tier A, opcional)*
+1. ⚠️ **El updater NO verifica el instalador que descarga y ejecuta** — el agujero más serio que queda,
+   y ya **no hay excusa**: el `.sha256` se publica desde el Tier B. *(Tier C — el siguiente)*
+2. **Sin pruebas** de ninguna clase *(Tier D)*.
+3. **`THIRD-PARTY-NOTICES.txt` y los textos legales in-app** siguen sin existir *(Tier E)*.
+4. **El instalador nunca se ha probado end-to-end** (instalación limpia + actualización in-place con el
+   flujo silencioso real). FormatDiskPro encontró ahí un fallo con un diálogo modal abierto.
+
+Menores, sin tier asignado:
+
+- **Sin detección del idioma del sistema** en el primer arranque (los hermanos sí la tienen): la app
+  abre en español hasta que el usuario elija.
+- **`DialogService` tiene textos en duro** (`"Sí"`, `"No"`, `"Aceptar"`, `"Error"`) que no pasan por
+  `LocalizationService`.
 
 ---
 
@@ -244,10 +340,92 @@ código**, con su tier asignado:
 
 | Versión | Qué trajo |
 |---|---|
+| **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
 
 ---
+
+### 2026-07-13 — Tier B: pipeline de release en un paso — **v2.1.0**
+
+El corte era artesanal: bump de versión **a mano en dos archivos**, compilar el `.iss` desde el IDE de
+Inno Setup y subir el instalador al release a mano. Ahora: `.\release.ps1 -Version X.Y.Z`.
+
+**Lo nuevo:** `installer/build-installer.ps1` (publish self-contained → instalador → **`.sha256`**, con
+firma opcional) y `release.ps1` (validar → compilar y probar → bump de las tres etiquetas → instalador →
+commit + tag → push → GitHub Release con **los dos assets**).
+
+Portado de los hermanos **con sus trampas ya resueltas**, no reescrito: BOM UTF-8 en los `.ps1`, lectura
+del `.csproj` conservando el BOM, `Invoke-Git` para el stderr normal de git, y **publish a `%TEMP%` por
+MAX_PATH** (aquí aplica igual: el publish self-contained del Windows App SDK trae nombres de hasta 76
+caracteres, e ISCC aborta con un error que no dice de qué archivo habla). Ver §4.
+
+**Tres guardas que no estaban en el plan**, todas contra el mismo tipo de fallo —*el corte "sale bien" y
+lo que se rompe es el equipo del usuario*—:
+- **El publish se verifica antes de empaquetar**: `OfiConvert.exe` + el **`.pri`** + los **8 idiomas**.
+  Los dos targets del `.csproj` que copian esos archivos existen porque el tooling de WinUI 3 unpackaged
+  no lo hace solo; si un cambio de SDK los rompiera, el instalador se generaría igual y la app
+  **crashearía al iniciar** (sin el `.pri`, WinUI no resuelve el XAML — el bug que tumbó la 1.2.0 de
+  FormatDiskPro).
+- **Fuera `skipifsourcedoesntexist` del `[Files]` del `.iss`**: con esa bandera, un publish ausente o
+  vacío producía un instalador que compilaba sin quejarse **y no llevaba la aplicación dentro**.
+- **Las tres etiquetas de versión suben juntas.** El updater compara contra `<AssemblyVersion>`: dejarla
+  atrás haría que la app se ofreciese a sí misma, en bucle, una actualización que ya tiene.
+
+**Verificado** con `.\release.ps1 -Version 2.1.0 -DryRun`: compila el instalador **real** (58,1 MB), lo
+verifica, genera el `.sha256` y **revierte el `.csproj`** al salir sin dejar rastro ni corrupción de
+codificación. Lo único que no se ha ejercido todavía es el tramo de git/GitHub, que solo corre en un
+corte real.
+
+### 2026-07-13 — Tier A: higiene y bugs reales — **v2.1.0**
+
+Los 8 hallazgos de la auditoría, cerrados salvo el del updater (que necesita el pipeline del Tier B).
+Build: 39 advertencias → **0/0**. **Verificado conduciendo la app real**, no solo compilando.
+
+**1 — Los 6 idiomas que no persistían.** `SettingsService` tenía su propia lista de idiomas válidos
+(`"es" or "en"`) y **reseteaba a español los otros seis al CARGAR**: elegir francés funcionaba hasta
+reiniciar. Peor: el reset disparaba un guardado, así que el arranque **pisaba en disco** la elección del
+usuario sin que este tocara nada. Ahora la fuente única es `LocalizationService.SupportedLanguages`.
+*Verificado:* sembrando `Language: "fr"` en el `settings.json` real, arrancando y cerrando la app — el
+`fr` **sobrevive** al arranque y al cierre.
+
+**2 — El menú contextual del Explorador no hacía nada.** `ShellIntegrationService` registraba
+`"OfiConvert.exe" "%1"` y `App` guardaba los `args`… **sin usarlos nunca**: la app abría vacía. Ahora hay
+**instancia única con redirección** (`AppInstance`), que es lo correcto para una app con cola persistente
+—seleccionar 5 archivos en el Explorador los encola en la MISMA ventana, en vez de abrir 5 procesos
+peleándose por el mismo `queue.json`—. Las dos trampas de plataforma que costó (el `await` que se
+autobloquea en el hilo STA, y la ruta del `.exe` colada en los argumentos de una app unpackaged) están
+en §4 *Activación*. *Verificado de punta a punta:* con la app abierta, lanzar el `.exe` con la ruta de un
+`.docx` (con espacios) → la segunda instancia **sale con código 0 sin abrir ventana**, sigue habiendo
+**un solo proceso**, y el `queue.json` de la instancia viva **contiene el archivo**.
+
+**3 — Aviso al terminar: se acabó el modal.** Con `ShowNotifications` activo, terminar un lote abría un
+`ContentDialog` **modal** — aunque sus claves se llamaban `TrayNotif*`. Ahora `Helpers/Notifier` hace
+sonido + parpadeo de la barra de tareas, y **solo si la ventana no está en primer plano**. El toast se
+descarta por lo mismo que en los hermanos (servidor COM en app unpackaged). Ver §4 *Producto*.
+
+**4 — Build 0/0 (39 × MVVMTK0045).** `[ObservableProperty]` sobre campos genera código **no
+AOT-compatible en WinUI 3**; migrado a propiedades parciales en `MainViewModel`, `FileItem` y
+`ConversionOptions`. **La migración no compilaba con `CommunityToolkit.Mvvm` 8.4.0: esa versión ignora
+las propiedades parciales EN SILENCIO** (sin error ni diagnóstico), y el build muere con 33 × `CS9248`,
+que apunta al síntoma y no a la causa. Subido a **8.4.2**. Ver §4 *MVVM*.
+
+**5 — Bug latente encontrado al migrar: los defaults pisaban los ajustes del usuario.** Al pasar los
+valores por defecto al constructor (una propiedad parcial no admite inicializador), cada asignación
+dispara `OnXChanged` → `SaveSettings`, que **escribía en disco el estado a medio cargar**: el guardado
+disparado por `SelectedTheme` llevaba aún el `DefaultOutputFormat` y el `LastOutputFolder` por defecto.
+Resuelto con el guardia `_isLoadingSettings` (y desaparecen 7 escrituras redundantes por arranque).
+
+**6 — Bug latente, este ya presente en producción: los archivos añadidos a mitad de un lote se
+borraban.** `PerformConversionAsync` iteraba y limpiaba `SelectedFiles` **directamente**, y `AddFiles`
+no está protegido durante la conversión: soltar un archivo mientras corría un lote que terminaba sin
+errores lo **eliminaba de la cola sin convertirlo**. Afectaba al *drag & drop* de siempre, no solo al
+menú contextual nuevo. El lote ahora se **fija al empezar** y al acabar solo se retiran sus archivos.
+
+**Además:** `LICENSE` (MIT) — el README lo prometía y el archivo no existía · README reescrito (describía
+el stack **WPF** de la v1.0, con paquetes y comandos que ya no eran ciertos) · `<Description>` del
+`.csproj` ("a PDF" → los 5 formatos) · `crash.log` se muda a `%AppData%` · rutas de datos y extensiones
+admitidas unificadas en `Helpers/AppPaths` y `Models/OfficeFormats` (estaban duplicadas en 4 y 3 sitios).
 
 ### 2026-07-13 — Auditoría de infraestructura y nacimiento de los docs vivos
 

@@ -23,6 +23,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? _cancellationTokenSource;
     private readonly ManualResetEventSlim _pauseEvent = new(true);
     private SemaphoreSlim? _parallelSemaphore;
+    private bool _isLoadingSettings;
 
     private const long MaxFileSizeBytes = 500 * 1024 * 1024;
 
@@ -39,7 +40,32 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _settingsService = new SettingsService();
         _queueService = new QueuePersistenceService();
 
+        // Cada asignación de una propiedad de ajustes dispara su OnXChanged → SaveSettings. Durante la
+        // carga eso escribiría en disco el estado a MEDIO cargar: el guardado con SelectedTheme aún
+        // llevaría el DefaultOutputFormat y el LastOutputFolder por defecto, pisando los del usuario.
+        _isLoadingSettings = true;
+
+        SelectedFiles = [];
+        ConversionErrors = [];
+        ConversionHistory = [];
+        TotalSize = "0 KB";
+        ProgressMaximum = 100;
+        ProgressPercentage = "0%";
+        OutputFolder = string.Empty;
+        ConversionResultTitle = string.Empty;
+        ConversionResultMessage = string.Empty;
+        SelectedTheme = "System";
+        SelectedLanguage = LocalizationService.DefaultLanguage;
+        DefaultOutputFormat = OutputFormat.PDF;
+        MaxParallelConversions = 2;
+        AutoRetryEnabled = true;
+        MaxRetryCount = 3;
+        ShowNotifications = true;
+
         LoadSettings();
+
+        _isLoadingSettings = false;
+
         LoadPersistedQueue();
         RefreshHistory();
     }
@@ -51,87 +77,91 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     #region Observable Properties
 
-    [ObservableProperty]
-    private ObservableCollection<FileItem> _selectedFiles = [];
+    // Propiedades PARCIALES, no campos: [ObservableProperty] sobre un campo genera código que no es
+    // AOT-compatible en WinUI 3 (MVVMTK0045). Una propiedad parcial no admite inicializador, así que
+    // los valores por defecto se asignan en el constructor (los de ajustes, en LoadSettings).
 
     [ObservableProperty]
-    private string _totalSize = "0 KB";
+    public partial ObservableCollection<FileItem> SelectedFiles { get; set; }
 
     [ObservableProperty]
-    private int _fileCount;
+    public partial string TotalSize { get; set; }
 
     [ObservableProperty]
-    private int _progressValue;
+    public partial int FileCount { get; set; }
 
     [ObservableProperty]
-    private int _progressMaximum = 100;
+    public partial int ProgressValue { get; set; }
 
     [ObservableProperty]
-    private string _progressPercentage = "0%";
+    public partial int ProgressMaximum { get; set; }
 
     [ObservableProperty]
-    private bool _isConverting;
+    public partial string ProgressPercentage { get; set; }
 
     [ObservableProperty]
-    private bool _isPaused;
+    public partial bool IsConverting { get; set; }
 
     [ObservableProperty]
-    private string _outputFolder = string.Empty;
+    public partial bool IsPaused { get; set; }
 
     [ObservableProperty]
-    private bool _useCustomOutputFolder;
+    public partial string OutputFolder { get; set; }
 
     [ObservableProperty]
-    private bool _showConversionResults;
+    public partial bool UseCustomOutputFolder { get; set; }
 
     [ObservableProperty]
-    private string _conversionResultTitle = string.Empty;
+    public partial bool ShowConversionResults { get; set; }
 
     [ObservableProperty]
-    private string _conversionResultMessage = string.Empty;
+    public partial string ConversionResultTitle { get; set; }
 
     [ObservableProperty]
-    private ObservableCollection<string> _conversionErrors = [];
+    public partial string ConversionResultMessage { get; set; }
 
     [ObservableProperty]
-    private bool _hasConversionErrors;
+    public partial ObservableCollection<string> ConversionErrors { get; set; }
 
     [ObservableProperty]
-    private int _successfulConversions;
+    public partial bool HasConversionErrors { get; set; }
 
     [ObservableProperty]
-    private int _failedConversions;
+    public partial int SuccessfulConversions { get; set; }
 
     [ObservableProperty]
-    private OutputFormat _defaultOutputFormat = OutputFormat.PDF;
+    public partial int FailedConversions { get; set; }
 
     [ObservableProperty]
-    private ObservableCollection<ConversionHistoryEntry> _conversionHistory = [];
+    public partial OutputFormat DefaultOutputFormat { get; set; }
+
+    [ObservableProperty]
+    public partial ObservableCollection<ConversionHistoryEntry> ConversionHistory { get; set; }
 
     // Settings
     [ObservableProperty]
-    private string _selectedTheme = "System";
+    public partial string SelectedTheme { get; set; }
 
     [ObservableProperty]
-    private string _selectedLanguage = "es";
+    public partial string SelectedLanguage { get; set; }
 
     [ObservableProperty]
-    private int _maxParallelConversions = 2;
+    public partial int MaxParallelConversions { get; set; }
 
     [ObservableProperty]
-    private bool _autoRetryEnabled = true;
+    public partial bool AutoRetryEnabled { get; set; }
 
     [ObservableProperty]
-    private int _maxRetryCount = 3;
+    public partial int MaxRetryCount { get; set; }
 
     [ObservableProperty]
-    private bool _minimizeToTray;
+    public partial bool MinimizeToTray { get; set; }
 
     [ObservableProperty]
-    private bool _showNotifications = true;
+    public partial bool ShowNotifications { get; set; }
 
     [ObservableProperty]
-    private bool _isContextMenuRegistered;
+    public partial bool IsContextMenuRegistered { get; set; }
 
     #endregion
 
@@ -399,19 +429,25 @@ public partial class MainViewModel : ObservableObject, IDisposable
         var errors = new List<string>();
         var ct = _cancellationTokenSource.Token;
 
+        // El lote se fija AQUÍ. La cola sigue viva: se pueden soltar archivos nuevos (o llegar por el
+        // menú contextual) mientras esto corre, y esos NO entran en este lote ni se tocan al acabar.
+        // Antes se iteraba y se limpiaba SelectedFiles directamente, así que un archivo añadido a mitad
+        // de un lote acababa borrado sin convertir.
+        var batch = SelectedFiles.ToList();
+
         try
         {
-            ProgressMaximum = SelectedFiles.Count;
+            ProgressMaximum = batch.Count;
             ProgressValue = 0;
 
-            foreach (var file in SelectedFiles)
+            foreach (var file in batch)
             {
                 file.State = FileConversionState.Pending;
                 file.StateMessage = GetLocalizedString("StatePending");
                 file.RetryCount = 0;
             }
 
-            var tasks = SelectedFiles.Select(async (fileItem, index) =>
+            var tasks = batch.Select(async (fileItem, index) =>
             {
                 await _parallelSemaphore.WaitAsync(ct);
                 try
@@ -472,14 +508,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
             await Task.WhenAll(tasks);
 
-            ShowConversionSummary(errors);
+            ShowConversionSummary(batch, errors);
 
             if (errors.Count == 0 && !ct.IsCancellationRequested)
             {
-                SelectedFiles.Clear();
-                _selectedFilePaths.Clear();
-                UpdateTotals();
-                _queueService.ClearQueue();
+                RemoveBatchFromQueue(batch);
             }
 
             // Send notification
@@ -494,12 +527,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
         catch (OperationCanceledException)
         {
-            foreach (var f in SelectedFiles.Where(f => f.State is FileConversionState.Pending or FileConversionState.Paused))
+            foreach (var f in batch.Where(f => f.State is FileConversionState.Pending or FileConversionState.Paused))
             {
                 f.State = FileConversionState.Skipped;
                 f.StateMessage = GetLocalizedString("StateCancelled");
             }
-            ShowConversionSummary(errors);
+            ShowConversionSummary(batch, errors);
         }
         catch (Exception ex)
         {
@@ -609,10 +642,27 @@ public partial class MainViewModel : ObservableObject, IDisposable
         return candidate;
     }
 
-    private void ShowConversionSummary(List<string> errors)
+    /// <summary>Retira del listado los archivos del lote recién convertido, respetando los que se hayan añadido mientras corría.</summary>
+    private void RemoveBatchFromQueue(List<FileItem> batch)
     {
-        SuccessfulConversions = SelectedFiles.Count(f => f.State == FileConversionState.Completed);
-        FailedConversions = SelectedFiles.Count(f => f.State == FileConversionState.Error);
+        foreach (var file in batch)
+        {
+            SelectedFiles.Remove(file);
+            _selectedFilePaths.Remove(file.Path);
+        }
+
+        UpdateTotals();
+
+        if (SelectedFiles.Count == 0)
+            _queueService.ClearQueue();
+        else
+            PersistQueue();
+    }
+
+    private void ShowConversionSummary(List<FileItem> batch, List<string> errors)
+    {
+        SuccessfulConversions = batch.Count(f => f.State == FileConversionState.Completed);
+        FailedConversions = batch.Count(f => f.State == FileConversionState.Error);
 
         if (errors.Count > 0)
         {
@@ -752,6 +802,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public void SaveSettings()
     {
+        if (_isLoadingSettings) return;
+
         var settings = new AppSettings
         {
             Theme = SelectedTheme,

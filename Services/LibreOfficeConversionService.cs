@@ -11,10 +11,7 @@ public class LibreOfficeConversionService : IFileConversionService
 
     public bool IsOfficeInstalled() => GetLibreOfficePath() is not null;
 
-    public bool IsValidOfficeFile(string extension)
-    {
-        return extension.ToLowerInvariant() is ".doc" or ".docx" or ".xls" or ".xlsx" or ".ppt" or ".pptx";
-    }
+    public bool IsValidOfficeFile(string extension) => OfficeFormats.IsSupported(extension);
 
     public async Task<ConversionResult> ConvertToPdfAsync(
         string sourcePath, string outputPath,
