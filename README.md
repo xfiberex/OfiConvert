@@ -72,6 +72,16 @@ LibreOffice puede cubrirlo.
 - **8 idiomas**: español, inglés, portugués, francés, alemán, italiano, chino y japonés.
 - **Aviso de actualización** vía GitHub Releases, con instalación en un clic.
 
+### Actualizaciones: el modelo de confianza
+
+Antes de ejecutar un instalador descargado, OfiConvert **lo verifica**: si trae una firma Authenticode
+válida, la acepta; si no (hoy los instaladores se publican **sin firmar**), comprueba su **SHA-256**
+contra el hash publicado como asset del release. Si no supera ninguna de las dos, **borra el archivo y
+cancela la actualización**.
+
+Alcance honesto: el instalador y su hash salen del mismo release, así que esto detecta corrupción y
+manipulación **en tránsito**, pero no protegería frente a un compromiso de la propia cuenta de GitHub.
+
 ---
 
 ## Cómo usar
@@ -102,10 +112,13 @@ git clone https://github.com/xfiberex/OfiConvert.git
 cd OfiConvert
 
 # Compilar
-dotnet build OfiConvert.csproj -c Release
+dotnet build OfiConvert.slnx -c Release
 
 # Ejecutar
 dotnet run --project OfiConvert.csproj
+
+# Pruebas
+dotnet test tests\OfiConvert.Tests\OfiConvert.Tests.csproj
 
 # Publicar (self-contained, win-x64)
 dotnet publish OfiConvert.csproj -c Release -r win-x64 --self-contained -o ./publish
@@ -149,6 +162,7 @@ OfiConvert/
 ├── Lang/            Diccionarios de los 8 idiomas (se leen en tiempo de ejecución)
 ├── Models/          Modelos y enumeraciones
 ├── Services/        Conversión (Office/LibreOffice), validación, historial, ajustes, updater…
+├── tests/           Pruebas (xUnit)
 ├── ViewModels/      MainViewModel (MVVM)
 ├── App.xaml(.cs)    Arranque, activaciones
 ├── Program.cs       Punto de entrada, instancia única

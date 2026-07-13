@@ -88,6 +88,8 @@
     <system:String x:Key="TitleNoUpdates">Kein Update</system:String>
     <system:String x:Key="MsgNoUpdates">OfiConvert ist aktuell. Keine neuen Versionen verfügbar.</system:String>
     <system:String x:Key="MsgUpdateAvailable">Download-Seite öffnen?</system:String>
+    <system:String x:Key="MsgUpdateUnverifiable">Das heruntergeladene Installationsprogramm konnte nicht überprüft werden: Das Release veröffentlicht keinen SHA-256-Hash. Das Update wurde aus Sicherheitsgründen abgebrochen. Laden Sie es manuell von GitHub herunter.</system:String>
+    <system:String x:Key="MsgUpdateChecksumMismatch">Das heruntergeladene Installationsprogramm stimmt nicht mit dem veröffentlichten überein (SHA-256-Hash weicht ab). Es wurde aus Sicherheitsgründen verworfen. Versuchen Sie es erneut oder laden Sie es manuell von GitHub herunter.</system:String>
 
     <!-- History -->
     <system:String x:Key="BtnExportCsv">CSV exportieren</system:String>

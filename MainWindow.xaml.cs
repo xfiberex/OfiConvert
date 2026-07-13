@@ -18,6 +18,7 @@ public sealed partial class MainWindow : Window
     public MainViewModel ViewModel { get; }
     private H.NotifyIcon.TaskbarIcon? _trayIcon;
     private string? _appUpdateUrl;
+    private string? _appUpdateChecksumUrl;
     private AppWindow _appWindow = null!;
     private nint _hWnd;
 
@@ -231,6 +232,7 @@ public sealed partial class MainWindow : Window
         if (info is null) return;
 
         _appUpdateUrl = info.DownloadUrl;
+        _appUpdateChecksumUrl = info.ChecksumUrl;
         var loc = LocalizationService.Instance;
         infoBarUpdate.Title = $"\u2b06 {loc["TitleUpdateAvailable"]}: {info.Version}";
         infoBarUpdate.Message = loc["MsgUpdateAvailable"];
@@ -255,8 +257,11 @@ public sealed partial class MainWindow : Window
 
         try
         {
+            // DownloadInstallerAsync VERIFICA lo descargado (firma Authenticode o, en su defecto, el
+            // SHA-256 publicado como asset) y lanza si no lo supera, tras borrar el archivo. Si llega
+            // aqu\u00ed una ruta, es de un instalador en el que se conf\u00eda.
             string installerPath = await OfiConvert.Services.GitHubUpdateService
-                .DownloadInstallerAsync(_appUpdateUrl, progress);
+                .DownloadInstallerAsync(_appUpdateUrl, _appUpdateChecksumUrl, progress);
             infoBarUpdate.Message = "Instalando... La aplicaci\u00f3n se reiniciar\u00e1 autom\u00e1ticamente.";
 
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(installerPath)
@@ -274,7 +279,8 @@ public sealed partial class MainWindow : Window
             btnInstalarUpdate.Content = "Instalar ahora";
             infoBarUpdate.IsClosable = true;
             infoBarUpdate.Severity = InfoBarSeverity.Error;
-            infoBarUpdate.Message = $"Error al descargar: {ex.Message}";
+            infoBarUpdate.Message = ex.Message;
+            Serilog.Log.Error(ex, "Actualizaci\u00f3n rechazada o fallida");
         }
     }
 
@@ -354,6 +360,7 @@ public sealed partial class MainWindow : Window
             else
             {
                 _appUpdateUrl = info.DownloadUrl;
+                _appUpdateChecksumUrl = info.ChecksumUrl;
                 btnBuscarActualizacion.Content = $"\u2b06 {info.Version}";
                 infoBarUpdate.Title = $"\u2b06 {loc["TitleUpdateAvailable"]}: {info.Version}";
                 infoBarUpdate.Message = loc["MsgUpdateAvailable"];

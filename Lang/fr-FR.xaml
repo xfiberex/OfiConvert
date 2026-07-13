@@ -87,6 +87,8 @@
     <system:String x:Key="TitleNoUpdates">Pas de mise à jour</system:String>
     <system:String x:Key="MsgNoUpdates">OfiConvert est à jour. Aucune nouvelle version disponible.</system:String>
     <system:String x:Key="MsgUpdateAvailable">Ouvrir la page de téléchargement ?</system:String>
+    <system:String x:Key="MsgUpdateUnverifiable">Impossible de vérifier le programme d'installation téléchargé : la version ne publie pas son empreinte SHA-256. La mise à jour a été annulée par sécurité. Téléchargez-la manuellement depuis GitHub.</system:String>
+    <system:String x:Key="MsgUpdateChecksumMismatch">Le programme d'installation téléchargé ne correspond pas à celui publié (empreinte SHA-256 différente). Il a été supprimé par sécurité. Réessayez ou téléchargez-le manuellement depuis GitHub.</system:String>
     <!-- History -->
     <system:String x:Key="BtnExportCsv">Exporter CSV</system:String>
     <system:String x:Key="BtnExportTxt">Exporter TXT</system:String>

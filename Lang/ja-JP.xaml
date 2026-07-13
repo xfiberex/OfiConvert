@@ -88,6 +88,8 @@
     <system:String x:Key="TitleNoUpdates">更新なし</system:String>
     <system:String x:Key="MsgNoUpdates">OfiConvert は最新です。新しいバージョンはありません。</system:String>
     <system:String x:Key="MsgUpdateAvailable">ダウンロードページを開きますか？</system:String>
+    <system:String x:Key="MsgUpdateUnverifiable">ダウンロードしたインストーラーを検証できませんでした: このリリースは SHA-256 ハッシュを公開していません。安全のため更新を中止しました。GitHub から手動でダウンロードしてください。</system:String>
+    <system:String x:Key="MsgUpdateChecksumMismatch">ダウンロードしたインストーラーが公開されているものと一致しません (SHA-256 ハッシュの不一致)。安全のため破棄しました。もう一度試すか、GitHub から手動でダウンロードしてください。</system:String>
 
     <!-- History -->
     <system:String x:Key="BtnExportCsv">CSV エクスポート</system:String>

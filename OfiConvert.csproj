@@ -20,13 +20,23 @@
     <SignAssembly>false</SignAssembly>
     <Copyright>Ricky Angel Jimenez Bueno</Copyright>
     <Description>Convertidor por lotes de documentos Office (Word, Excel, PowerPoint) a PDF, HTML, CSV, PNG y JPG</Description>
-    <Version>2.1.0</Version>
-    <AssemblyVersion>2.1.0.0</AssemblyVersion>
-    <FileVersion>2.1.0.0</FileVersion>
+    <Version>2.2.0</Version>
+    <AssemblyVersion>2.2.0.0</AssemblyVersion>
+    <FileVersion>2.2.0.0</FileVersion>
     <AssemblyTitle>OfiConvert</AssemblyTitle>
     <Product>OfiConvert</Product>
     <EnableMsixTooling>true</EnableMsixTooling>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- El .csproj de la app vive en la RAÍZ del repo, así que su glob por defecto (**/*.cs) se traga
+         también el proyecto de pruebas de tests\. Sin esto, la app intenta compilar los archivos de
+         test (que no referencian xUnit) y el build revienta con errores que no tienen nada que ver. -->
+    <Compile Remove="tests\**" />
+    <None Remove="tests\**" />
+    <Page Remove="tests\**" />
+    <EmbeddedResource Remove="tests\**" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- Exclude Lang files from XAML compilation (they are parsed manually by LocalizationService) -->

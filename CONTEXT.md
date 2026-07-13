@@ -17,12 +17,12 @@
 | | |
 |---|---|
 | **Repositorio** | https://github.com/xfiberex/OfiConvert |
-| **Versión publicada** | **2.1.0** (2026-07-13) — Tiers A y B. Instalador sin firmar, **con `.sha256`** |
+| **Versión publicada** | **2.2.0** (2026-07-13) — Tier C. Instalador sin firmar, **con `.sha256`** |
 | **En `main`, sin publicar** | *(nada)* |
-| **Estado** | Funcional; hoja de ruta **ABIERTA** — Tiers A y B ✅, quedan C–F |
-| **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · Inno Setup 6 |
+| **Estado** | Funcional; hoja de ruta **ABIERTA** — Tiers A, B y C ✅, quedan D–F |
+| **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · **xUnit** · Inno Setup 6 |
 | **Licencia** | **MIT** ([`LICENSE`](LICENSE)) |
-| **Pruebas** | **Ninguna** (Tier D) |
+| **Pruebas** | **11** (10 + 1 de red, que se omite salvo `OFICONVERT_NETWORK_TESTS=1`) — solo cubren el updater; el resto es el Tier D |
 | **Hoja de ruta** | [`ROADMAP.md`](ROADMAP.md) — abierta, plan por tiers |
 | **Última actualización** | 2026-07-13 |
 
@@ -45,7 +45,7 @@ paquetes (eso es territorio de FormatDiskPro y WingetUSoft).
 ## 2. Arquitectura
 
 ```
-OfiConvert/                    (proyecto único en la raíz del repo; no hay src/ ni tests/)
+OfiConvert/                    (la app vive en la RAÍZ del repo; no hay src/ — ojo con los globs, §4 Pruebas)
 ├─ Program.cs                  Main propio (DISABLE_XAML_GENERATED_MAIN) + INSTANCIA ÚNICA (redirección)
 ├─ App.xaml(.cs)               Activaciones (propias y redirigidas) → encola archivos; Serilog; crash.log
 ├─ MainWindow.xaml(.cs)        Ventana única: cola, formatos, ajustes, updater (InfoBar), bandeja, Mica
@@ -56,7 +56,7 @@ OfiConvert/                    (proyecto único en la raíz del repo; no hay src
 │  ├─ OfficeFileConversionService.cs   Motor principal: COM late binding (Word/Excel/PowerPoint)
 │  ├─ LibreOfficeConversionService.cs  Motor alternativo: soffice --headless --convert-to
 │  ├─ FileValidationService.cs         Magic bytes OLE/ZIP: corrupto, con contraseña, bloqueado, vacío
-│  ├─ GitHubUpdateService.cs           Consulta releases y descarga el instalador (⚠️ SIN verificarlo — Tier C)
+│  ├─ GitHubUpdateService.cs           Releases + descarga + VERIFICACIÓN (Authenticode → SHA-256)
 │  ├─ ConversionHistoryService.cs      history.json (máx. 1000) + export CSV (fórmulas neutralizadas) y TXT
 │  ├─ SettingsService.cs               settings.json, validado al cargar
 │  ├─ QueuePersistenceService.cs       queue.json: la cola sobrevive al cierre (filtra UNC/relativas/inexistentes)
@@ -77,7 +77,8 @@ OfiConvert/                    (proyecto único en la raíz del repo; no hay src
 ├─ installer/
 │  ├─ OfiConvert.iss           Inno Setup (la versión se la inyecta el script; no editarla a mano)
 │  └─ build-installer.ps1      Publish self-contained → instalador → .sha256 (+ firma opcional)
-└─ release.ps1                 Corte de versión en un paso (build + instalador + tag + GitHub Release)
+├─ tests/OfiConvert.Tests/     xUnit: verificación del updater (servidor HTTP local + release real)
+└─ release.ps1                 Corte de versión en un paso (build + tests + instalador + GitHub Release)
 ```
 
 **Regla de oro de los hermanos, aquí PENDIENTE:** no existe `Core/`. La lógica pura y testeable
@@ -90,10 +91,10 @@ versiones) vive mezclada en `Services/` y `MainViewModel`. Extraerla es la prime
 
 | | |
 |---|---|
-| Build | `dotnet build -c Release`: **0 errores / 0 advertencias** |
-| Pruebas | No existe proyecto de tests |
-| Publicado | **v2.1.0** — primer release cortado con `release.ps1` (dos assets: instalador + `.sha256`) |
-| Updater | Funciona de punta a punta, pero **no verifica** lo que descarga y ejecuta |
+| Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
+| Pruebas | **10 pasan · 1 se omite · 0 fallan** (`dotnet test`). Solo cubren el updater |
+| Publicado | **v2.2.0** (la 2.1.0 fue el primer corte con `release.ps1`; ambas con instalador + `.sha256`) |
+| Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
 | Pendiente de release | *(nada)* |
 
 **Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md))
@@ -103,8 +104,8 @@ versiones) vive mezclada en `Services/` y `MainViewModel`. Extraerla es la prime
 | 0 | Docs vivos (`CONTEXT.md` + `ROADMAP.md`) | ✅ |
 | **A** | **Higiene: bugs de la auditoría, README real, `LICENSE`, build 0/0** | ✅ |
 | **B** | **Pipeline de release (instalador scriptado, `.sha256`)** | ✅ |
-| C | Verificar el instalador antes de ejecutarlo *(ya desbloqueado por B)* | ⬜ |
-| D | Pruebas (extraer `Core/`, xUnit, FlaUI) | ⬜ |
+| **C** | **Verificar el instalador antes de ejecutarlo** | ✅ |
+| D | Pruebas (extraer `Core/`, cobertura real, UI tests FlaUI) | ⬜ |
 | E | Cara pública (README de usuario, capturas, legal in-app) | ⬜ |
 | F | Infraestructura agéntica | ⬜ |
 
@@ -179,9 +180,19 @@ versiones) vive mezclada en `Services/` y `MainViewModel`. Extraerla es la prime
 - **Validación previa a convertir** (`FileValidationService`): magic bytes (OLE vs ZIP), detección de
   contraseña (OpenXML cifrado se presenta como OLE, o como ZIP sin `[Content_Types].xml`), archivo
   bloqueado o vacío. Falla ANTES de lanzar Office.
-- ⚠️ **El updater NO verifica el instalador que descarga y ejecuta** — el mismo agujero que
-  FormatDiskPro (#38) y WingetUSoft cerraron con Authenticode → SHA-256 y marcaron como NO ROMPER.
-  Es el **Tier C**, y el motivo de que el pipeline (Tier B) deba subir el `.sha256` como segundo asset.
+- **VERIFICACIÓN DEL INSTALADOR (desde el Tier C) — NO ROMPER.** `GitHubUpdateService` **no ejecuta
+  nada que no haya verificado**: firma Authenticode válida → OK; si no la hay, **SHA-256** contra el
+  asset `*.exe.sha256` del release. Sin ninguna de las dos, **borra el archivo y aborta**.
+  Consecuencias operativas:
+  - **Todo release debe subir su `.sha256`** (o ir firmado) o los clientes **rechazarán** la
+    actualización. `build-installer.ps1` lo genera y `release.ps1` lo sube y aborta si falta.
+  - **La descarga vive en su propio método** (`DownloadToFileAsync`) **a propósito**: su `FileStream` es
+    `FileShare.None` y debe cerrarse **antes** de verificar. Si se fusiona con la verificación, esta no
+    podrá ni abrir el archivo («lo está usando otro proceso» — el proceso es la propia app) y la
+    actualización fallará **siempre**. Le pasó a WingetUSoft: dejó su auto-actualización muerta durante
+    dos versiones. Hay tests que lo cazan.
+  - **Alcance honesto:** el `.exe` y su hash salen del mismo release → detecta corrupción y manipulación
+    **en tránsito**, no un compromiso de la cuenta de GitHub. La firma sigue siendo el objetivo.
 
 ### Build y publicación
 
@@ -218,6 +229,29 @@ versiones) vive mezclada en `Services/` y `MainViewModel`. Extraerla es la prime
   del usuario.
 - **`[Files]` del `.iss` ya NO lleva `skipifsourcedoesntexist`:** con esa bandera, un publish ausente o
   vacío producía un instalador que se compilaba sin quejarse… **y no llevaba la aplicación dentro**.
+
+### Pruebas
+
+- **Framework: xUnit** (el estándar de la casa). `tests/OfiConvert.Tests`, en la solución.
+- **El `.csproj` de la app vive en la RAÍZ**, así que su glob por defecto (`**/*.cs`) **se tragaba los
+  archivos de `tests/`** y el build reventaba con errores absurdos (`Fact` no encontrado *dentro de la
+  app*). Por eso el `.csproj` lleva `<Compile Remove="tests\**" />`. Si algún día se añade otra carpeta
+  de proyectos, hay que excluirla igual.
+- `GitHubUpdateService` es `internal`; `AssemblyInfo.cs` abre los internals **solo** a `OfiConvert.Tests`
+  (`InternalsVisibleTo`). No es API pública, pero es el código que decide si se ejecuta un `.exe` bajado
+  de internet: tiene que ser comprobable.
+- **Las pruebas del updater ejercen la DESCARGA COMPLETA** contra un servidor HTTP local
+  (`LocalHttpServer`), no solo el cálculo del hash. Es deliberado: en WingetUSoft las pruebas cubrían el
+  hash pero **nunca la descarga**, y por eso se les coló el bug del archivo que se bloqueaba a sí mismo.
+- **`LocalHttpServer` va sobre `TcpListener`, no `HttpListener`:** este último exige en Windows reservar
+  la URL o correr **como administrador**, y convertiría unas pruebas normales en pruebas que solo pasan
+  en terminal elevada.
+- **`[NetworkFact]` — omitir ≠ fallar.** El test que verifica el **release real publicado** descarga
+  ~58 MB de GitHub y se **omite** salvo `OFICONVERT_NETWORK_TESTS=1`. *Un test omitido dice «no hay red /
+  no se ha pedido»; uno fallido dice «la app está rota».* Confundirlos es lo que hizo que FormatDiskPro
+  no pudiera meter sus UI tests en el pipeline durante meses.
+- **Se comprobó que los tests FALLAN** al desactivar la verificación (2 de 10 en rojo). Un test que
+  nunca ha fallado no prueba nada.
 
 ### Trampas de PowerShell 5.1 (las tres las pagaron los hermanos; aquí entraron ya resueltas)
 
@@ -288,6 +322,8 @@ versiones) vive mezclada en `Services/` y `MainViewModel`. Extraerla es la prime
 |-------|---------|
 | Compilar | `dotnet build OfiConvert.slnx -c Release` |
 | Ejecutar | `dotnet run --project OfiConvert.csproj` |
+| Pruebas | `dotnet test tests\OfiConvert.Tests\OfiConvert.Tests.csproj` |
+| Pruebas **con red** (verifica el release real de GitHub) | `$env:OFICONVERT_NETWORK_TESTS = "1"; dotnet test …` |
 | Instalador | `.\installer\build-installer.ps1` (`-CertThumbprint <huella>` para firmar) |
 | **Publicar versión** | `.\release.ps1 -Version X.Y.Z` (`-DryRun` para simular) |
 
@@ -308,12 +344,15 @@ y los de firma.
 
 El plan por tiers está en [`ROADMAP.md`](ROADMAP.md).
 
-1. ⚠️ **El updater NO verifica el instalador que descarga y ejecuta** — el agujero más serio que queda,
-   y ya **no hay excusa**: el `.sha256` se publica desde el Tier B. *(Tier C — el siguiente)*
-2. **Sin pruebas** de ninguna clase *(Tier D)*.
-3. **`THIRD-PARTY-NOTICES.txt` y los textos legales in-app** siguen sin existir *(Tier E)*.
-4. **El instalador nunca se ha probado end-to-end** (instalación limpia + actualización in-place con el
+1. **Cobertura de pruebas casi nula:** las 11 que hay cubren **solo el updater**. La conversión, la
+   validación de archivos, las rutas de salida seguras y la localización no tienen ninguna *(Tier D)*.
+2. **`THIRD-PARTY-NOTICES.txt` y los textos legales in-app** siguen sin existir *(Tier E)*.
+3. **El instalador nunca se ha probado end-to-end** (instalación limpia + actualización in-place con el
    flujo silencioso real). FormatDiskPro encontró ahí un fallo con un diálogo modal abierto.
+4. ⚠️ **La verificación del Tier C aún no se ha ejercido en producción.** Solo actúa al actualizar
+   **desde** una versión ≥ 2.2.0, y los clientes en 2.1.0 llegarán a la 2.2.0 con el código viejo, que
+   no verificaba nada. **El primer uso real será 2.2.0 → 2.3.0.** No es trabajo pendiente: es lo que hay
+   que vigilar en el próximo corte.
 
 Menores, sin tier asignado:
 
@@ -340,11 +379,50 @@ Menores, sin tier asignado:
 
 | Versión | Qué trajo |
 |---|---|
+| **2.2.0** | **Tier C** — el updater **verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256). Primeras pruebas del proyecto (11, xUnit). |
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
 
 ---
+
+### 2026-07-13 — Tier C: el updater ya no ejecuta lo que no ha verificado — **v2.2.0**
+
+Era el agujero más serio del proyecto: `GitHubUpdateService` descargaba un `.exe` de internet y **lo
+ejecutaba sin comprobar absolutamente nada**. Port del `GitHubUpdateService` de WingetUSoft, con sus
+tropiezos ya conocidos. Detalle y consecuencias operativas en §4 *Seguridad*.
+
+**Lo construido.** `VerifyInstallerAsync` (Authenticode → SHA-256 → borrar y abortar),
+`VerifyAuthenticodeSignature` (WinVerifyTrust), `ComputeSha256Async`, y `GitHubReleaseInfo` gana
+`ChecksumUrl` (el asset `.sha256` que ya publicaba el Tier B). Dos claves nuevas de localización **en los
+8 idiomas** (120 claves por archivo). `MainWindow` pasa el `ChecksumUrl` y muestra el motivo del rechazo
+en su InfoBar, además de registrarlo en el log.
+
+**Las primeras pruebas del proyecto** (`tests/OfiConvert.Tests`, xUnit): **11**, y ejercen la
+**descarga completa** contra un servidor HTTP local, no solo el cálculo del hash — que es exactamente el
+punto ciego por el que a WingetUSoft se le coló el bug del archivo que se bloqueaba a sí mismo. Ver §4
+*Pruebas*.
+
+**Se comprobó que los tests fallan de verdad:** desactivando la verificación, 2 de 10 se ponen en rojo
+(el del instalador manipulado y el del release sin `.sha256`). Un test que nunca ha fallado no prueba
+nada.
+
+**El test que cierra la costura entre PowerShell y C#** (`[NetworkFact]`, se omite salvo
+`OFICONVERT_NETWORK_TESTS=1`): descarga el **release real de GitHub** y lo verifica con el código real de
+la app. El formato del `.sha256` lo escribe un script de PowerShell y lo lee C#: dos mitades que pueden
+divergir en silencio, y bastaría un cambio de formato para que **toda** actualización pasara a
+rechazarse sin que nadie se enterase hasta el siguiente corte. *Verificado contra la v2.1.0 publicada:
+descarga los 58 MB y los valida.*
+
+**Trampa de MSBuild que costó el rato:** el `.csproj` de la app vive en la **raíz**, así que su glob
+`**/*.cs` **se tragó los archivos de `tests/`** y el build reventó con errores absurdos (`Fact` no
+encontrado *dentro de la app*, y el compilador de XAML abortando sin decir por qué). Se arregla con
+`<Compile Remove="tests\**" />`.
+
+**Corrección honesta de camino:** al portar `NormalizeVersion` escribí que sin él la app «se ofrecería a
+sí misma la actualización en bucle». **Es falso** — sin normalizar, un tag de 3 tramos compara como
+*menor* que el AssemblyVersion de 4, así que el error caía del lado seguro («no hay actualización»). Se
+mantiene porque la comparación no decía lo que parecía decir, pero no arreglaba ningún bug vivo.
 
 ### 2026-07-13 — Tier B: pipeline de release en un paso — **v2.1.0**
 

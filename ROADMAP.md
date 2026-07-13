@@ -20,8 +20,8 @@
 | **0** | Docs vivos (`CONTEXT.md` + `ROADMAP.md`) | ✅ Completado (2026-07-13) | — |
 | **A** | Higiene: bugs de la auditoría, README real, `LICENSE`, build 0/0 | ✅ Completado (2026-07-13) | 2.1.0 *(sin publicar)* |
 | **B** | Pipeline de release: instalador scriptado + release en un paso + `.sha256` | ✅ Completado (2026-07-13) | — |
-| **C** | Actualización confiable: verificar el instalador antes de ejecutarlo | ⬜ **Siguiente** *(ya desbloqueado)* | 2.2.0 |
-| **D** | Pruebas: extraer `Core/`, unitarios xUnit, UI tests FlaUI | ⬜ Pendiente | 2.3.0 |
+| **C** | Actualización confiable: verificar el instalador antes de ejecutarlo | ✅ Completado (2026-07-13) | 2.2.0 *(sin publicar)* |
+| **D** | Pruebas: extraer `Core/`, cobertura real, UI tests FlaUI | ⬜ **Siguiente** | 2.3.0 |
 | **E** | Cara pública: README de usuario, capturas reproducibles, legal in-app | ⬜ Pendiente | 2.4.0 |
 | **F** | Infraestructura agéntica (`.claude`, skills, codegraph) | ⬜ Pendiente | — |
 
@@ -77,33 +77,40 @@ para el stderr normal de git, publish a `%TEMP%` por MAX_PATH).
 
 ---
 
-## 🔐 Tier C — Actualización confiable *(SIGUIENTE — ya desbloqueado por el Tier B)*
+## ✅ Tier C — Actualización confiable *(completado 2026-07-13)*
 
-`GitHubUpdateService` descarga el instalador y **lo ejecuta sin comprobar nada** — el mismo agujero
-que ambos hermanos cerraron y marcaron como NO ROMPER.
+Era el agujero más serio: `GitHubUpdateService` descargaba un `.exe` de internet y **lo ejecutaba sin
+comprobar nada**. Port del de WingetUSoft, con sus tropiezos ya conocidos.
 
-| # | Ítem | Fuente |
-|---|------|--------|
-| 1 | Verificar antes de ejecutar: firma Authenticode válida → OK; si no, **SHA-256** contra el asset `*.exe.sha256` del release; sin ninguna de las dos, **borrar y abortar** | `GitHubUpdateService` de WingetUSoft |
-| 2 | Mantener la descarga en método propio, con el `FileStream` cerrado **antes** de verificar — el bug del auto-bloqueo que WingetUSoft pagó (auto-actualización rota en 1.4.1–1.5.0) | ídem |
-| 3 | Tests del verificador con servidor HTTP local sobre `TcpListener` (no `HttpListener`: exige reservar la URL como admin) | `GitHubUpdateServiceTests` de WingetUSoft |
+| # | Ítem | Dónde |
+|---|------|-------|
+| 1 | ✅ **Verificar antes de ejecutar**: firma Authenticode válida → OK; si no, **SHA-256** contra el asset `*.exe.sha256`; sin ninguna de las dos, **borrar y abortar**. Motivo del rechazo visible en la UI (en los 8 idiomas) y en el log | `Services/GitHubUpdateService.cs`, `MainWindow.xaml.cs`, `Lang/*.xaml` |
+| 2 | ✅ Descarga en **método propio**, con el `FileStream` cerrado **antes** de verificar — el bug del auto-bloqueo que dejó muerta la auto-actualización de WingetUSoft durante dos versiones | `Services/GitHubUpdateService.cs` |
+| 3 | ✅ **11 pruebas** (las primeras del proyecto): ejercen la **descarga completa** contra un servidor HTTP local sobre `TcpListener` (no `HttpListener`: exigiría terminal elevada) | `tests/OfiConvert.Tests/` |
+| 4 | ✅ **`[NetworkFact]`**: verifica el **release real de GitHub** con el código real de la app; se omite salvo `OFICONVERT_NETWORK_TESTS=1` | `tests/OfiConvert.Tests/PublishedReleaseTests.cs` |
 
-> **Consecuencia operativa:** desde que esto se publique, **todo release debe subir su `.sha256`**
-> (o ir firmado), o los clientes rechazarán la actualización. `release.ps1` (Tier B) lo garantiza.
+> **Consecuencia operativa:** **todo release debe subir su `.sha256`** (o ir firmado), o los clientes
+> rechazarán la actualización. `release.ps1` lo garantiza (aborta si falta).
 >
-> **Alcance honesto** (documentarlo así): el `.exe` y su hash salen del mismo release → detecta
-> corrupción y manipulación **en tránsito**, no un compromiso de la cuenta de GitHub.
+> **Alcance honesto:** el `.exe` y su hash salen del mismo release → detecta corrupción y manipulación
+> **en tránsito**, no un compromiso de la cuenta de GitHub. La firma sigue siendo el objetivo.
+>
+> ⚠️ **Aún no se ha ejercido en producción:** solo actúa al actualizar **desde** una versión ≥ 2.2.0.
+> El primer uso real será **2.2.0 → 2.3.0**.
 
 ---
 
-## 🧪 Tier D — Pruebas
+## 🧪 Tier D — Pruebas *(SIGUIENTE)*
+
+El proyecto de pruebas **ya existe** (lo trajo el Tier C), pero cubre **solo el updater**: la
+conversión, la validación de archivos, las rutas de salida y la localización siguen a cero.
 
 | # | Ítem | Notas |
 |---|------|-------|
-| 1 | Extraer **`Core/`** (lógica pura: sin UI, sin `Process`, sin `HttpClient`, sin COM): rutas de salida seguras, formateo de bytes, mapeo de formatos, sanitización CSV, comparación de versiones, validación por magic bytes | La regla de oro de los hermanos |
-| 2 | `tests/OfiConvert.Tests` (**xUnit** — el estándar de la casa; no MSTest/NUnit/TUnit) | |
-| 3 | Test de **completitud de localización**: cada clave presente en los 8 `Lang/*.xaml`, y cada clave usada en el código existente en los diccionarios — el indexer devuelve la clave si falta, así que un typo hoy no rompe nada (la trampa `L.T` de los hermanos) | |
-| 4 | `tests/OfiConvert.UiTests` (FlaUI/UIA3) sobre la app real: **sin elevación** (la app es `asInvoker`). Los tests que exijan **Office o LibreOffice** instalado se **OMITEN** si faltan — patrón `[TestDriveFact]` de FormatDiskPro: *omitido = "no tengo el entorno"; fallido = "la app está rota"* | Modelo WingetUSoft (sin `EnsureElevated`) |
+| 1 | Extraer **`Core/`** (lógica pura: sin UI, sin `Process`, sin `HttpClient`, sin COM): rutas de salida seguras (`GetSafeOutputPath`), formateo de bytes, mapeo de formatos, sanitización CSV, validación por magic bytes | La regla de oro de los hermanos |
+| 2 | ~~Crear `tests/OfiConvert.Tests`~~ ✅ **hecho en el Tier C** (xUnit, 11 pruebas) | |
+| 3 | Test de **completitud de localización**: cada clave presente en los 8 `Lang/*.xaml`, y cada clave usada en el código existente en los diccionarios — el indexer devuelve la clave si falta, así que un typo hoy **no rompe nada** y se ve como texto raro en la UI | Es la trampa `L.T` de los hermanos |
+| 4 | `tests/OfiConvert.UiTests` (FlaUI/UIA3) sobre la app real: **sin elevación** (la app es `asInvoker`). Los tests que exijan **Office o LibreOffice** instalado se **OMITEN** si faltan — el patrón ya está montado aquí con `[NetworkFact]` | Modelo WingetUSoft (sin `EnsureElevated`) |
 
 ---
 
