@@ -15,18 +15,18 @@
 
 ## Estado
 
-| Tier | Tema | Estado | Versión objetivo* |
+| Tier | Tema | Estado | Versión |
 |---|---|---|---|
 | **0** | Docs vivos (`CONTEXT.md` + `ROADMAP.md`) | ✅ Completado (2026-07-13) | — |
-| **A** | Higiene: bugs de la auditoría, README real, `LICENSE`, build 0/0 | ✅ Completado (2026-07-13) | 2.1.0 *(sin publicar)* |
-| **B** | Pipeline de release: instalador scriptado + release en un paso + `.sha256` | ✅ Completado (2026-07-13) | — |
-| **C** | Actualización confiable: verificar el instalador antes de ejecutarlo | ✅ Completado (2026-07-13) | 2.2.0 *(sin publicar)* |
-| **D** | Pruebas: extraer `Core/`, cobertura real, UI tests FlaUI | ⬜ **Siguiente** | 2.3.0 |
-| **E** | Cara pública: README de usuario, capturas reproducibles, legal in-app | ⬜ Pendiente | 2.4.0 |
+| **A** | Higiene: bugs de la auditoría, README real, `LICENSE`, build 0/0 | ✅ Completado (2026-07-13) | **2.1.0** ✔ publicada |
+| **B** | Pipeline de release: instalador scriptado + release en un paso + `.sha256` | ✅ Completado (2026-07-13) | **2.1.0** ✔ publicada |
+| **C** | Actualización confiable: verificar el instalador antes de ejecutarlo | ✅ Completado (2026-07-13) | **2.2.0** ✔ publicada |
+| **D** | Pruebas: extraer `Core/`, cobertura real, UI tests FlaUI | ✅ Completado (2026-07-14) | 2.3.0 *(sin publicar)* |
+| **E** | Cara pública: README de usuario, capturas reproducibles, legal in-app | ⬜ **Siguiente** | 2.4.0 |
 | **F** | Infraestructura agéntica (`.claude`, skills, codegraph) | ⬜ Pendiente | — |
 
-\* Orientativas. Orden recomendado: **A → B → C → D → E** (F puede ir en cualquier momento). Idealmente
-D iría antes que C, pero C puede llevar sus propios tests, como hicieron los hermanos.
+\* Orden recomendado: **A → B → C → D → E** (F puede ir en cualquier momento). Idealmente D habría ido
+antes que C, pero C se trajo sus propios tests, como hicieron los hermanos.
 
 ---
 
@@ -73,7 +73,7 @@ para el stderr normal de git, publish a `%TEMP%` por MAX_PATH).
 > contra `<AssemblyVersion>`).
 >
 > **Primer corte con el pipeline:** la **2.1.0**, con los Tiers A y B y los 3 commits que `main` ya
-> acumulaba sobre `v2.0.0`.
+> acumulaba sobre `v2.0.0`. **Publicada** (2026-07-13), con instalador y `.sha256`.
 
 ---
 
@@ -100,21 +100,43 @@ comprobar nada**. Port del de WingetUSoft, con sus tropiezos ya conocidos.
 
 ---
 
-## 🧪 Tier D — Pruebas *(SIGUIENTE)*
+## ✅ Tier D — Pruebas *(completado 2026-07-14)*
 
-El proyecto de pruebas **ya existe** (lo trajo el Tier C), pero cubre **solo el updater**: la
-conversión, la validación de archivos, las rutas de salida y la localización siguen a cero.
+De **11 pruebas** (solo el updater) a **170**: 152 unitarias + 18 de UI sobre la app real. Y cumplieron su
+oficio de inmediato — **encontraron dos bugs que nadie veía**, los dos en la localización.
 
-| # | Ítem | Notas |
+| # | Ítem | Dónde |
 |---|------|-------|
-| 1 | Extraer **`Core/`** (lógica pura: sin UI, sin `Process`, sin `HttpClient`, sin COM): rutas de salida seguras (`GetSafeOutputPath`), formateo de bytes, mapeo de formatos, sanitización CSV, validación por magic bytes | La regla de oro de los hermanos |
-| 2 | ~~Crear `tests/OfiConvert.Tests`~~ ✅ **hecho en el Tier C** (xUnit, 11 pruebas) | |
-| 3 | Test de **completitud de localización**: cada clave presente en los 8 `Lang/*.xaml`, y cada clave usada en el código existente en los diccionarios — el indexer devuelve la clave si falta, así que un typo hoy **no rompe nada** y se ve como texto raro en la UI | Es la trampa `L.T` de los hermanos |
-| 4 | `tests/OfiConvert.UiTests` (FlaUI/UIA3) sobre la app real: **sin elevación** (la app es `asInvoker`). Los tests que exijan **Office o LibreOffice** instalado se **OMITEN** si faltan — el patrón ya está montado aquí con `[NetworkFact]` | Modelo WingetUSoft (sin `EnsureElevated`) |
+| 1 | ✅ **`Core/` extraído** (lógica pura, sin UI/`Process`/`HttpClient`/COM): `OutputPath` (rutas de salida seguras), `ByteSize`, `CsvField`, `FileSignature` (magic bytes), `OfficeFormats` + `OutputFormatHelper` (mapeo de formatos) | `Core/` |
+| 2 | ✅ **141 pruebas nuevas** sobre `Core/`, `FileValidationService` (archivos reales: vacío, bloqueado, cifrado, `.docx` renombrado) y `ActivationArguments` (el menú contextual del Explorador) | `tests/OfiConvert.Tests/` |
+| 3 | ✅ **Completitud de localización**: cada clave en los 8 idiomas + **cada clave usada en el código y en el XAML existe** en los diccionarios. Es la trampa `L.T` de los hermanos, y aquí **había caído ya** (ver abajo) | `LocalizationTests`, `LocalizationUsageTests` |
+| 4 | ✅ **18 UI tests (FlaUI/UIA3)** contra el `.exe` real, **sin elevación** y **sin Office**: ninguno convierte nada, así que no dependen del entorno de la máquina que corta la versión | `tests/OfiConvert.UiTests/` |
+
+> ### 🐞 Los dos bugs que destaparon las pruebas
+>
+> **1 — La UI estaba en español en los ocho idiomas.** `MainWindow.xaml` declaraba
+> `<helpers:LocalizationService x:Key="Loc"/>`, que **construye una segunda instancia**: los ~40 bindings
+> de la interfaz escuchaban a ese objeto, mientras el código cambiaba el idioma en el singleton
+> `LocalizationService.Instance` — **otro objeto, que la UI no escuchaba jamás**. Botones y etiquetas se
+> quedaban en español en los 8 idiomas y **ni reiniciando cambiaban**; solo se traducían los textos que
+> pasan por código (mensajes y estados). El `settings.json` guardaba el idioma elegido, así que desde
+> fuera todo parecía correcto. Arreglado haciendo que **el idioma sea estado compartido** por todas las
+> instancias. *Lo caza `LocalizationUiTests`, conduciendo la app real.*
+>
+> **2 — El diálogo de cierre, sin traducir.** Pedía las claves `TitleConfirmClose`/`BtnYes`/`BtnNo`, que
+> **no existían**, y caía a un texto español a fuego. Sus traducciones **ya estaban en los 8 idiomas** con
+> otro nombre (`MsgCancelConfirm`/`MsgCancelConfirmTitle`) y **sin usarse en ningún sitio**. Es el diálogo
+> que protege contra los procesos de Office huérfanos — *EL* riesgo de esta app. *Lo caza
+> `LocalizationUsageTests`.*
+>
+> **Y un test que mentía:** `DownloadInstaller_ReportsProgress` (del Tier C) afirmaba sobre `reports[^1]`
+> de una `List<double>` rellenada desde `Progress<T>`, que **despacha al thread pool**: orden no
+> garantizado y `List.Add` concurrente. Pasaba por suerte; se puso en rojo en cuanto la suite creció y metió
+> presión en el thread pool. Ahora usa un `IProgress<double>` **síncrono**.
 
 ---
 
-## 📣 Tier E — Cara pública
+## 📣 Tier E — Cara pública *(SIGUIENTE)*
 
 | # | Ítem | Fuente |
 |---|------|--------|
@@ -145,8 +167,12 @@ conversión, la validación de archivos, las rutas de salida y la localización 
 - **No portar** `requireAdministrator` ni la ventana fija de FormatDiskPro (decisiones correctas para
   *su* producto, no para este), ni el parseo de winget de WingetUSoft.
 - **CI (GitHub Actions) — descartado**, con el mismo argumento que los hermanos: los UI tests del
-  Tier D necesitan escritorio interactivo, y aquí además **Office instalado** — un runner hospedado no
-  tiene ninguna de las dos cosas. `release.ps1` correrá las pruebas antes de cada corte.
+  Tier D **arrancan la app y la conducen**, y eso exige un **escritorio interactivo** que un runner
+  hospedado no tiene. `release.ps1` ejecuta **todas** las pruebas (descubre solo los `.csproj` de
+  `tests\`) antes de cada corte.
+  > Matiz que el plan daba por hecho y resultó falso: **no hacen falta Office ni LibreOffice**. Ningún UI
+  > test convierte un archivo — deliberadamente, para que un corte de versión no dependa de lo que haya
+  > instalado en la máquina. Lo que impide el CI es el escritorio, no Office.
 - **Firma de código (OV/EV) — no por ahora**: SmartScreen dirá "editor desconocido" y la confianza de
   las actualizaciones se apoyará en el `.sha256` (Tiers B/C). El pipeline portado deja la firma como
   opción (`-CertThumbprint`).

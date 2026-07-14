@@ -1,4 +1,4 @@
-using OfiConvert.Models;
+using OfiConvert.Core;
 
 namespace OfiConvert.Helpers;
 

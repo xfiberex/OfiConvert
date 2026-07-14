@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="OfiConvert.csproj" />
   <Project Path="tests/OfiConvert.Tests/OfiConvert.Tests.csproj" />
+  <Project Path="tests/OfiConvert.UiTests/OfiConvert.UiTests.csproj" />
 </Solution>

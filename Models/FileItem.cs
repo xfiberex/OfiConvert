@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml.Media.Imaging;
+using OfiConvert.Core;
 
 namespace OfiConvert.Models;
 

@@ -18,6 +18,8 @@
     <system:String x:Key="BtnResume">再開</system:String>
     <system:String x:Key="BtnClear">クリア</system:String>
     <system:String x:Key="BtnExport">エクスポート</system:String>
+    <system:String x:Key="BtnYes">はい</system:String>
+    <system:String x:Key="BtnNo">いいえ</system:String>
 
     <!-- Labels -->
     <system:String x:Key="LblSelectFiles">選択：</system:String>

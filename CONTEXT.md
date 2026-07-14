@@ -18,13 +18,13 @@
 |---|---|
 | **Repositorio** | https://github.com/xfiberex/OfiConvert |
 | **Versión publicada** | **2.2.0** (2026-07-13) — Tier C. Instalador sin firmar, **con `.sha256`** |
-| **En `main`, sin publicar** | *(nada)* |
-| **Estado** | Funcional; hoja de ruta **ABIERTA** — Tiers A, B y C ✅, quedan D–F |
-| **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · **xUnit** · Inno Setup 6 |
+| **En `main`, sin publicar** | **Tier D** (pruebas) + **dos bugs de localización** que las pruebas destaparon → sale en la **2.3.0** |
+| **Estado** | Funcional; hoja de ruta **ABIERTA** — Tiers A, B, C y D ✅, quedan E y F |
+| **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · **xUnit** + **FlaUI** · Inno Setup 6 |
 | **Licencia** | **MIT** ([`LICENSE`](LICENSE)) |
-| **Pruebas** | **11** (10 + 1 de red, que se omite salvo `OFICONVERT_NETWORK_TESTS=1`) — solo cubren el updater; el resto es el Tier D |
+| **Pruebas** | **170**: 152 unitarias (151 + 1 de red, omitida salvo `OFICONVERT_NETWORK_TESTS=1`) + **18 de UI** (FlaUI, contra la app real) |
 | **Hoja de ruta** | [`ROADMAP.md`](ROADMAP.md) — abierta, plan por tiers |
-| **Última actualización** | 2026-07-13 |
+| **Última actualización** | 2026-07-14 |
 
 ---
 
@@ -64,8 +64,12 @@ OfiConvert/                    (la app vive en la RAÍZ del repo; no hay src/ �
 │  ├─ ThumbnailService.cs              Miniaturas del shell para la lista
 │  ├─ DialogService.cs                 Pickers de archivo/carpeta y diálogos
 │  └─ LoggingService.cs                Serilog → %AppData%\OfiConvert\logs (diario, 30 días, 10 MB)
-├─ Models/                     FileItem, ConversionOptions/Result/Progress, OutputFormat(+Helper),
-│                              OfficeFormats (extensiones admitidas: fuente única), AppSettings…
+├─ Core/                       LÓGICA PURA Y TESTEADA (sin UI, sin Process, sin HttpClient, sin COM):
+│                              OutputPath (salida confinada + nunca sobrescribe), FileSignature (magic
+│                              bytes), CsvField (fórmulas neutralizadas), ByteSize, OfficeFormats +
+│                              OutputFormatHelper (mapeo de formatos)
+├─ Models/                     Datos: FileItem, ConversionOptions/Result/Progress, OutputFormat (el enum;
+│                              su mapeo vive en Core/), AppSettings…
 ├─ Helpers/
 │  ├─ LocalizationService.cs   8 idiomas (ES/EN/PT/FR/DE/IT/ZH/JA) — ver §4 Localización
 │  ├─ AppPaths.cs              Rutas de %AppData%\OfiConvert (fuente única) + volcado del crash.log
@@ -77,13 +81,15 @@ OfiConvert/                    (la app vive en la RAÍZ del repo; no hay src/ �
 ├─ installer/
 │  ├─ OfiConvert.iss           Inno Setup (la versión se la inyecta el script; no editarla a mano)
 │  └─ build-installer.ps1      Publish self-contained → instalador → .sha256 (+ firma opcional)
-├─ tests/OfiConvert.Tests/     xUnit: verificación del updater (servidor HTTP local + release real)
+├─ tests/OfiConvert.Tests/     xUnit (152): Core/, validación de archivos, activación, localización,
+│                              updater (servidor HTTP local + release real)
+├─ tests/OfiConvert.UiTests/   FlaUI/UIA3 (18): conducen el .exe REAL. Sin elevación y sin Office
 └─ release.ps1                 Corte de versión en un paso (build + tests + instalador + GitHub Release)
 ```
 
-**Regla de oro de los hermanos, aquí PENDIENTE:** no existe `Core/`. La lógica pura y testeable
-(rutas de salida seguras, formateo de bytes, mapeo de formatos, sanitización CSV, comparación de
-versiones) vive mezclada en `Services/` y `MainViewModel`. Extraerla es la primera fase del Tier D.
+**Regla de oro de los hermanos, aquí ya CUMPLIDA (Tier D):** `Core/` concentra la lógica pura y
+testeable que antes vivía mezclada en `Services/` y `MainViewModel`. La frontera: `Core/` no conoce la
+UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede probar sin arrancar nada.
 
 ---
 
@@ -92,10 +98,11 @@ versiones) vive mezclada en `Services/` y `MainViewModel`. Extraerla es la prime
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas | **10 pasan · 1 se omite · 0 fallan** (`dotnet test`). Solo cubren el updater |
+| Pruebas unitarias | **151 pasan · 1 se omite (la de red) · 0 fallan** |
+| Pruebas de UI | **18 pasan · 0 fallan** (FlaUI, arrancan la app real) |
 | Publicado | **v2.2.0** (la 2.1.0 fue el primer corte con `release.ps1`; ambas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
-| Pendiente de release | *(nada)* |
+| Pendiente de release | **Tier D** + el arreglo de los **dos bugs de localización** → **2.3.0** |
 
 **Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md))
 
@@ -105,8 +112,8 @@ versiones) vive mezclada en `Services/` y `MainViewModel`. Extraerla es la prime
 | **A** | **Higiene: bugs de la auditoría, README real, `LICENSE`, build 0/0** | ✅ |
 | **B** | **Pipeline de release (instalador scriptado, `.sha256`)** | ✅ |
 | **C** | **Verificar el instalador antes de ejecutarlo** | ✅ |
-| D | Pruebas (extraer `Core/`, cobertura real, UI tests FlaUI) | ⬜ |
-| E | Cara pública (README de usuario, capturas, legal in-app) | ⬜ |
+| **D** | **Pruebas (`Core/` extraído, 170 pruebas, UI tests FlaUI)** | ✅ |
+| E | Cara pública (README de usuario, capturas, legal in-app) | ⬜ **Siguiente** |
 | F | Infraestructura agéntica | ⬜ |
 
 ---
@@ -232,7 +239,27 @@ versiones) vive mezclada en `Services/` y `MainViewModel`. Extraerla es la prime
 
 ### Pruebas
 
-- **Framework: xUnit** (el estándar de la casa). `tests/OfiConvert.Tests`, en la solución.
+- **Framework: xUnit** (el estándar de la casa) + **FlaUI/UIA3** para la UI. Dos proyectos en la
+  solución: `tests/OfiConvert.Tests` (152) y `tests/OfiConvert.UiTests` (18).
+- **`release.ps1` ejecuta TODOS los `.csproj` bajo `tests\`**, descubriéndolos solo. Un proyecto de
+  pruebas nuevo entra en el pipeline sin tocar el script.
+- **`Core/` es la frontera de lo testeable**: sin UI, sin `Process`, sin `HttpClient`, sin COM. Lo que
+  cae ahí se prueba sin arrancar nada, y es donde vive lo que de verdad puede equivocarse en silencio
+  (rutas de salida, magic bytes, neutralización de fórmulas CSV).
+- **Los UI tests NO convierten nada, y es deliberado.** Convertir exige Office o LibreOffice y lanza
+  procesos COM: metería una dependencia del entorno en **cada corte de versión** (`release.ps1` corre las
+  pruebas). Lo que verifican es que **el `.exe` real arranca** y que sus controles están donde deben —
+  que es justo lo que caza un publish roto (a FormatDiskPro, un publish sin el `.pri` le hacía crashear
+  al arrancar con un instalador que se generaba sin quejarse).
+- **El Pivot de WinUI descarga el contenido de la pestaña que no está seleccionada:** con Ajustes
+  delante, `btnConvert` **no existe** en el árbol de automatización. Todo UI test debe **seleccionar su
+  pestaña primero** (`Tabs.Select`) y **ninguno puede fiarse de la que dejó el anterior**.
+- **Un `ComboBox` de WinUI no cambia de valor por UIA.** Ni `Select(index)` ni abrir el Popup y hacer
+  `SelectionItem.Select()` disparan el `SelectionChanged` de la app: la selección "ocurre" y no pasa
+  nada. Hay que conducirlo **por teclado** (foco + `Inicio` + `Abajo`), que además es el camino real de
+  quien no usa ratón.
+- **`SettingsBackup` respalda `%AppData%\OfiConvert`** antes de correr los UI tests y lo restaura al
+  acabar: la app es *unpackaged* y escribe donde escribe la instalación real del usuario.
 - **El `.csproj` de la app vive en la RAÍZ**, así que su glob por defecto (`**/*.cs`) **se tragaba los
   archivos de `tests/`** y el build reventaba con errores absurdos (`Fact` no encontrado *dentro de la
   app*). Por eso el `.csproj` lleva `<Compile Remove="tests\**" />`. Si algún día se añade otra carpeta
@@ -250,8 +277,17 @@ versiones) vive mezclada en `Services/` y `MainViewModel`. Extraerla es la prime
   ~58 MB de GitHub y se **omite** salvo `OFICONVERT_NETWORK_TESTS=1`. *Un test omitido dice «no hay red /
   no se ha pedido»; uno fallido dice «la app está rota».* Confundirlos es lo que hizo que FormatDiskPro
   no pudiera meter sus UI tests en el pipeline durante meses.
-- **Se comprobó que los tests FALLAN** al desactivar la verificación (2 de 10 en rojo). Un test que
-  nunca ha fallado no prueba nada.
+- ⚠️ **`Progress<T>` despacha cada callback al `SynchronizationContext` y, a falta de uno, al THREAD
+  POOL.** Un test que recoge los valores en una `List<T>` y asserta sobre `[^1]` hace dos apuestas
+  falsas: que llegan **en orden** y que `List.Add` es seguro desde varios hilos. El test del progreso de
+  descarga (Tier C) las hacía, pasaba **por suerte**, y se puso en rojo en cuanto la suite creció y metió
+  presión en el thread pool. Ahora usa un `IProgress<double>` **síncrono**: lo que interesa es *qué*
+  reporta la descarga, no cómo lo despacha quien la llama.
+- **Se comprobó que los tests FALLAN.** En el Tier C, desactivando la verificación (2 de 10 en rojo). En
+  el Tier D, quitando una clave de `ja-JP.xaml`: `LocalizationTests` la señala por archivo y nombre. Un
+  test que nunca ha fallado no prueba nada.
+- **Los dos tests de localización se ganaron el sueldo el día que se escribieron:** encontraron dos bugs
+  reales que llevaban versiones en producción (ver el registro, 2026-07-14).
 
 ### Trampas de PowerShell 5.1 (las tres las pagaron los hermanos; aquí entraron ya resueltas)
 
@@ -294,12 +330,26 @@ versiones) vive mezclada en `Services/` y `MainViewModel`. Extraerla es la prime
 - **8 idiomas** (ES/EN/PT/FR/DE/IT/ZH/JA) en `Lang/*.xaml`, parseados **en runtime** con `XDocument`
   (no son ResourceDictionary compilados) y refrescados por binding al indexer
   (`{Binding [Clave], Source={StaticResource Loc}}`). Si falta el archivo del idioma, cae a `es-ES`.
+- 🔴 **EL IDIOMA ES ESTADO ESTÁTICO EN `LocalizationService`, Y TIENE QUE SERLO. NO CONVERTIRLO EN
+  ESTADO DE INSTANCIA.** Hay **dos instancias vivas y no se puede evitar**: el código usa el singleton
+  `Instance`, y `MainWindow.xaml` declara `<helpers:LocalizationService x:Key="Loc"/>`, que construye
+  **la suya** — es la que escuchan los ~40 bindings de la UI. Cuando el idioma era estado de instancia,
+  cambiarlo actuaba sobre el singleton y notificaba al singleton, mientras **los bindings escuchaban al
+  otro objeto, que nadie tocaba jamás**: la UI se quedaba **en español en los ocho idiomas**, y ni
+  reiniciar lo arreglaba (la instancia del XAML nace en español). Ver el bug en el registro (2026-07-14).
+  - **Registrar el singleton como recurso desde código NO es alternativa**: WinUI no resuelve ese
+    `{StaticResource}` subiendo a los recursos de la aplicación y **la app muere al arrancar**
+    (`STATUS_STOWED_EXCEPTION`). Se probó.
 - **`LocalizationService.SupportedLanguages` es la fuente única.** `SettingsService` valida contra ella:
   antes tenía su propia lista `("es" or "en")` y **reseteaba a español los otros seis** al cargar —
   elegir francés funcionaba hasta reiniciar. Al añadir un idioma, tocar **solo** esa lista.
 - ⚠️ **El indexer devuelve la propia clave si no la conoce** — la misma trampa que el `L.T` de los
-  hermanos: un typo no rompe el build ni nada visible salvo texto raro en la UI. El test de completitud
-  (cada clave en los 8 archivos + cada clave usada en el código existe) es parte del Tier D.
+  hermanos: un typo no rompe el build ni nada visible salvo texto raro en la UI. **Ya había caído**: el
+  diálogo de cierre pedía claves inexistentes y caía a español a fuego (ver el registro). Ahora lo cazan
+  `LocalizationTests` (cada clave en los 8 archivos) y `LocalizationUsageTests` (cada clave **usada** en
+  el código o el XAML **existe** en los diccionarios).
+  - **No añadir "fallbacks defensivos"** del tipo `Instance[k] is string s && s != k ? s : "texto"`: son
+    exactamente lo que ocultó el bug durante versiones. Si falta una clave, que se rompa el test.
 - **No hay detección del idioma del sistema:** arranca en español salvo ajuste guardado.
 
 ### Datos del usuario
@@ -322,10 +372,14 @@ versiones) vive mezclada en `Services/` y `MainViewModel`. Extraerla es la prime
 |-------|---------|
 | Compilar | `dotnet build OfiConvert.slnx -c Release` |
 | Ejecutar | `dotnet run --project OfiConvert.csproj` |
-| Pruebas | `dotnet test tests\OfiConvert.Tests\OfiConvert.Tests.csproj` |
+| Pruebas unitarias | `dotnet test tests\OfiConvert.Tests\OfiConvert.Tests.csproj` |
+| **Pruebas de UI** (abren la app; requieren la app compilada) | `dotnet test tests\OfiConvert.UiTests\OfiConvert.UiTests.csproj` |
 | Pruebas **con red** (verifica el release real de GitHub) | `$env:OFICONVERT_NETWORK_TESTS = "1"; dotnet test …` |
 | Instalador | `.\installer\build-installer.ps1` (`-CertThumbprint <huella>` para firmar) |
 | **Publicar versión** | `.\release.ps1 -Version X.Y.Z` (`-DryRun` para simular) |
+
+> Los UI tests conducen el `.exe` de `bin\` (el más reciente con RID `win-x64`); `OFICONVERT_EXE` permite
+> apuntarlos a otro (un publish, una instalación real). **Verán la ventana abrirse y cerrarse: es normal.**
 
 `release.ps1` hace: validar → compilar (+ pruebas, cuando existan) → bump de `<Version>`,
 `<AssemblyVersion>` y `<FileVersion>` → instalador (+ `.sha256`) → commit + tag `vX.Y.Z` → push →
@@ -344,22 +398,27 @@ y los de firma.
 
 El plan por tiers está en [`ROADMAP.md`](ROADMAP.md).
 
-1. **Cobertura de pruebas casi nula:** las 11 que hay cubren **solo el updater**. La conversión, la
-   validación de archivos, las rutas de salida seguras y la localización no tienen ninguna *(Tier D)*.
-2. **`THIRD-PARTY-NOTICES.txt` y los textos legales in-app** siguen sin existir *(Tier E)*.
-3. **El instalador nunca se ha probado end-to-end** (instalación limpia + actualización in-place con el
+1. **`THIRD-PARTY-NOTICES.txt` y los textos legales in-app** siguen sin existir *(Tier E)*.
+2. **El instalador nunca se ha probado end-to-end** (instalación limpia + actualización in-place con el
    flujo silencioso real). FormatDiskPro encontró ahí un fallo con un diálogo modal abierto.
-4. ⚠️ **La verificación del Tier C aún no se ha ejercido en producción.** Solo actúa al actualizar
+3. ⚠️ **La verificación del Tier C aún no se ha ejercido en producción.** Solo actúa al actualizar
    **desde** una versión ≥ 2.2.0, y los clientes en 2.1.0 llegarán a la 2.2.0 con el código viejo, que
    no verificaba nada. **El primer uso real será 2.2.0 → 2.3.0.** No es trabajo pendiente: es lo que hay
    que vigilar en el próximo corte.
+4. **La conversión en sí (COM/LibreOffice) sigue sin pruebas automatizadas**, y seguirá: exige Office
+   instalado y lanza procesos. Lo que el Tier D sí cubre es todo lo que la rodea (validación previa,
+   rutas de salida, mapeo de formatos, cola). Se verifica **conduciendo la app a mano**.
 
 Menores, sin tier asignado:
 
 - **Sin detección del idioma del sistema** en el primer arranque (los hermanos sí la tienen): la app
   abre en español hasta que el usuario elija.
 - **`DialogService` tiene textos en duro** (`"Sí"`, `"No"`, `"Aceptar"`, `"Error"`) que no pasan por
-  `LocalizationService`.
+  `LocalizationService`. Ojo: `LocalizationUsageTests` **no** lo caza — comprueba que las claves *usadas*
+  existan, no que no haya literales sin traducir. Desde el Tier D existen las claves `BtnYes`/`BtnNo` en
+  los 8 idiomas, así que al menos dos de esos cuatro textos ya tienen a dónde ir.
+- **`FileValidationService` devuelve sus mensajes de error en español a fuego** ("El archivo está
+  vacío.", "…protegido con contraseña."), y llegan a la UI tal cual.
 
 ---
 
@@ -379,12 +438,66 @@ Menores, sin tier asignado:
 
 | Versión | Qué trajo |
 |---|---|
+| **2.3.0** *(sin publicar)* | **Tier D** — `Core/` extraído y **170 pruebas** (152 unitarias + 18 de UI con FlaUI). Las pruebas destaparon **dos bugs de localización** en producción: la UI estaba **en español en los 8 idiomas**, y el diálogo de cierre no se traducía. |
 | **2.2.0** | **Tier C** — el updater **verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256). Primeras pruebas del proyecto (11, xUnit). |
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
 
 ---
+
+### 2026-07-14 — Tier D: pruebas de verdad — y los dos bugs que encontraron — **v2.3.0 (sin publicar)**
+
+De **11 pruebas** (solo el updater) a **170**: 152 unitarias + 18 de UI conduciendo el `.exe` real. Pero lo
+que hay que contar de este tier no son las pruebas: es **lo que encontraron el día que se escribieron**.
+
+**🐞 Bug 1 — La interfaz estaba en español en los ocho idiomas.**
+`MainWindow.xaml` declaraba `<helpers:LocalizationService x:Key="Loc"/>`. Eso **construye una segunda
+instancia**: los ~40 bindings de la UI escuchaban a ese objeto, mientras el cambio de idioma llamaba a
+`LoadLanguage` sobre el singleton `LocalizationService.Instance` — **otro objeto, al que la UI no escuchaba
+jamás**. Consecuencia: elegir japonés cambiaba los mensajes que pasan por código… y **dejaba todos los
+botones y etiquetas en español**, para siempre; **ni reiniciando** (la instancia del XAML nace en español).
+El `settings.json` guardaba el idioma correctamente, así que desde fuera parecía que funcionaba, y los 7
+idiomas no españoles llevaban así desde que existen.
+*Arreglo:* el idioma pasa a ser **estado compartido** por todas las instancias (ver §4 *Localización*).
+Registrar el singleton como recurso desde código **no era alternativa**: WinUI no resuelve ese
+`{StaticResource}` subiendo a los recursos de la app y **la app muere al arrancar** — se probó, y se cambió
+de enfoque.
+*Verificado contra la app real:* al cambiar a inglés, un control ya en pantalla pasa de "Sistema" a
+"System". Lo fija `LocalizationUiTests`.
+
+**🐞 Bug 2 — El diálogo de cierre, sin traducir.** Pedía `TitleConfirmClose`, `BtnYes` y `BtnNo`, que **no
+existían**, y caía a un texto español en duro. Sus traducciones **ya estaban en los 8 idiomas**, con otro
+nombre (`MsgCancelConfirm`/`MsgCancelConfirmTitle`) y **sin usarse en ningún sitio**. Es el diálogo que
+protege contra los procesos de Office huérfanos — *EL* riesgo de esta app. Se conectan las claves que ya
+existían, se añaden `BtnYes`/`BtnNo` (8 idiomas, 122 claves por archivo) y **se quitan los fallbacks
+defensivos**, que eran justo lo que lo ocultaba.
+
+**Lo construido.**
+- **`Core/`** (la regla de oro de los hermanos): `OutputPath` (salida confinada + nunca sobrescribe),
+  `FileSignature` (magic bytes, sin tocar disco), `CsvField` (fórmulas neutralizadas), `ByteSize`,
+  `OfficeFormats` + `OutputFormatHelper`. De paso, **`ByteSize` mata una duplicación real**: el ViewModel
+  llegaba a TB y el historial se quedaba en GB, así que el mismo archivo se veía distinto en la cola y en
+  el historial exportado.
+- **`tests/OfiConvert.Tests`** (152): `Core/`, `FileValidationService` contra archivos reales (vacío,
+  bloqueado con `FileShare.None`, cifrado, `.docx` renombrado a `.doc`), `ActivationArguments` (el menú
+  contextual), y los dos tests de localización.
+- **`tests/OfiConvert.UiTests`** (18, FlaUI/UIA3): arrancan el `.exe` real. **Sin elevación** (`asInvoker`)
+  y **sin Office** — ninguno convierte nada, a propósito: `release.ps1` corre las pruebas en cada corte y
+  un release no puede depender de lo que haya instalado en la máquina.
+
+**Dos trampas de WinUI que costaron el rato** (§4 *Pruebas*): el **Pivot descarga el contenido de la
+pestaña que no está delante** (con Ajustes visible, `btnConvert` no existe en el árbol de automatización), y
+un **`ComboBox` no cambia de valor por UIA** — hay que conducirlo por teclado o el `SelectionChanged` de la
+app no se dispara.
+
+**Un test que mentía, arreglado:** `DownloadInstaller_ReportsProgress` (Tier C) assertaba sobre `reports[^1]`
+de una `List<double>` rellenada desde `Progress<T>`, que **despacha al thread pool**: ni el orden ni la
+seguridad de `List.Add` estaban garantizados. Pasaba por suerte y se puso en rojo en cuanto la suite creció.
+Ahora usa un `IProgress<double>` síncrono.
+
+**Se comprobó que las pruebas fallan:** quitando `BtnNo` de `ja-JP.xaml`, `LocalizationTests` lo señala por
+archivo y por clave. Un test que nunca ha fallado no prueba nada.
 
 ### 2026-07-13 — Tier C: el updater ya no ejecuta lo que no ha verificado — **v2.2.0**
 

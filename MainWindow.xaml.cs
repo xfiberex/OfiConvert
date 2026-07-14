@@ -189,16 +189,21 @@ public sealed partial class MainWindow : Window
         {
             args.Cancel = true;
 
+            // Las claves se piden directamente, sin red de seguridad: ped\u00eda "TitleConfirmClose" y "BtnYes",
+            // que NO exist\u00edan, y ca\u00eda a un texto espa\u00f1ol a fuego \u2014 as\u00ed que este di\u00e1logo sal\u00eda en espa\u00f1ol a
+            // un usuario japon\u00e9s o alem\u00e1n. Sus traducciones ya estaban en los 8 idiomas, con otro nombre
+            // (MsgCancelConfirm/MsgCancelConfirmTitle) y sin usarse en ning\u00fan sitio. Los fallbacks eran
+            // justo lo que imped\u00eda notarlo; ahora una clave que falte la caza LocalizationUsageTests.
             var dialog = new ContentDialog
             {
-                Title = LocalizationService.Instance["TitleConfirmClose"] is string t && t != "TitleConfirmClose" ? t : "Confirmar cierre",
+                Title = LocalizationService.Instance["MsgCancelConfirmTitle"],
                 Content = new TextBlock
                 {
-                    Text = "Hay una conversi\u00f3n en curso. Si cierras ahora, los procesos de Office podr\u00edan quedar abiertos.\n\n\u00bfDeseas cancelar la conversi\u00f3n y salir?",
+                    Text = LocalizationService.Instance["MsgCancelConfirm"],
                     TextWrapping = TextWrapping.Wrap
                 },
-                PrimaryButtonText = LocalizationService.Instance["BtnYes"] is string y && y != "BtnYes" ? y : "S\u00ed",
-                CloseButtonText = LocalizationService.Instance["BtnNo"] is string n && n != "BtnNo" ? n : "No",
+                PrimaryButtonText = LocalizationService.Instance["BtnYes"],
+                CloseButtonText = LocalizationService.Instance["BtnNo"],
                 DefaultButton = ContentDialogButton.Close,
                 XamlRoot = Content.XamlRoot
             };

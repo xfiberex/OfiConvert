@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using OfiConvert.Core;
 using OfiConvert.Helpers;
 using OfiConvert.Models;
 using Serilog;
@@ -69,22 +70,13 @@ public class ConversionHistoryService : IConversionHistoryService
             };
             foreach (var entry in _history)
             {
-                var source = SanitizeCsvField(entry.SourceFileName);
-                var output = SanitizeCsvField(entry.OutputPath);
-                var error = SanitizeCsvField(entry.ErrorMessage);
+                var source = CsvField.Sanitize(entry.SourceFileName);
+                var output = CsvField.Sanitize(entry.OutputPath);
+                var error = CsvField.Sanitize(entry.ErrorMessage);
                 lines.Add($"\"{entry.Timestamp:yyyy-MM-dd HH:mm:ss}\",\"{source}\",\"{output}\",{entry.Format},{(entry.Success ? "OK" : "Error")},\"{error}\",{entry.DurationSeconds:F1},{entry.FileSizeBytes}");
             }
             File.WriteAllLines(filePath, lines, System.Text.Encoding.UTF8);
         }
-    }
-
-    private static string SanitizeCsvField(string? value)
-    {
-        if (string.IsNullOrEmpty(value)) return "";
-        var sanitized = value.Replace("\"", "\"\"");
-        if (sanitized[0] is '=' or '+' or '-' or '@' or '\t' or '\r')
-            sanitized = "'" + sanitized;
-        return sanitized;
     }
 
     public void ExportToTxt(string filePath)
@@ -108,7 +100,7 @@ public class ConversionHistoryService : IConversionHistoryService
             lines.Add($"  Salida: {entry.OutputPath}");
             if (!string.IsNullOrEmpty(entry.ErrorMessage))
                 lines.Add($"  Error: {entry.ErrorMessage}");
-            lines.Add($"  Duración: {entry.DurationSeconds:F1}s | Tamaño: {FormatSize(entry.FileSizeBytes)}");
+            lines.Add($"  Duración: {entry.DurationSeconds:F1}s | Tamaño: {ByteSize.Format(entry.FileSizeBytes)}");
             lines.Add("");
         }
 
@@ -147,14 +139,5 @@ public class ConversionHistoryService : IConversionHistoryService
         {
             Log.Error(ex, "Error saving conversion history");
         }
-    }
-
-    private static string FormatSize(long bytes)
-    {
-        string[] sizes = ["B", "KB", "MB", "GB"];
-        double len = bytes;
-        int order = 0;
-        while (len >= 1024 && order < sizes.Length - 1) { order++; len /= 1024; }
-        return $"{len:0.##} {sizes[order]}";
     }
 }

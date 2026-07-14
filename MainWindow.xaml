@@ -16,6 +16,9 @@
             <converters:StateToColorConverter x:Key="StateToColorConverter"/>
             <converters:StateToIconConverter x:Key="StateToIconConverter"/>
             <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+            <!-- Esto construye SU PROPIA instancia de LocalizationService: no es el singleton que usa el
+                 código (LocalizationService.Instance). Funciona porque el idioma es ESTADO COMPARTIDO por
+                 todas las instancias — ver LocalizationService, que documenta por qué tiene que serlo. -->
             <helpers:LocalizationService x:Key="Loc"/>
             <SolidColorBrush x:Key="SuccessColorBrush" Color="#10B981"/>
             <SolidColorBrush x:Key="WarningColorBrush" Color="#F59E0B"/>
@@ -65,9 +68,12 @@
             </InfoBar>
 
             <!-- Tab Navigation (Pivot) -->
-            <Pivot Grid.Row="1">
+            <!-- Los x:Name de los controles interactivos son su AutomationId: es como los encuentran los
+                 UI tests (tests/OfiConvert.UiTests) y también los lectores de pantalla. No renombrarlos
+                 sin actualizar los tests. -->
+            <Pivot x:Name="pivotMain" Grid.Row="1">
                 <!-- ==================== TAB: CONVERSION ==================== -->
-                <PivotItem>
+                <PivotItem x:Name="tabConversion">
                     <PivotItem.Header>
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE895;" FontSize="16"/>
@@ -97,7 +103,8 @@
                                                Style="{StaticResource BodyStrongTextBlockStyle}"/>
 
                                     <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Button Style="{StaticResource AccentButtonStyle}"
+                                        <Button x:Name="btnSelectFile"
+                                                Style="{StaticResource AccentButtonStyle}"
                                                 Content="{Binding [BtnSelectFile], Source={StaticResource Loc}}"
                                                 IsEnabled="{Binding IsConverting, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
                                                 Command="{Binding SelectFilesCommand}"
@@ -121,23 +128,27 @@
                                             <ComboBoxItem Content="JPG" />
                                         </ComboBox>
 
-                                        <Button Style="{StaticResource AccentButtonStyle}"
+                                        <Button x:Name="btnConvert"
+                                                Style="{StaticResource AccentButtonStyle}"
                                                 Content="{Binding [BtnConvert], Source={StaticResource Loc}}"
                                                 IsEnabled="{Binding IsConverting, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
                                                 Command="{Binding ConvertFilesCommand}"
                                                 MinWidth="100" Height="36"/>
 
-                                        <Button Content="{Binding [BtnPause], Source={StaticResource Loc}}"
+                                        <Button x:Name="btnPause"
+                                                Content="{Binding [BtnPause], Source={StaticResource Loc}}"
                                                 Visibility="{Binding IsConverting, Mode=OneWay}"
                                                 Command="{Binding PauseConversionCommand}"
                                                 Height="36"/>
 
-                                        <Button Content="{Binding [BtnResume], Source={StaticResource Loc}}"
+                                        <Button x:Name="btnResume"
+                                                Content="{Binding [BtnResume], Source={StaticResource Loc}}"
                                                 Visibility="{Binding IsPaused, Mode=OneWay}"
                                                 Command="{Binding ResumeConversionCommand}"
                                                 Height="36"/>
 
-                                        <Button Content="{Binding [BtnCancel], Source={StaticResource Loc}}"
+                                        <Button x:Name="btnCancel"
+                                                Content="{Binding [BtnCancel], Source={StaticResource Loc}}"
                                                 Visibility="{Binding IsConverting, Mode=OneWay}"
                                                 Command="{Binding CancelConversionCommand}"
                                                 Height="36">
@@ -161,7 +172,8 @@
                                             </Button.Resources>
                                         </Button>
 
-                                        <Button Content="{Binding [BtnClear], Source={StaticResource Loc}}"
+                                        <Button x:Name="btnClear"
+                                                Content="{Binding [BtnClear], Source={StaticResource Loc}}"
                                                 IsEnabled="{Binding IsConverting, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
                                                 Command="{Binding ClearFilesCommand}"
                                                 Height="36"/>
@@ -184,19 +196,22 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
 
-                                        <TextBox Grid.Column="0"
+                                        <TextBox x:Name="txtOutputFolder"
+                                                 Grid.Column="0"
                                                  Text="{Binding OutputFolder, Mode=TwoWay}"
                                                  IsReadOnly="True"
                                                  PlaceholderText="{Binding [LblDefaultFolder], Source={StaticResource Loc}}"
                                                  VerticalAlignment="Center"/>
 
-                                        <Button Grid.Column="1"
+                                        <Button x:Name="btnSelectFolder"
+                                                Grid.Column="1"
                                                 Content="{Binding [BtnSelectFolder], Source={StaticResource Loc}}"
                                                 IsEnabled="{Binding IsConverting, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
                                                 Command="{Binding SelectOutputFolderCommand}"
                                                 Height="36"/>
 
-                                        <Button Grid.Column="2"
+                                        <Button x:Name="btnClearOutputFolder"
+                                                Grid.Column="2"
                                                 IsEnabled="{Binding UseCustomOutputFolder, Mode=OneWay}"
                                                 Command="{Binding ClearOutputFolderCommand}"
                                                 Height="36">
@@ -436,7 +451,7 @@
                 </PivotItem>
 
                 <!-- ==================== TAB: HISTORY ==================== -->
-                <PivotItem>
+                <PivotItem x:Name="tabHistory">
                     <PivotItem.Header>
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE81C;" FontSize="16"/>
@@ -456,15 +471,18 @@
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                 BorderThickness="1" CornerRadius="8" Padding="14">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button Content="{Binding [BtnExportCsv], Source={StaticResource Loc}}"
+                                <Button x:Name="btnExportCsv"
+                                        Content="{Binding [BtnExportCsv], Source={StaticResource Loc}}"
                                         Command="{Binding ExportHistoryCsvCommand}" Height="36">
                                     <Button.KeyboardAccelerators>
                                         <KeyboardAccelerator Key="E" Modifiers="Control"/>
                                     </Button.KeyboardAccelerators>
                                 </Button>
-                                <Button Content="{Binding [BtnExportTxt], Source={StaticResource Loc}}"
+                                <Button x:Name="btnExportTxt"
+                                        Content="{Binding [BtnExportTxt], Source={StaticResource Loc}}"
                                         Command="{Binding ExportHistoryTxtCommand}" Height="36"/>
-                                <Button Content="{Binding [BtnClearHistory], Source={StaticResource Loc}}"
+                                <Button x:Name="btnClearHistory"
+                                        Content="{Binding [BtnClearHistory], Source={StaticResource Loc}}"
                                         Command="{Binding ClearHistoryCommand}" Height="36">
                                     <Button.Resources>
                                         <ResourceDictionary>
@@ -558,7 +576,7 @@
                 </PivotItem>
 
                 <!-- ==================== TAB: SETTINGS ==================== -->
-                <PivotItem>
+                <PivotItem x:Name="tabSettings">
                     <PivotItem.Header>
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE713;" FontSize="16"/>

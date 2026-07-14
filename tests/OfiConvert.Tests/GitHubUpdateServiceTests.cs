@@ -85,6 +85,28 @@ public sealed class GitHubUpdateServiceTests : IDisposable
         Assert.False(File.Exists(_destination));
     }
 
+    /// <summary>
+    /// <see cref="IProgress{T}"/> SÍNCRONO: recoge el valor en la misma llamada a <c>Report</c>.
+    /// </summary>
+    /// <remarks>
+    /// Antes este test usaba <see cref="Progress{T}"/> con una <c>List&lt;double&gt;</c> y un
+    /// <c>Task.Delay(200)</c> para "dar tiempo" a los callbacks. Eso era una carrera con dos filos:
+    /// <see cref="Progress{T}"/> despacha cada callback al <c>SynchronizationContext</c> y, a falta de
+    /// uno, <b>al thread pool</b> — así que los valores pueden llegar <b>desordenados</b>, desde varios
+    /// hilos a la vez (y <c>List.Add</c> no es seguro ahí), y el <c>[^1]</c> no tenía por qué ser el
+    /// último valor reportado. El test pasaba por suerte; se puso en rojo en cuanto la suite creció y
+    /// metió presión en el thread pool. Aquí importa QUÉ reporta la descarga, no cómo decide despacharlo
+    /// quien la llama.
+    /// </remarks>
+    private sealed class SyncProgress : IProgress<double>
+    {
+        private readonly List<double> _values = [];
+
+        public IReadOnlyList<double> Values => _values;
+
+        public void Report(double value) => _values.Add(value);
+    }
+
     [Fact]
     public async Task DownloadInstaller_ReportsProgress()
     {
@@ -92,18 +114,16 @@ public sealed class GitHubUpdateServiceTests : IDisposable
         string exeUrl = _server.Serve("/OfiConvert_Setup_9.9.9.exe", installer);
         string shaUrl = _server.Serve("/OfiConvert_Setup_9.9.9.exe.sha256", Sha256Of(installer));
 
-        var reports = new List<double>();
-        var progress = new Progress<double>(p => reports.Add(p));
+        var progress = new SyncProgress();
 
         await GitHubUpdateService.DownloadInstallerAsync(
             exeUrl, shaUrl, progress, destinationPath: _destination);
 
-        // Progress<T> despacha por el SynchronizationContext: en xUnit puede llegar con retraso.
-        await Task.Delay(200);
+        Assert.NotEmpty(progress.Values);
+        Assert.All(progress.Values, p => Assert.InRange(p, 0d, 1d));
 
-        Assert.NotEmpty(reports);
-        Assert.All(reports, p => Assert.InRange(p, 0d, 1d));
-        Assert.Equal(1d, reports[^1], precision: 3);
+        // La descarga termina al 100%: es lo que deja la barra de progreso llena en la UI.
+        Assert.Equal(1d, progress.Values[^1], precision: 3);
     }
 
     [Fact]

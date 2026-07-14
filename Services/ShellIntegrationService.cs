@@ -1,6 +1,6 @@
 using Microsoft.Win32;
 using System.Diagnostics;
-using OfiConvert.Models;
+using OfiConvert.Core;
 using Serilog;
 
 namespace OfiConvert.Services;

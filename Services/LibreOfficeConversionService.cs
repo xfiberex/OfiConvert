@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using OfiConvert.Core;
 using OfiConvert.Models;
 using Serilog;
 

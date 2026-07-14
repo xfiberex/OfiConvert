@@ -18,6 +18,8 @@
     <system:String x:Key="BtnResume">Fortsetzen</system:String>
     <system:String x:Key="BtnClear">Löschen</system:String>
     <system:String x:Key="BtnExport">Exportieren</system:String>
+    <system:String x:Key="BtnYes">Ja</system:String>
+    <system:String x:Key="BtnNo">Nein</system:String>
 
     <!-- Labels -->
     <system:String x:Key="LblSelectFiles">Auswählen:</system:String>

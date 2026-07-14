@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.IO;
 using Microsoft.UI.Dispatching;
+using OfiConvert.Core;
 using OfiConvert.Helpers;
 using OfiConvert.Models;
 using OfiConvert.Services;
@@ -208,7 +209,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             {
                 Name = fileInfo.Name,
                 Path = fileName,
-                Size = FormatFileSize(fileInfo.Length),
+                Size = ByteSize.Format(fileInfo.Length),
                 SizeInBytes = fileInfo.Length,
                 Extension = ext,
                 State = FileConversionState.Pending,
@@ -614,32 +615,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         var ext = OutputFormatHelper.GetFileExtension(format);
         var outputFileName = Path.ChangeExtension(fileItem.Name, ext);
-        return GetSafeOutputPath(OutputFolder, outputFileName);
-    }
-
-    private static string GetSafeOutputPath(string outputFolder, string fileName)
-    {
-        var safeName = Path.GetFileName(fileName);
-        var fullOutputFolder = Path.GetFullPath(outputFolder);
-        var candidate = Path.GetFullPath(Path.Combine(fullOutputFolder, safeName));
-
-        if (!candidate.StartsWith(fullOutputFolder, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Ruta de salida no v\u00e1lida.");
-
-        if (!File.Exists(candidate))
-            return candidate;
-
-        var nameWithoutExt = Path.GetFileNameWithoutExtension(safeName);
-        var ext = Path.GetExtension(safeName);
-        int counter = 1;
-
-        do
-        {
-            candidate = Path.GetFullPath(Path.Combine(fullOutputFolder, $"{nameWithoutExt} ({counter}){ext}"));
-            counter++;
-        } while (File.Exists(candidate));
-
-        return candidate;
+        return OutputPath.GetSafe(OutputFolder, outputFileName);
     }
 
     /// <summary>Retira del listado los archivos del lote recién convertido, respetando los que se hayan añadido mientras corría.</summary>
@@ -905,7 +881,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         FileCount = SelectedFiles.Count;
         long totalBytes = SelectedFiles.Sum(f => f.SizeInBytes);
-        TotalSize = FormatFileSize(totalBytes);
+        TotalSize = ByteSize.Format(totalBytes);
     }
 
     private void IncrementProgress()
@@ -936,22 +912,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         ProgressValue = 0;
         ProgressPercentage = "0%";
-    }
-
-    internal static string FormatFileSize(long bytes)
-    {
-        const int divisor = 1024;
-        string[] sizes = ["B", "KB", "MB", "GB", "TB"];
-        double len = bytes;
-        int order = 0;
-
-        while (len >= divisor && order < sizes.Length - 1)
-        {
-            order++;
-            len /= divisor;
-        }
-
-        return $"{len:0.##} {sizes[order]}";
     }
 
     private static string GetLocalizedString(string key)

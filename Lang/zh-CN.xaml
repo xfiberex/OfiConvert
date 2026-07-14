@@ -18,6 +18,8 @@
     <system:String x:Key="BtnResume">继续</system:String>
     <system:String x:Key="BtnClear">清除</system:String>
     <system:String x:Key="BtnExport">导出</system:String>
+    <system:String x:Key="BtnYes">是</system:String>
+    <system:String x:Key="BtnNo">否</system:String>
 
     <!-- Labels -->
     <system:String x:Key="LblSelectFiles">选择：</system:String>

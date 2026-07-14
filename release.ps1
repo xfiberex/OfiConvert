@@ -17,11 +17,10 @@
     atrás, la app publicada se cree más vieja de lo que es y se ofrece a sí misma la actualización que
     ya tiene, en bucle. (WingetUSoft lo cazó antes de su primer corte.)
 
-    EL ASSET .sha256 ES OBLIGATORIO. Mientras los instaladores se publiquen sin firmar, es lo único con
-    lo que la app puede verificar que lo que descargó es lo que este script subió.
-    ⚠️ El Tier C (verificación en el updater) TODAVÍA NO ESTÁ HECHO: hoy la app descarga el instalador y
-    lo ejecuta SIN comprobar nada. El hash se publica desde ya para que, cuando el Tier C entre, los
-    releases anteriores ya sean verificables.
+    EL ASSET .sha256 ES OBLIGATORIO, y desde el Tier C (v2.2.0) no es una precaución: es un REQUISITO DE
+    FUNCIONAMIENTO. La app verifica el instalador antes de ejecutarlo (Authenticode -> SHA-256) y, sin
+    ninguna de las dos cosas, BORRA la descarga y ABORTA. Un release sin .sha256 y sin firmar sería un
+    release que TODOS los clientes rechazan. Por eso este script aborta si el hash no está.
 
 .PARAMETER Version
     Versión a publicar (X.Y.Z). Si se omite, usa la del .csproj.
@@ -30,7 +29,8 @@
     Archivo Markdown con las notas del release. Si se omite, se genera una plantilla.
 
 .PARAMETER SkipTests
-    Omite las pruebas. (Hoy no hay proyecto de pruebas: es el Tier D. El script avisa y sigue.)
+    Omite la compilación y las pruebas. Desde el Tier D hay 170 (unitarias + UI): usarlo es renunciar a
+    la única red de seguridad del corte.
 
 .PARAMETER AllowDirty
     Continúa aunque haya archivos nuevos sin rastrear.
@@ -161,8 +161,13 @@ try {
         if ($LASTEXITCODE -ne 0) { Die "La compilación falló. Release abortado." }
         Ok "Compilación correcta."
 
-        # El proyecto de pruebas es el Tier D y todavía no existe. Cuando exista bajo tests\, este
-        # bloque lo ejecutará solo, sin tocar el script.
+        # Todo .csproj bajo tests\ se ejecuta, sin listarlos aquí: hoy son OfiConvert.Tests (unitarias) y
+        # OfiConvert.UiTests (FlaUI, Tier D).
+        #
+        # OJO: los UI tests ARRANCAN LA APP de verdad y la conducen — necesitan un escritorio interactivo,
+        # y por eso este script corre en la máquina del desarrollador y no en un runner de CI (ver
+        # ROADMAP, "Decisiones cerradas"). Verán aparecer y desaparecer la ventana unos segundos: es
+        # normal. No necesitan Office ni LibreOffice instalado: ninguno convierte un archivo.
         $testProjects = @(Get-ChildItem $testsDir -Filter *.csproj -Recurse -ErrorAction SilentlyContinue)
         if ($testProjects.Count -gt 0) {
             foreach ($proj in $testProjects) {
@@ -172,7 +177,7 @@ try {
             }
             Ok "Pruebas correctas."
         } else {
-            Warn "NO hay proyecto de pruebas (es el Tier D de la hoja de ruta): este release sale sin ninguna prueba automatizada. Solo se ha comprobado que compila."
+            Warn "NO se encontró ningún proyecto de pruebas bajo tests\: este release saldría sin ninguna prueba automatizada. Solo se ha comprobado que compila."
         }
     }
 

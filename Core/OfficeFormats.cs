@@ -1,4 +1,4 @@
-namespace OfiConvert.Models;
+namespace OfiConvert.Core;
 
 /// <summary>
 /// Formatos de entrada admitidos. Fuente única: la usan los motores de conversión, el menú

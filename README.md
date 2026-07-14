@@ -113,12 +113,16 @@ cd OfiConvert
 
 # Compilar
 dotnet build OfiConvert.slnx -c Release
+dotnet build OfiConvert.slnx -c Debug
 
 # Ejecutar
 dotnet run --project OfiConvert.csproj
 
 # Pruebas
 dotnet test tests\OfiConvert.Tests\OfiConvert.Tests.csproj
+
+# Pruebas UI
+dotnet test tests\OfiConvert.UiTests\OfiConvert.UiTests.csproj
 
 # Publicar (self-contained, win-x64)
 dotnet publish OfiConvert.csproj -c Release -r win-x64 --self-contained -o ./publish

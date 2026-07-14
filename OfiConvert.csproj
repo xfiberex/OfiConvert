@@ -20,9 +20,9 @@
     <SignAssembly>false</SignAssembly>
     <Copyright>Ricky Angel Jimenez Bueno</Copyright>
     <Description>Convertidor por lotes de documentos Office (Word, Excel, PowerPoint) a PDF, HTML, CSV, PNG y JPG</Description>
-    <Version>2.2.0</Version>
-    <AssemblyVersion>2.2.0.0</AssemblyVersion>
-    <FileVersion>2.2.0.0</FileVersion>
+    <Version>2.3.0</Version>
+    <AssemblyVersion>2.3.0.0</AssemblyVersion>
+    <FileVersion>2.3.0.0</FileVersion>
     <AssemblyTitle>OfiConvert</AssemblyTitle>
     <Product>OfiConvert</Product>
     <EnableMsixTooling>true</EnableMsixTooling>
