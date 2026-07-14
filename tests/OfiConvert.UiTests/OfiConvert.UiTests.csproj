@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <!-- Mismo TFM que la app: es lo que permite declararla como dependencia de compilación (abajo). -->
+    <TargetFramework>net10.0-windows10.0.22621.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
@@ -9,9 +10,18 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
-  <!-- Sin ProjectReference a la app: estos tests conducen el .exe YA COMPILADO desde fuera, como haría un
-       usuario. Referenciarlo cargaría el WinUI de la app dentro del proceso de test, que es justo lo que
-       no se quiere. La ruta del .exe se resuelve en AppFixture (o se fuerza con OFICONVERT_EXE). -->
+  <!-- ReferenceOutputAssembly="false": la app se COMPILA antes de estas pruebas, pero su ensamblado NO se
+       referencia — cargar el WinUI de la app dentro del proceso de test es justo lo que no se quiere; estos
+       tests conducen el .exe desde fuera, como haría un usuario (la ruta la resuelve AppFixture, o se fuerza
+       con OFICONVERT_EXE).
+
+       Sin esta referencia, `dotnet test` sobre este proyecto NO recompilaba la app y los tests conducían el
+       .exe VIEJO de bin\: pasaban en verde contra un binario que ya no existía. Un test que aprueba código
+       que no es el que se va a publicar es peor que no tener test. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\OfiConvert.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="FlaUI.Core" Version="5.0.0" />
     <PackageReference Include="FlaUI.UIA3" Version="5.0.0" />

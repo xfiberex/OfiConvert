@@ -113,17 +113,12 @@
     <system:String x:Key="TrayNotifErrors">Conversão concluída: {0} bem-sucedido(s), {1} com erros.</system:String>
 
     <!-- Messages -->
-    <system:String x:Key="MsgNoFiles">Nenhum arquivo selecionado.</system:String>
     <system:String x:Key="MsgFileTooBig">O arquivo '{0}' excede o limite de 500 MB e não será adicionado.</system:String>
     <system:String x:Key="MsgOfficeNotFound">O Microsoft Office não está instalado ou não pode ser acessado.
 
 Este aplicativo requer o Microsoft Office (Word, Excel e/ou PowerPoint) instalado no sistema para converter arquivos em PDF.
 
 Será tentado usar o LibreOffice como alternativa, se disponível.</system:String>
-    <system:String x:Key="MsgSelectOutputFolder">Você não selecionou uma pasta de destino.
-
-Deseja selecionar uma pasta para salvar os arquivos convertidos?</system:String>
-    <system:String x:Key="MsgSelectOutputFolderTitle">Selecionar pasta de destino</system:String>
     <system:String x:Key="MsgConversionSuccess">Conversão bem-sucedida</system:String>
     <system:String x:Key="MsgConversionErrors">Conversão concluída com erros</system:String>
     <system:String x:Key="MsgFilesConverted">{0} arquivo(s) convertido(s) com sucesso.</system:String>
@@ -133,8 +128,6 @@ Deseja selecionar uma pasta para salvar os arquivos convertidos?</system:String>
 
 Deseja cancelar a conversão e sair?</system:String>
     <system:String x:Key="MsgCancelConfirmTitle">Confirmar fechamento</system:String>
-    <system:String x:Key="MsgCannotClearConverting">Não é possível limpar durante a conversão.</system:String>
-    <system:String x:Key="MsgNoFilesToClear">Nenhum arquivo para limpar.</system:String>
     <system:String x:Key="MsgConversionComplete">Conversão concluída!</system:String>
     <system:String x:Key="MsgPasswordProtected">O arquivo está protegido por senha.</system:String>
     <system:String x:Key="MsgCorruptFile">O arquivo parece estar corrompido.</system:String>
@@ -155,5 +148,24 @@ Deseja cancelar a conversão e sair?</system:String>
     <system:String x:Key="FilterTxt">Arquivo de texto|*.txt</system:String>
     <system:String x:Key="TitleSelectFiles">Selecionar arquivos do Office</system:String>
     <system:String x:Key="TitleSelectOutputFolder">Selecionar pasta de destino para arquivos convertidos</system:String>
+
+
+    <!-- About / legal -->
+    <system:String x:Key="LblAbout">Sobre</system:String>
+    <system:String x:Key="BtnLicense">Licença</system:String>
+    <system:String x:Key="BtnThirdParty">Avisos de terceiros</system:String>
+    <system:String x:Key="MsgLegalUnavailable">Texto não disponível.</system:String>
+
+
+    <!-- Tier G: UI/UX -->
+    <system:String x:Key="MsgClearHistoryConfirm">Todos os registros do histórico serão excluídos. Esta ação não pode ser desfeita.
+
+Continuar?</system:String>
+    <system:String x:Key="MsgClearHistoryConfirmTitle">Limpar histórico</system:String>
+    <system:String x:Key="TipRemoveFile">Remover da lista</system:String>
+    <system:String x:Key="LblNoHistorySubtitle">As conversões que você fizer aparecerão aqui</system:String>
+    <system:String x:Key="LblGroupAppearance">Aparência</system:String>
+    <system:String x:Key="LblGroupConversion">Conversão</system:String>
+    <system:String x:Key="LblGroupIntegration">Integração e atualizações</system:String>
 
 </ResourceDictionary>

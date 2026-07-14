@@ -88,7 +88,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     public partial string TotalSize { get; set; }
 
+    // Los botones se apagan solos cuando no hay nada que hacer: la cola vacía deshabilita Convertir y
+    // Limpiar, y una conversión en curso los deshabilita también (ver CanWorkWithQueue).
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConvertFilesCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ClearFilesCommand))]
     public partial int FileCount { get; set; }
 
     [ObservableProperty]
@@ -101,6 +105,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public partial string ProgressPercentage { get; set; }
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConvertFilesCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ClearFilesCommand))]
     public partial bool IsConverting { get; set; }
 
     [ObservableProperty]
@@ -138,6 +144,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     public partial ObservableCollection<ConversionHistoryEntry> ConversionHistory { get; set; }
+
+    /// <summary>
+    /// Cuántas entradas tiene el historial. Existe para que los tres botones del historial (exportar CSV,
+    /// exportar TXT y limpiarlo) <b>se apaguen</b> cuando no hay nada: exportar un historial vacío
+    /// generaba un CSV con solo la cabecera, y "Limpiar historial" invitaba a borrar la nada.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ExportHistoryCsvCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ExportHistoryTxtCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ClearHistoryCommand))]
+    public partial int HistoryCount { get; set; }
 
     // Settings
     [ObservableProperty]
@@ -255,23 +272,19 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    [RelayCommand]
+    /// <summary>
+    /// Hay algo que convertir o que limpiar, y no se está convirtiendo ya.
+    /// </summary>
+    /// <remarks>
+    /// Antes NINGÚN comando tenía CanExecute: los botones estaban siempre encendidos y la app compensaba
+    /// riñendo con un diálogo («No hay archivos seleccionados»). Apagarlos es mejor producto —el usuario
+    /// ve de un vistazo qué puede hacer— y **quita** código: tres diálogos y sus claves en 8 idiomas.
+    /// </remarks>
+    private bool CanWorkWithQueue() => SelectedFiles.Count > 0 && !IsConverting;
+
+    [RelayCommand(CanExecute = nameof(CanWorkWithQueue))]
     private void ClearFiles()
     {
-        if (IsConverting)
-        {
-            _dialogService.ShowInformation(
-                GetLocalizedString("MsgCannotClearConverting"),
-                GetLocalizedString("MsgWarning"));
-            return;
-        }
-
-        if (SelectedFiles.Count == 0)
-        {
-            _dialogService.ShowInformation(GetLocalizedString("MsgNoFilesToClear"));
-            return;
-        }
-
         SelectedFiles.Clear();
         _selectedFilePaths.Clear();
         UpdateTotals();
@@ -320,20 +333,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     #region Conversion Process
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWorkWithQueue))]
     private async Task ConvertFilesAsync()
     {
         ShowConversionResults = false;
         ConversionErrors.Clear();
 
-        if (SelectedFiles.Count == 0)
-        {
-            _dialogService.ShowInformation(GetLocalizedString("MsgNoFiles"));
-            return;
-        }
-
-        if (!await EnsureOutputFolderSelectedAsync())
-            return;
+        // Sin carpeta elegida ya NO se interrumpe al usuario: cada documento se convierte junto al
+        // original, que es lo que la UI prometía desde el principio (ver GetDestinationFolder).
 
         // Check for available conversion engine
         bool officeAvailable = _officeService.IsOfficeInstalled();
@@ -395,29 +402,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 file.StateMessage = GetLocalizedString("StatePending");
             }
         }
-    }
-
-    private async Task<bool> EnsureOutputFolderSelectedAsync()
-    {
-        if (UseCustomOutputFolder && !string.IsNullOrEmpty(OutputFolder))
-            return true;
-
-        var shouldSelect = await _dialogService.ShowConfirmationAsync(
-            GetLocalizedString("MsgSelectOutputFolder"),
-            GetLocalizedString("MsgSelectOutputFolderTitle"));
-
-        if (!shouldSelect)
-            return false;
-
-        var folder = await _dialogService.ShowFolderBrowserDialogAsync(
-            GetLocalizedString("TitleSelectOutputFolder"));
-
-        if (string.IsNullOrEmpty(folder))
-            return false;
-
-        OutputFolder = folder;
-        UseCustomOutputFolder = true;
-        return true;
     }
 
     private async Task PerformConversionAsync(bool officeAvailable)
@@ -600,22 +584,42 @@ public partial class MainViewModel : ObservableObject, IDisposable
         return result;
     }
 
+    /// <summary>
+    /// Carpeta donde se escribe el resultado: la que eligió el usuario o, si no eligió ninguna, <b>la del
+    /// propio documento</b>.
+    /// </summary>
+    /// <remarks>
+    /// Esto es lo que la UI prometía desde siempre («Misma ubicación que archivos originales») y **no
+    /// hacía**: sin carpeta elegida, la app interrumpía con un diálogo y, si el usuario decía que no,
+    /// cancelaba el lote entero. Ahora la promesa se cumple y convertir no exige configurar nada.
+    /// </remarks>
+    private string GetDestinationFolder(FileItem fileItem)
+    {
+        if (UseCustomOutputFolder && !string.IsNullOrWhiteSpace(OutputFolder))
+            return OutputFolder;
+
+        return Path.GetDirectoryName(fileItem.Path)
+            ?? throw new InvalidOperationException($"No se pudo determinar la carpeta de '{fileItem.Path}'.");
+    }
+
     private string GetOutputPath(FileItem fileItem)
     {
         var format = fileItem.Options.OutputFormat;
+        var destination = GetDestinationFolder(fileItem);
 
         if (format is OutputFormat.PNG or OutputFormat.JPG &&
             fileItem.Extension.ToUpper() is "PPT" or "PPTX")
         {
+            // Una presentación son N imágenes: van a su propia subcarpeta, con el nombre del documento.
             var folderName = Path.GetFileNameWithoutExtension(fileItem.Name);
-            var outputDir = Path.Combine(OutputFolder, folderName);
+            var outputDir = OutputPath.GetSafeFolder(destination, folderName);
             Directory.CreateDirectory(outputDir);
             return outputDir;
         }
 
         var ext = OutputFormatHelper.GetFileExtension(format);
         var outputFileName = Path.ChangeExtension(fileItem.Name, ext);
-        return OutputPath.GetSafe(OutputFolder, outputFileName);
+        return OutputPath.GetSafe(destination, outputFileName);
     }
 
     /// <summary>Retira del listado los archivos del lote recién convertido, respetando los que se hayan añadido mientras corría.</summary>
@@ -695,34 +699,49 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _historyService.AddEntry(entry);
         var dq = DispatcherQueue.GetForCurrentThread();
         if (dq is not null)
-        {
-            dq.TryEnqueue(() =>
-            {
-                ConversionHistory.Insert(0, entry);
-                if (ConversionHistory.Count > 500) ConversionHistory.RemoveAt(ConversionHistory.Count - 1);
-            });
-        }
+            dq.TryEnqueue(() => InsertHistoryEntry(entry));
         else
-        {
-            ConversionHistory.Insert(0, entry);
-            if (ConversionHistory.Count > 500) ConversionHistory.RemoveAt(ConversionHistory.Count - 1);
-        }
+            InsertHistoryEntry(entry);
+    }
+
+    private void InsertHistoryEntry(ConversionHistoryEntry entry)
+    {
+        ConversionHistory.Insert(0, entry);
+        if (ConversionHistory.Count > 500) ConversionHistory.RemoveAt(ConversionHistory.Count - 1);
+
+        // Mantiene encendidos los botones del historial en cuanto hay una sola entrada.
+        HistoryCount = ConversionHistory.Count;
     }
 
     private void RefreshHistory()
     {
         var history = _historyService.GetHistory();
         ConversionHistory = new ObservableCollection<ConversionHistoryEntry>(history.Take(500));
+        HistoryCount = ConversionHistory.Count;
     }
 
-    [RelayCommand]
-    private void ClearHistory()
+    /// <summary>Hay historial que exportar o que borrar.</summary>
+    private bool HasHistory() => HistoryCount > 0;
+
+    /// <summary>
+    /// Borrar el historial es la <b>única acción irreversible</b> de la app —hasta 1000 entradas— y era la
+    /// única sin confirmación: botón rojo, siempre habilitado, un clic y adiós.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(HasHistory))]
+    private async Task ClearHistoryAsync()
     {
+        var confirmed = await _dialogService.ShowConfirmationAsync(
+            GetLocalizedString("MsgClearHistoryConfirm"),
+            GetLocalizedString("MsgClearHistoryConfirmTitle"));
+
+        if (!confirmed) return;
+
         _historyService.ClearHistory();
         ConversionHistory.Clear();
+        HistoryCount = 0;
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(HasHistory))]
     private async Task ExportHistoryCsvAsync()
     {
         var path = await _dialogService.ShowSaveFileDialogAsync(
@@ -737,7 +756,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(HasHistory))]
     private async Task ExportHistoryTxtAsync()
     {
         var path = await _dialogService.ShowSaveFileDialogAsync(

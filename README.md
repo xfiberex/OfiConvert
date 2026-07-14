@@ -1,9 +1,22 @@
 # OfiConvert
 
+[![Release](https://img.shields.io/github/v/release/xfiberex/OfiConvert?label=release)](https://github.com/xfiberex/OfiConvert/releases/latest)
+[![Descargas](https://img.shields.io/github/downloads/xfiberex/OfiConvert/total?label=descargas)](https://github.com/xfiberex/OfiConvert/releases)
+[![Licencia](https://img.shields.io/badge/licencia-MIT-blue)](LICENSE)
+[![Plataforma](https://img.shields.io/badge/Windows-10%2F11%20x64-0078D4)](#requisitos-del-sistema)
+[![.NET](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com/)
+[![Idiomas](https://img.shields.io/badge/idiomas-8-success)](#)
+
 Conversor de escritorio **por lotes** de documentos de Microsoft Office (Word, Excel, PowerPoint) a
 **PDF, HTML, CSV, PNG y JPG**.
 
 Construido con **WinUI 3** (Windows App SDK) y patrón MVVM.
+
+| Conversión | Configuración |
+|---|---|
+| ![Ventana principal](docs/screenshots/main-light.png) | ![Configuración](docs/screenshots/settings-dark.png) |
+
+*Tema claro y oscuro. Las capturas se regeneran conduciendo la app real: `.\tools\capture-screenshots.ps1`.*
 
 ---
 
@@ -64,6 +77,8 @@ LibreOffice puede cubrirlo.
   los archivos se encolan en la ventana ya abierta.
 - **Protección contra macros**: los documentos se abren en solo lectura y con las macros deshabilitadas.
 - **Sin sobrescrituras**: si el destino ya existe, se renombra (`informe (1).pdf`).
+- **Sin configurar nada**: sin carpeta de destino elegida, cada documento se convierte **junto al original**.
+- **Accesible**: todos los controles tienen nombre para lectores de pantalla, y la app se maneja con teclado.
 - Barra de progreso, estado por archivo y aviso al terminar (sonido + parpadeo en la barra de tareas)
   cuando la ventana no está en primer plano.
 - **Historial** de conversiones, exportable a CSV o TXT.
@@ -89,7 +104,8 @@ manipulación **en tránsito**, pero no protegería frente a un compromiso de la
 1. **Añade archivos**: botón `Archivo`, arrastrándolos a la ventana, o desde el menú contextual del
    Explorador.
 2. **Elige el formato** de salida (según el tipo de documento).
-3. **Elige la carpeta de destino** *(opcional)*: si no la eliges, se te pedirá al convertir.
+3. **Elige la carpeta de destino** *(opcional)*: si no eliges ninguna, **cada documento se convierte junto
+   al original**.
 4. **Convertir**. Puedes pausar, reanudar o cancelar mientras corre.
 
 ---
@@ -121,8 +137,11 @@ dotnet run --project OfiConvert.csproj
 # Pruebas
 dotnet test tests\OfiConvert.Tests\OfiConvert.Tests.csproj
 
-# Pruebas UI
+# Pruebas UI (abren la app real y la conducen; no necesitan Office ni elevación)
 dotnet test tests\OfiConvert.UiTests\OfiConvert.UiTests.csproj
+
+# Regenerar las capturas del README (conduce la app real)
+.\tools\capture-screenshots.ps1
 
 # Publicar (self-contained, win-x64)
 dotnet publish OfiConvert.csproj -c Release -r win-x64 --self-contained -o ./publish
@@ -161,12 +180,15 @@ OfiConvert/
 ├── Assets/          Icono de la aplicación
 ├── Behaviors/       Arrastrar y soltar
 ├── Converters/      Converters de binding (XAML)
+├── Core/            Lógica pura y testeada: rutas de salida seguras, magic bytes, CSV, formatos, legal
+├── docs/            Capturas (regenerables)
 ├── Helpers/         Localización, rutas de datos, aviso al terminar, argumentos de activación
 ├── installer/       Script de Inno Setup
 ├── Lang/            Diccionarios de los 8 idiomas (se leen en tiempo de ejecución)
 ├── Models/          Modelos y enumeraciones
 ├── Services/        Conversión (Office/LibreOffice), validación, historial, ajustes, updater…
-├── tests/           Pruebas (xUnit)
+├── tests/           Pruebas: OfiConvert.Tests (xUnit) y OfiConvert.UiTests (FlaUI, sobre la app real)
+├── tools/           capture-screenshots.ps1
 ├── ViewModels/      MainViewModel (MVVM)
 ├── App.xaml(.cs)    Arranque, activaciones
 ├── Program.cs       Punto de entrada, instancia única
@@ -203,9 +225,20 @@ Documentación para desarrollo: [`CONTEXT.md`](CONTEXT.md) (arquitectura, decisi
 
 ---
 
-## Licencia
+## Licencia y componentes de terceros
 
-[MIT](LICENSE)
+OfiConvert es software libre bajo licencia [MIT](LICENSE).
+
+El instalador es *self-contained*: **redistribuye** el runtime de .NET y varias bibliotecas, y **no todas
+son MIT**. Serilog es Apache-2.0, WebView2 es BSD-3-Clause y el Windows App SDK se redistribuye bajo los
+términos de licencia de Microsoft. Todo está detallado —con el texto íntegro de las licencias que lo
+exigen— en [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt).
+
+Ambos textos viajan **embebidos dentro del `.exe`** y se consultan desde la propia app, en
+**Configuración → Acerca de → Licencia / Avisos de terceros**.
+
+> **Office y LibreOffice no se redistribuyen.** OfiConvert los *automatiza* si están instalados en el
+> equipo; no incluye ninguna parte de ellos.
 
 ## Autor
 

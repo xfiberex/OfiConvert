@@ -113,17 +113,12 @@
     <system:String x:Key="TrayNotifErrors">変換完了：{0} 個成功、{1} 個にエラーがあります。</system:String>
 
     <!-- Messages -->
-    <system:String x:Key="MsgNoFiles">ファイルが選択されていません。</system:String>
     <system:String x:Key="MsgFileTooBig">ファイル '{0}' は 500 MB の制限を超えているため、追加されません。</system:String>
     <system:String x:Key="MsgOfficeNotFound">Microsoft Office がインストールされていないか、アクセスできません。
 
 このアプリケーションでは、ファイルを PDF に変換するために、システムに Microsoft Office（Word、Excel、PowerPoint）がインストールされている必要があります。
 
 利用可能な場合は、LibreOffice が代替として使用されます。</system:String>
-    <system:String x:Key="MsgSelectOutputFolder">出力フォルダーが選択されていません。
-
-変換されたファイルを保存するフォルダーを選択しますか？</system:String>
-    <system:String x:Key="MsgSelectOutputFolderTitle">出力フォルダーを選択</system:String>
     <system:String x:Key="MsgConversionSuccess">変換成功</system:String>
     <system:String x:Key="MsgConversionErrors">変換はエラーで完了しました</system:String>
     <system:String x:Key="MsgFilesConverted">{0} 個のファイルが正常に変換されました。</system:String>
@@ -133,8 +128,6 @@
 
 変換をキャンセルして終了しますか？</system:String>
     <system:String x:Key="MsgCancelConfirmTitle">閉じる確認</system:String>
-    <system:String x:Key="MsgCannotClearConverting">変換中はクリアできません。</system:String>
-    <system:String x:Key="MsgNoFilesToClear">クリアするファイルがありません。</system:String>
     <system:String x:Key="MsgConversionComplete">変換が完了しました！</system:String>
     <system:String x:Key="MsgPasswordProtected">ファイルはパスワードで保護されています。</system:String>
     <system:String x:Key="MsgCorruptFile">ファイルが破損しているようです。</system:String>
@@ -155,5 +148,24 @@
     <system:String x:Key="FilterTxt">テキストファイル|*.txt</system:String>
     <system:String x:Key="TitleSelectFiles">Office ファイルを選択</system:String>
     <system:String x:Key="TitleSelectOutputFolder">変換ファイルの出力フォルダーを選択</system:String>
+
+
+    <!-- About / legal -->
+    <system:String x:Key="LblAbout">バージョン情報</system:String>
+    <system:String x:Key="BtnLicense">ライセンス</system:String>
+    <system:String x:Key="BtnThirdParty">サードパーティの通知</system:String>
+    <system:String x:Key="MsgLegalUnavailable">テキストを利用できません。</system:String>
+
+
+    <!-- Tier G: UI/UX -->
+    <system:String x:Key="MsgClearHistoryConfirm">履歴のすべての記録が削除されます。この操作は取り消せません。
+
+続行しますか？</system:String>
+    <system:String x:Key="MsgClearHistoryConfirmTitle">履歴を消去</system:String>
+    <system:String x:Key="TipRemoveFile">リストから削除</system:String>
+    <system:String x:Key="LblNoHistorySubtitle">実行した変換がここに表示されます</system:String>
+    <system:String x:Key="LblGroupAppearance">外観</system:String>
+    <system:String x:Key="LblGroupConversion">変換</system:String>
+    <system:String x:Key="LblGroupIntegration">統合と更新</system:String>
 
 </ResourceDictionary>

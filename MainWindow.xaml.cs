@@ -2,9 +2,11 @@
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using OfiConvert.Behaviors;
+using OfiConvert.Core;
 using OfiConvert.Helpers;
 using OfiConvert.Models;
 using OfiConvert.ViewModels;
@@ -66,7 +68,55 @@ public sealed partial class MainWindow : Window
         ApplyThemeComboSelection(ViewModel.SelectedTheme);
         ApplyLanguageSelection(ViewModel.SelectedLanguage);
 
+        // La versión sale del ensamblado, no de una constante: es la MISMA fuente contra la que el
+        // updater compara el tag del release, así que aquí no puede mentir.
+        txtAboutVersion.Text = $"OfiConvert {LegalText.Version()}  ·  MIT  ·  Ricky Angel Jimenez Bueno";
+
         _ = CheckForAppUpdateAsync();
+    }
+
+    private void BtnLicencia_Click(object sender, RoutedEventArgs e)
+        => _ = ShowLegalDialogAsync(LocalizationService.Instance["BtnLicense"], LegalText.License());
+
+    private void BtnAvisosTerceros_Click(object sender, RoutedEventArgs e)
+        => _ = ShowLegalDialogAsync(LocalizationService.Instance["BtnThirdParty"], LegalText.ThirdParty());
+
+    /// <summary>
+    /// Muestra un texto legal embebido en el <c>.exe</c>. Monoespaciado porque los avisos vienen
+    /// maquetados a 88 columnas (y la licencia Apache, con su sangrado): con fuente proporcional se
+    /// deshace.
+    /// </summary>
+    private async Task ShowLegalDialogAsync(string title, string body)
+    {
+        // LegalText es defensivo y devuelve "" si el recurso embebido faltara. Se dice con todas las
+        // letras, en vez de abrir un diálogo en blanco que parece un cuelgue de la app.
+        if (string.IsNullOrWhiteSpace(body))
+            body = LocalizationService.Instance["MsgLegalUnavailable"];
+
+        var text = new TextBlock
+        {
+            Text = body,
+            TextWrapping = TextWrapping.Wrap,
+            IsTextSelectionEnabled = true,
+            FontFamily = new FontFamily("Consolas"),
+            FontSize = 12
+        };
+        AutomationProperties.SetAutomationId(text, "txtLegalBody");
+
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = new ScrollViewer
+            {
+                Content = text,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                MaxHeight = 440
+            },
+            CloseButtonText = LocalizationService.Instance["TipClose"],
+            XamlRoot = Content.XamlRoot
+        };
+
+        await dialog.ShowAsync();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)

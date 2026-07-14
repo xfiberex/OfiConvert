@@ -94,25 +94,60 @@ public sealed class MainWindowTests : IDisposable
         Assert.Empty(list!.Items);
     }
 
-    /// <summary>La app arranca en estado "lista", no bloqueada.</summary>
-    [Fact]
-    public void ConvertButton_IsEnabledWhenIdle()
+    /// <summary>
+    /// Tier G: con la cola vacía, «Convertir» y «Limpiar» están APAGADOS.
+    /// </summary>
+    /// <remarks>
+    /// Este test decía justo lo contrario (<c>ConvertButton_IsEnabledWhenIdle</c>): la app tenía todos los
+    /// botones siempre encendidos y compensaba riñendo con un diálogo («No hay archivos seleccionados»).
+    /// Darle la vuelta es la señal de que el cambio llegó de verdad a la pantalla, y no solo al ViewModel.
+    /// </remarks>
+    [Theory]
+    [InlineData("btnConvert")]
+    [InlineData("btnClear")]
+    public void QueueButton_IsDisabledWhenThereIsNothingToDo(string automationId)
     {
-        var button = Window.FindFirstDescendant(cf => cf.ByAutomationId("btnConvert"));
+        var button = Window.FindFirstDescendant(cf => cf.ByAutomationId(automationId));
+
+        Assert.NotNull(button);
+        Assert.Equal(ControlType.Button, button!.ControlType);
+        Assert.False(button.IsEnabled, $"'{automationId}' está habilitado con la cola vacía: invita a pulsarlo para nada.");
+    }
+
+    /// <summary>«Archivo» sí: es lo ÚNICO que se puede hacer con la app recién abierta.</summary>
+    [Fact]
+    public void SelectFileButton_IsAlwaysAvailable()
+    {
+        var button = Window.FindFirstDescendant(cf => cf.ByAutomationId("btnSelectFile"));
 
         Assert.NotNull(button);
         Assert.True(button!.IsEnabled);
-        Assert.Equal(ControlType.Button, button.ControlType);
     }
 
-    /// <summary>El historial exporta a CSV y a TXT: los dos botones existen y se pueden pulsar.</summary>
+    /// <summary>En reposo no hay nada que progresar: la barra no ocupa sitio para enseñar un 0%.</summary>
     [Fact]
-    public void HistoryTab_HasItsExportButtons()
+    public void ProgressBar_IsNotShownWhenIdle()
+    {
+        var bar = Window.FindFirstDescendant(cf => cf.ByControlType(ControlType.ProgressBar));
+
+        Assert.True(bar is null || bar.IsOffscreen, "La barra de progreso se ve con la app en reposo.");
+    }
+
+    /// <summary>
+    /// Tier G: con el historial vacío, sus tres botones están APAGADOS. Exportar un historial vacío
+    /// generaba un CSV con solo la cabecera, y «Limpiar historial» invitaba a borrar la nada.
+    /// </summary>
+    [Theory]
+    [InlineData("btnExportCsv")]
+    [InlineData("btnExportTxt")]
+    [InlineData("btnClearHistory")]
+    public void HistoryButton_IsDisabledWhenThereIsNoHistory(string automationId)
     {
         Tabs.Select(Window, Tabs.History, "btnExportCsv");
 
-        Assert.NotNull(Window.FindFirstDescendant(cf => cf.ByAutomationId("btnExportCsv")));
-        Assert.NotNull(Window.FindFirstDescendant(cf => cf.ByAutomationId("btnExportTxt")));
-        Assert.NotNull(Window.FindFirstDescendant(cf => cf.ByAutomationId("btnClearHistory")));
+        var button = Window.FindFirstDescendant(cf => cf.ByAutomationId(automationId));
+
+        Assert.NotNull(button);
+        Assert.False(button!.IsEnabled, $"'{automationId}' está habilitado con el historial vacío.");
     }
 }

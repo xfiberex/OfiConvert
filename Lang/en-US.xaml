@@ -113,17 +113,12 @@
     <system:String x:Key="TrayNotifErrors">Conversion complete: {0} successful, {1} with errors.</system:String>
 
     <!-- Messages -->
-    <system:String x:Key="MsgNoFiles">No files selected.</system:String>
     <system:String x:Key="MsgFileTooBig">The file '{0}' exceeds the 500 MB limit and will not be added.</system:String>
     <system:String x:Key="MsgOfficeNotFound">Microsoft Office is not installed or cannot be accessed.
 
 This application requires Microsoft Office (Word, Excel and/or PowerPoint) installed on the system.
 
 LibreOffice will be used as an alternative if available.</system:String>
-    <system:String x:Key="MsgSelectOutputFolder">You have not selected an output folder.
-
-Would you like to select a folder to save the converted files?</system:String>
-    <system:String x:Key="MsgSelectOutputFolderTitle">Select output folder</system:String>
     <system:String x:Key="MsgConversionSuccess">Conversion successful</system:String>
     <system:String x:Key="MsgConversionErrors">Conversion finished with errors</system:String>
     <system:String x:Key="MsgFilesConverted">{0} file(s) converted successfully.</system:String>
@@ -133,8 +128,6 @@ Would you like to select a folder to save the converted files?</system:String>
 
 Do you want to cancel the conversion and exit?</system:String>
     <system:String x:Key="MsgCancelConfirmTitle">Confirm close</system:String>
-    <system:String x:Key="MsgCannotClearConverting">Cannot clear while converting.</system:String>
-    <system:String x:Key="MsgNoFilesToClear">No files to clear.</system:String>
     <system:String x:Key="MsgConversionComplete">Conversion complete!</system:String>
     <system:String x:Key="MsgPasswordProtected">The file is password-protected.</system:String>
     <system:String x:Key="MsgCorruptFile">The file appears to be corrupt.</system:String>
@@ -155,5 +148,24 @@ Do you want to cancel the conversion and exit?</system:String>
     <system:String x:Key="FilterTxt">Text File|*.txt</system:String>
     <system:String x:Key="TitleSelectFiles">Select Office files</system:String>
     <system:String x:Key="TitleSelectOutputFolder">Select output folder for converted files</system:String>
+
+
+    <!-- About / legal -->
+    <system:String x:Key="LblAbout">About</system:String>
+    <system:String x:Key="BtnLicense">License</system:String>
+    <system:String x:Key="BtnThirdParty">Third-party notices</system:String>
+    <system:String x:Key="MsgLegalUnavailable">Text not available.</system:String>
+
+
+    <!-- Tier G: UI/UX -->
+    <system:String x:Key="MsgClearHistoryConfirm">All history records will be deleted. This cannot be undone.
+
+Continue?</system:String>
+    <system:String x:Key="MsgClearHistoryConfirmTitle">Clear history</system:String>
+    <system:String x:Key="TipRemoveFile">Remove from list</system:String>
+    <system:String x:Key="LblNoHistorySubtitle">The conversions you make will appear here</system:String>
+    <system:String x:Key="LblGroupAppearance">Appearance</system:String>
+    <system:String x:Key="LblGroupConversion">Conversion</system:String>
+    <system:String x:Key="LblGroupIntegration">Integration and updates</system:String>
 
 </ResourceDictionary>

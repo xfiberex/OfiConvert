@@ -103,8 +103,10 @@
                                                Style="{StaticResource BodyStrongTextBlockStyle}"/>
 
                                     <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <!-- Sin estilo de acento: el acento marca UNA acción principal, y aquí
+                                             la principal es Convertir. Dos botones rojos compitiendo no
+                                             señalan nada. -->
                                         <Button x:Name="btnSelectFile"
-                                                Style="{StaticResource AccentButtonStyle}"
                                                 Content="{Binding [BtnSelectFile], Source={StaticResource Loc}}"
                                                 IsEnabled="{Binding IsConverting, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
                                                 Command="{Binding SelectFilesCommand}"
@@ -210,10 +212,15 @@
                                                 Command="{Binding SelectOutputFolderCommand}"
                                                 Height="36"/>
 
+                                        <!-- Botón SOLO icono: sin AutomationProperties.Name, un lector de
+                                             pantalla anuncia "botón" y nada más. Se le da el mismo texto
+                                             que su tooltip. -->
                                         <Button x:Name="btnClearOutputFolder"
                                                 Grid.Column="2"
                                                 IsEnabled="{Binding UseCustomOutputFolder, Mode=OneWay}"
                                                 Command="{Binding ClearOutputFolderCommand}"
+                                                AutomationProperties.Name="{Binding [TipDefaultFolder], Source={StaticResource Loc}}"
+                                                ToolTipService.ToolTip="{Binding [TipDefaultFolder], Source={StaticResource Loc}}"
                                                 Height="36">
                                             <FontIcon Glyph="&#xE711;" FontSize="14"/>
                                         </Button>
@@ -329,10 +336,12 @@
                                                             <Run Text="&#x21BB; "/><Run Text="{Binding RetryCount}"/>
                                                         </TextBlock>
 
-                                                        <!-- Remove Button -->
+                                                        <!-- Remove Button (solo icono: necesita nombre accesible) -->
                                                         <Button Grid.Column="5"
                                                                 VerticalAlignment="Center" Padding="6"
                                                                 Tag="{Binding}"
+                                                                AutomationProperties.Name="{Binding [TipRemoveFile], Source={StaticResource Loc}}"
+                                                                ToolTipService.ToolTip="{Binding [TipRemoveFile], Source={StaticResource Loc}}"
                                                                 Click="BtnRemoveFile_Click">
                                                             <FontIcon Glyph="&#xE711;" FontSize="14"/>
                                                         </Button>
@@ -345,7 +354,10 @@
                             </Border>
 
                             <!-- Progress Bar -->
+                            <!-- La barra de progreso solo existe mientras se convierte: en reposo era una
+                                 barra vacía con un "0%" al lado, ocupando sitio para no decir nada. -->
                             <Border Grid.Row="4"
+                                    Visibility="{Binding IsConverting, Mode=OneWay}"
                                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="14">
@@ -384,6 +396,8 @@
                                                    FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
 
                                         <Button Grid.Column="2" Padding="6"
+                                                AutomationProperties.Name="{Binding [TipClose], Source={StaticResource Loc}}"
+                                                ToolTipService.ToolTip="{Binding [TipClose], Source={StaticResource Loc}}"
                                                 Command="{Binding CloseConversionResultsCommand}">
                                             <FontIcon Glyph="&#xE711;"/>
                                         </Button>
@@ -512,11 +526,23 @@
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                 BorderThickness="1" CornerRadius="8" Padding="4">
                             <Grid>
-                                <!-- Empty History -->
-                                <TextBlock x:Name="txtNoHistory"
-                                           Text="{Binding [LblNoHistory], Source={StaticResource Loc}}"
-                                           FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
+                                <!-- Estado vacío: mismo patrón que el de la pestaña de conversión (icono +
+                                     título + subtítulo). Antes era una tarjeta enorme con una sola línea
+                                     diminuta en el centro, que parecía sin terminar. -->
+                                <StackPanel x:Name="txtNoHistory"
+                                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            Spacing="8"
+                                            Visibility="{Binding HistoryCount, Mode=OneWay, Converter={StaticResource CountToVisibilityConverter}}">
+                                    <FontIcon Glyph="&#xE81C;" FontSize="48"
+                                              HorizontalAlignment="Center"
+                                              Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
+                                    <TextBlock Text="{Binding [LblNoHistory], Source={StaticResource Loc}}"
+                                               FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    <TextBlock Text="{Binding [LblNoHistorySubtitle], Source={StaticResource Loc}}"
+                                               FontSize="13" HorizontalAlignment="Center"
+                                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
+                                </StackPanel>
 
                                 <ListView x:Name="lvHistory"
                                           ItemsSource="{Binding ConversionHistory, Mode=OneWay}"
@@ -587,6 +613,13 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,8,0,0">
                         <StackPanel Spacing="10" MaxWidth="750" HorizontalAlignment="Center">
 
+                            <!-- Ajustes era una lista plana de 8 tarjetas: con tres cabeceras se lee de un
+                                 vistazo dónde está cada cosa. -->
+                            <TextBlock Text="{Binding [LblGroupAppearance], Source={StaticResource Loc}}"
+                                       Style="{StaticResource BodyStrongTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Margin="4,4,0,0"/>
+
                             <!-- Theme -->
                             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -633,6 +666,11 @@
                                     </ComboBox>
                                 </Grid>
                             </Border>
+
+                            <TextBlock Text="{Binding [LblGroupConversion], Source={StaticResource Loc}}"
+                                       Style="{StaticResource BodyStrongTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Margin="4,12,0,0"/>
 
                             <!-- Default Format -->
                             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -688,7 +726,11 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Text="{Binding [LblAutoRetry], Source={StaticResource Loc}}"
                                                    Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center"/>
+                                        <!-- Un ToggleSwitch se expone a UI Automation como un botón SIN nombre:
+                                             su etiqueta es un TextBlock aparte, que el lector de pantalla no
+                                             asocia. Sin esto anuncia "botón, activado" sin decir de qué. -->
                                         <ToggleSwitch x:Name="tsAutoRetry" Grid.Column="1"
+                                                      AutomationProperties.Name="{Binding [LblAutoRetry], Source={StaticResource Loc}}"
                                                       IsOn="{Binding AutoRetryEnabled, Mode=TwoWay}"
                                                       VerticalAlignment="Center"/>
                                     </Grid>
@@ -719,7 +761,8 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{Binding [LblShowNotifications], Source={StaticResource Loc}}"
                                                Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center"/>
-                                    <ToggleSwitch Grid.Column="1"
+                                    <ToggleSwitch x:Name="tsShowNotifications" Grid.Column="1"
+                                                  AutomationProperties.Name="{Binding [LblShowNotifications], Source={StaticResource Loc}}"
                                                   IsOn="{Binding ShowNotifications, Mode=TwoWay}"
                                                   VerticalAlignment="Center"/>
                                 </Grid>
@@ -736,11 +779,17 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{Binding [LblMinimizeToTray], Source={StaticResource Loc}}"
                                                Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center"/>
-                                    <ToggleSwitch Grid.Column="1"
+                                    <ToggleSwitch x:Name="tsMinimizeToTray" Grid.Column="1"
+                                                  AutomationProperties.Name="{Binding [LblMinimizeToTray], Source={StaticResource Loc}}"
                                                   IsOn="{Binding MinimizeToTray, Mode=TwoWay}"
                                                   VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
+
+                            <TextBlock Text="{Binding [LblGroupIntegration], Source={StaticResource Loc}}"
+                                       Style="{StaticResource BodyStrongTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Margin="4,12,0,0"/>
 
                             <!-- Context Menu -->
                             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -794,6 +843,32 @@
                                             Click="BtnBuscarActualizacion_Click" Height="36"/>
                                 </Grid>
                             </Border>
+
+                            <!-- Acerca de: versión + los textos legales EMBEBIDOS en el .exe (Core/LegalText).
+                                 Las licencias de los componentes redistribuidos obligan a mostrar su
+                                 atribución; esta es la única vía por la que el usuario llega a ella. -->
+                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,16">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="{Binding [LblAbout], Source={StaticResource Loc}}"
+                                               Style="{StaticResource BodyStrongTextBlockStyle}"/>
+
+                                    <TextBlock x:Name="txtAboutVersion"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               IsTextSelectionEnabled="True"/>
+
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button x:Name="btnLicencia"
+                                                Content="{Binding [BtnLicense], Source={StaticResource Loc}}"
+                                                Click="BtnLicencia_Click" Height="36"/>
+                                        <Button x:Name="btnAvisosTerceros"
+                                                Content="{Binding [BtnThirdParty], Source={StaticResource Loc}}"
+                                                Click="BtnAvisosTerceros_Click" Height="36"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </PivotItem>
@@ -801,4 +876,5 @@
         </Grid>
     </Grid>
 </Window>
+
 

@@ -20,9 +20,9 @@
     <SignAssembly>false</SignAssembly>
     <Copyright>Ricky Angel Jimenez Bueno</Copyright>
     <Description>Convertidor por lotes de documentos Office (Word, Excel, PowerPoint) a PDF, HTML, CSV, PNG y JPG</Description>
-    <Version>2.3.0</Version>
-    <AssemblyVersion>2.3.0.0</AssemblyVersion>
-    <FileVersion>2.3.0.0</FileVersion>
+    <Version>2.4.0</Version>
+    <AssemblyVersion>2.4.0.0</AssemblyVersion>
+    <FileVersion>2.4.0.0</FileVersion>
     <AssemblyTitle>OfiConvert</AssemblyTitle>
     <Product>OfiConvert</Product>
     <EnableMsixTooling>true</EnableMsixTooling>
@@ -49,6 +49,14 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
+  </ItemGroup>
+
+  <!-- Los textos legales viajan DENTRO del .exe: las licencias de los componentes redistribuidos
+       obligan a mostrar su atribución, y un archivo suelto junto al ejecutable se borra, se queda atrás
+       en una actualización o no llega al instalador. Los lee Core/LegalText.cs por estos LogicalName. -->
+  <ItemGroup>
+    <EmbeddedResource Include="LICENSE" LogicalName="OfiConvert.LICENSE.txt" />
+    <EmbeddedResource Include="THIRD-PARTY-NOTICES.txt" LogicalName="OfiConvert.THIRD-PARTY-NOTICES.txt" />
   </ItemGroup>
 
   <ItemGroup>

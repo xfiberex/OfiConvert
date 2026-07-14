@@ -83,6 +83,42 @@ public sealed class OutputPathTests : IDisposable
         => Assert.Throws<ArgumentException>(() => OutputPath.GetSafe(_folder, fileName));
 
     /// <summary>
+    /// Una presentación a PNG/JPG son N imágenes y van juntas en su propia subcarpeta. Aquí NO se renombra
+    /// si ya existe (convertir dos veces la misma presentación reescribe sus imágenes, que es lo esperable),
+    /// pero la garantía de contención se mantiene igual.
+    /// </summary>
+    [Fact]
+    public void GetSafeFolder_PutsTheImagesInASubfolderOfTheDestination()
+    {
+        var result = OutputPath.GetSafeFolder(_folder, "Presentacion ventas");
+
+        Assert.Equal(Path.Combine(_folder, "Presentacion ventas"), result);
+    }
+
+    [Fact]
+    public void GetSafeFolder_ReusesTheFolderIfItAlreadyExists()
+    {
+        var existing = Path.Combine(_folder, "Presentacion ventas");
+        Directory.CreateDirectory(existing);
+
+        Assert.Equal(existing, OutputPath.GetSafeFolder(_folder, "Presentacion ventas"));
+    }
+
+    [Theory]
+    [InlineData("..")]
+    [InlineData(@"..\..\evil")]
+    public void GetSafeFolder_CannotEscapeTheDestination(string folderName)
+    {
+        var result = Record.Exception(() => OutputPath.GetSafeFolder(_folder, folderName));
+
+        // O bien lo rechaza, o bien se queda dentro: lo que NO puede es acabar fuera de la carpeta.
+        if (result is null)
+            Assert.StartsWith(_folder + Path.DirectorySeparatorChar, OutputPath.GetSafeFolder(_folder, folderName), StringComparison.OrdinalIgnoreCase);
+        else
+            Assert.IsType<InvalidOperationException>(result);
+    }
+
+    /// <summary>
     /// La comprobación de contención compara con separador final. Sin él, una carpeta hermana cuyo nombre
     /// empieza igual ("Salida" / "SalidaOtra") pasaría por dentro de la carpeta destino.
     /// </summary>

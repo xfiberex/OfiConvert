@@ -113,17 +113,12 @@
     <system:String x:Key="TrayNotifErrors">转换完成：{0} 个成功，{1} 个有错误。</system:String>
 
     <!-- Messages -->
-    <system:String x:Key="MsgNoFiles">未选择文件。</system:String>
     <system:String x:Key="MsgFileTooBig">文件 '{0}' 超过 500 MB 限制，将不会被添加。</system:String>
     <system:String x:Key="MsgOfficeNotFound">未安装 Microsoft Office 或无法访问。
 
 此应用程序需要系统上安装 Microsoft Office（Word、Excel 和/或 PowerPoint）才能将文件转换为 PDF。
 
 如果可用，将尝试使用 LibreOffice 作为替代方案。</system:String>
-    <system:String x:Key="MsgSelectOutputFolder">您尚未选择输出文件夹。
-
-是否要选择一个文件夹来保存转换后的文件？</system:String>
-    <system:String x:Key="MsgSelectOutputFolderTitle">选择输出文件夹</system:String>
     <system:String x:Key="MsgConversionSuccess">转换成功</system:String>
     <system:String x:Key="MsgConversionErrors">转换完成但有错误</system:String>
     <system:String x:Key="MsgFilesConverted">已成功转换 {0} 个文件。</system:String>
@@ -133,8 +128,6 @@
 
 是否要取消转换并退出？</system:String>
     <system:String x:Key="MsgCancelConfirmTitle">确认关闭</system:String>
-    <system:String x:Key="MsgCannotClearConverting">转换过程中无法清除。</system:String>
-    <system:String x:Key="MsgNoFilesToClear">没有文件可清除。</system:String>
     <system:String x:Key="MsgConversionComplete">转换完成！</system:String>
     <system:String x:Key="MsgPasswordProtected">文件受密码保护。</system:String>
     <system:String x:Key="MsgCorruptFile">文件似乎已损坏。</system:String>
@@ -155,5 +148,24 @@
     <system:String x:Key="FilterTxt">文本文件|*.txt</system:String>
     <system:String x:Key="TitleSelectFiles">选择 Office 文件</system:String>
     <system:String x:Key="TitleSelectOutputFolder">选择转换文件的输出文件夹</system:String>
+
+
+    <!-- About / legal -->
+    <system:String x:Key="LblAbout">关于</system:String>
+    <system:String x:Key="BtnLicense">许可证</system:String>
+    <system:String x:Key="BtnThirdParty">第三方声明</system:String>
+    <system:String x:Key="MsgLegalUnavailable">文本不可用。</system:String>
+
+
+    <!-- Tier G: UI/UX -->
+    <system:String x:Key="MsgClearHistoryConfirm">将删除所有历史记录。此操作无法撤消。
+
+是否继续？</system:String>
+    <system:String x:Key="MsgClearHistoryConfirmTitle">清除历史记录</system:String>
+    <system:String x:Key="TipRemoveFile">从列表中移除</system:String>
+    <system:String x:Key="LblNoHistorySubtitle">您进行的转换将显示在此处</system:String>
+    <system:String x:Key="LblGroupAppearance">外观</system:String>
+    <system:String x:Key="LblGroupConversion">转换</system:String>
+    <system:String x:Key="LblGroupIntegration">集成与更新</system:String>
 
 </ResourceDictionary>

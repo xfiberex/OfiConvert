@@ -17,13 +17,13 @@
 | | |
 |---|---|
 | **Repositorio** | https://github.com/xfiberex/OfiConvert |
-| **Versión publicada** | **2.2.0** (2026-07-13) — Tier C. Instalador sin firmar, **con `.sha256`** |
-| **En `main`, sin publicar** | **Tier D** (pruebas) + **dos bugs de localización** que las pruebas destaparon → sale en la **2.3.0** |
-| **Estado** | Funcional; hoja de ruta **ABIERTA** — Tiers A, B, C y D ✅, quedan E y F |
+| **Versión publicada** | **2.3.0** (2026-07-14) — Tier D. Instalador sin firmar, **con `.sha256`** |
+| **En `main`, sin publicar** | **Tiers E, F y G**: legal in-app, capturas, README público, infraestructura agéntica y **3 bugs de UI/UX** → sale en la **2.4.0** |
+| **Estado** | Funcional; **hoja de ruta COMPLETADA** — Tiers 0 y A–G ✅ |
 | **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · **xUnit** + **FlaUI** · Inno Setup 6 |
-| **Licencia** | **MIT** ([`LICENSE`](LICENSE)) |
-| **Pruebas** | **170**: 152 unitarias (151 + 1 de red, omitida salvo `OFICONVERT_NETWORK_TESTS=1`) + **18 de UI** (FlaUI, contra la app real) |
-| **Hoja de ruta** | [`ROADMAP.md`](ROADMAP.md) — abierta, plan por tiers |
+| **Licencia** | **MIT** ([`LICENSE`](LICENSE)) — pero **lo que redistribuye NO es todo MIT**: ver §4 *Legal* |
+| **Pruebas** | **212**: 182 unitarias (181 + 1 de red, omitida salvo `OFICONVERT_NETWORK_TESTS=1`) + **30 de UI** (FlaUI, contra la app real) |
+| **Hoja de ruta** | [`ROADMAP.md`](ROADMAP.md) — **cerrada** |
 | **Última actualización** | 2026-07-14 |
 
 ---
@@ -67,7 +67,7 @@ OfiConvert/                    (la app vive en la RAÍZ del repo; no hay src/ �
 ├─ Core/                       LÓGICA PURA Y TESTEADA (sin UI, sin Process, sin HttpClient, sin COM):
 │                              OutputPath (salida confinada + nunca sobrescribe), FileSignature (magic
 │                              bytes), CsvField (fórmulas neutralizadas), ByteSize, OfficeFormats +
-│                              OutputFormatHelper (mapeo de formatos)
+│                              OutputFormatHelper (mapeo de formatos), LegalText (textos embebidos)
 ├─ Models/                     Datos: FileItem, ConversionOptions/Result/Progress, OutputFormat (el enum;
 │                              su mapeo vive en Core/), AppSettings…
 ├─ Helpers/
@@ -81,9 +81,13 @@ OfiConvert/                    (la app vive en la RAÍZ del repo; no hay src/ �
 ├─ installer/
 │  ├─ OfiConvert.iss           Inno Setup (la versión se la inyecta el script; no editarla a mano)
 │  └─ build-installer.ps1      Publish self-contained → instalador → .sha256 (+ firma opcional)
-├─ tests/OfiConvert.Tests/     xUnit (152): Core/, validación de archivos, activación, localización,
-│                              updater (servidor HTTP local + release real)
-├─ tests/OfiConvert.UiTests/   FlaUI/UIA3 (18): conducen el .exe REAL. Sin elevación y sin Office
+├─ tests/OfiConvert.Tests/     xUnit (163): Core/, validación de archivos, activación, localización,
+│                              legal, updater (servidor HTTP local + release real)
+├─ tests/OfiConvert.UiTests/   FlaUI/UIA3 (21): conducen el .exe REAL. Sin elevación y sin Office
+├─ tools/                      capture-screenshots.ps1 (regenera docs/screenshots conduciendo la app)
+├─ docs/screenshots/           Las capturas del README (regenerables, no se editan a mano)
+├─ THIRD-PARTY-NOTICES.txt     Avisos de terceros — VERIFICADOS uno a uno; embebido en el .exe (§4 Legal)
+├─ .claude/ · .agents/ · .mcp.json   Infraestructura agéntica (Tier F): CLAUDE.md, skills, codegraph
 └─ release.ps1                 Corte de versión en un paso (build + tests + instalador + GitHub Release)
 ```
 
@@ -98,13 +102,13 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas unitarias | **151 pasan · 1 se omite (la de red) · 0 fallan** |
-| Pruebas de UI | **18 pasan · 0 fallan** (FlaUI, arrancan la app real) |
-| Publicado | **v2.2.0** (la 2.1.0 fue el primer corte con `release.ps1`; ambas con instalador + `.sha256`) |
+| Pruebas unitarias | **181 pasan · 1 se omite (la de red) · 0 fallan** |
+| Pruebas de UI | **30 pasan · 0 fallan** (FlaUI, arrancan la app real) |
+| Publicado | **v2.3.0** (2.1.0, 2.2.0 y 2.3.0 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
-| Pendiente de release | **Tier D** + el arreglo de los **dos bugs de localización** → **2.3.0** |
+| Pendiente de release | **Tiers E y F** → **2.4.0** |
 
-**Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md))
+**Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **hoja de ruta cerrada**
 
 | Tier | Tema | Estado |
 |---|---|---|
@@ -112,9 +116,10 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | **A** | **Higiene: bugs de la auditoría, README real, `LICENSE`, build 0/0** | ✅ |
 | **B** | **Pipeline de release (instalador scriptado, `.sha256`)** | ✅ |
 | **C** | **Verificar el instalador antes de ejecutarlo** | ✅ |
-| **D** | **Pruebas (`Core/` extraído, 170 pruebas, UI tests FlaUI)** | ✅ |
-| E | Cara pública (README de usuario, capturas, legal in-app) | ⬜ **Siguiente** |
-| F | Infraestructura agéntica | ⬜ |
+| **D** | **Pruebas (`Core/` extraído, UI tests FlaUI)** | ✅ |
+| **E** | **Cara pública (README, capturas reproducibles, legal in-app)** | ✅ |
+| **F** | **Infraestructura agéntica (`.mcp.json`, `CLAUDE.md`, skills, codegraph)** | ✅ |
+| **G** | **UI/UX (3 bugs, comandos que se apagan solos, accesibilidad)** | ✅ |
 
 ---
 
@@ -258,8 +263,22 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
   `SelectionItem.Select()` disparan el `SelectionChanged` de la app: la selección "ocurre" y no pasa
   nada. Hay que conducirlo **por teclado** (foco + `Inicio` + `Abajo`), que además es el camino real de
   quien no usa ratón.
-- **`SettingsBackup` respalda `%AppData%\OfiConvert`** antes de correr los UI tests y lo restaura al
-  acabar: la app es *unpackaged* y escribe donde escribe la instalación real del usuario.
+- 🔴 **`OfiConvert.UiTests` DEBE mantener su `ProjectReference` a la app con
+  `ReferenceOutputAssembly="false"`.** No es una referencia normal: es una **dependencia de compilación**
+  (se compila la app, no se referencia su ensamblado — cargar WinUI dentro del proceso de test es justo lo
+  que no se quiere). **Sin ella, `dotnet test` de ese proyecto NO recompila la app** y los tests conducen el
+  `.exe` viejo de `bin\`: pasan en verde contra un binario que ya no existe. *Un test que aprueba código que
+  no se va a publicar es peor que no tener test.* Obliga además a que **el TFM del proyecto de UI tests
+  coincida con el de la app** (`net10.0-windows10.0.22621.0`), o MSBuild rechaza la referencia.
+- 🔴 **`SettingsBackup` respalda `%AppData%\OfiConvert` Y SIEMBRA UN ESTADO CONOCIDO** (cola e historial
+  vacíos, español) antes de arrancar la app; restaura al acabar. Las dos mitades son necesarias: la app es
+  *unpackaged* y escribe donde escribe la instalación real del usuario, así que sin el respaldo se le
+  cambia el idioma y se le borra la cola —y **sin sembrar el estado, las pruebas dependen de con qué se
+  encuentren**: «el botón Convertir está apagado porque no hay archivos» fallaría en la máquina de alguien
+  con una cola pendiente, sin que la app tuviera ningún fallo.
+- **Los `ToggleSwitch` se exponen a UI Automation como BOTONES SIN NOMBRE.** Su etiqueta es un `TextBlock`
+  aparte y el lector de pantalla no la asocia: hay que darles `AutomationProperties.Name` a mano. Lo mismo
+  para todo botón de solo icono. Lo fija `AccessibilityTests`.
 - **El `.csproj` de la app vive en la RAÍZ**, así que su glob por defecto (`**/*.cs`) **se tragaba los
   archivos de `tests/`** y el build reventaba con errores absurdos (`Fact` no encontrado *dentro de la
   app*). Por eso el `.csproj` lleva `<Compile Remove="tests\**" />`. Si algún día se añade otra carpeta
@@ -352,6 +371,25 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
     exactamente lo que ocultó el bug durante versiones. Si falta una clave, que se rompa el test.
 - **No hay detección del idioma del sistema:** arranca en español salvo ajuste guardado.
 
+### Legal (Tier E) — no simplificar
+
+- 🔴 **LO QUE EL INSTALADOR REDISTRIBUYE NO ES TODO MIT.** Es *self-contained*, así que dentro viajan el
+  runtime de .NET y seis bibliotecas más, y **tres tienen licencias distintas de MIT**:
+  - **Windows App SDK / WinUI 3 → *Microsoft Software License Terms*** (EULA propietario). El repositorio
+    de GitHub sí es MIT, pero **los binarios salen del paquete NuGet**, que trae su propio `license.txt`.
+    **El `THIRD-PARTY-NOTICES.txt` de WingetUSoft lo declara como MIT: está mal. No copiarlo.**
+  - **Serilog y Serilog.Sinks.File → Apache-2.0.** Su cláusula 4.a **exige entregar una copia de la
+    licencia**, no solo nombrarla: por eso el texto íntegro de la Apache 2.0 viaja dentro del `.exe`.
+  - **WebView2 → BSD-3-Clause.** Llega como dependencia del App SDK; es fácil no verlo siquiera.
+- **Verificar contra el `.nuspec` y el `license.txt` del paquete, NUNCA de memoria.** Es literalmente el
+  error que cometió el proyecto hermano.
+- **Los textos van EMBEBIDOS en el `.exe`** (`EmbeddedResource` en el `.csproj` → `Core/LegalText`), no
+  como archivos sueltos: un archivo se borra, se queda atrás en una actualización o no llega al
+  instalador, y la app dejaría de mostrar una atribución **obligatoria** sin que nada fallara.
+  `LegalText` es defensivo (devuelve `""`), así que romper el embebido **no rompe nada visible**:
+  `LegalTextTests` es lo único que lo convierte en un build en rojo.
+- **Office y LibreOffice NO se redistribuyen**: la app los automatiza si están instalados.
+
 ### Datos del usuario
 
 - Todo en `%AppData%\OfiConvert\` — **las rutas salen de `Helpers/AppPaths`, fuente única**:
@@ -375,6 +413,7 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | Pruebas unitarias | `dotnet test tests\OfiConvert.Tests\OfiConvert.Tests.csproj` |
 | **Pruebas de UI** (abren la app; requieren la app compilada) | `dotnet test tests\OfiConvert.UiTests\OfiConvert.UiTests.csproj` |
 | Pruebas **con red** (verifica el release real de GitHub) | `$env:OFICONVERT_NETWORK_TESTS = "1"; dotnet test …` |
+| **Regenerar las capturas** del README | `.\tools\capture-screenshots.ps1` |
 | Instalador | `.\installer\build-installer.ps1` (`-CertThumbprint <huella>` para firmar) |
 | **Publicar versión** | `.\release.ps1 -Version X.Y.Z` (`-DryRun` para simular) |
 
@@ -398,16 +437,19 @@ y los de firma.
 
 El plan por tiers está en [`ROADMAP.md`](ROADMAP.md).
 
-1. **`THIRD-PARTY-NOTICES.txt` y los textos legales in-app** siguen sin existir *(Tier E)*.
-2. **El instalador nunca se ha probado end-to-end** (instalación limpia + actualización in-place con el
-   flujo silencioso real). FormatDiskPro encontró ahí un fallo con un diálogo modal abierto.
-3. ⚠️ **La verificación del Tier C aún no se ha ejercido en producción.** Solo actúa al actualizar
-   **desde** una versión ≥ 2.2.0, y los clientes en 2.1.0 llegarán a la 2.2.0 con el código viejo, que
-   no verificaba nada. **El primer uso real será 2.2.0 → 2.3.0.** No es trabajo pendiente: es lo que hay
-   que vigilar en el próximo corte.
-4. **La conversión en sí (COM/LibreOffice) sigue sin pruebas automatizadas**, y seguirá: exige Office
+1. ⚠️ **El instalador nunca se ha probado end-to-end** (instalación limpia + actualización in-place con el
+   flujo silencioso real). FormatDiskPro encontró ahí un fallo con un diálogo modal abierto. **Es lo único
+   relevante que ninguna prueba cubre.**
+2. **La conversión en sí (COM/LibreOffice) sigue sin pruebas automatizadas**, y seguirá: exige Office
    instalado y lanza procesos. Lo que el Tier D sí cubre es todo lo que la rodea (validación previa,
    rutas de salida, mapeo de formatos, cola). Se verifica **conduciendo la app a mano**.
+3. **Firma de código (OV/EV): descartada por ahora.** SmartScreen seguirá diciendo "editor desconocido", y
+   la confianza de las actualizaciones se apoya en el `.sha256`. `release.ps1` deja la firma lista
+   (`-CertThumbprint`) para el día que se decida.
+
+> ✅ **Ya resuelto** (2026-07-14): la verificación del Tier C **se ejerció en producción** en el corte
+> 2.2.0 → 2.3.0, y el `[NetworkFact]` la comprobó contra el release real publicado. Era el punto que este
+> documento marcaba como "lo que hay que vigilar en el próximo corte".
 
 Menores, sin tier asignado:
 
@@ -438,7 +480,8 @@ Menores, sin tier asignado:
 
 | Versión | Qué trajo |
 |---|---|
-| **2.3.0** *(sin publicar)* | **Tier D** — `Core/` extraído y **170 pruebas** (152 unitarias + 18 de UI con FlaUI). Las pruebas destaparon **dos bugs de localización** en producción: la UI estaba **en español en los 8 idiomas**, y el diálogo de cierre no se traducía. |
+| **2.4.0** *(sin publicar)* | **Tiers E, F y G** — legal in-app (licencia y avisos **embebidos**, 8 idiomas), `THIRD-PARTY-NOTICES.txt` **verificado paquete a paquete** (no todo es MIT), capturas regenerables, README público, infraestructura agéntica, y **UI/UX: 3 bugs** (contador de reintentos invertido, carpeta de destino que prometía lo que no hacía, historial que se borraba sin preguntar) + **accesibilidad**. **212 pruebas.** |
+| **2.3.0** | **Tier D** — `Core/` extraído y **170 pruebas** (152 unitarias + 18 de UI con FlaUI). Las pruebas destaparon **dos bugs de localización** en producción: la UI estaba **en español en los 8 idiomas**, y el diálogo de cierre no se traducía. |
 | **2.2.0** | **Tier C** — el updater **verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256). Primeras pruebas del proyecto (11, xUnit). |
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
@@ -446,7 +489,84 @@ Menores, sin tier asignado:
 
 ---
 
-### 2026-07-14 — Tier D: pruebas de verdad — y los dos bugs que encontraron — **v2.3.0 (sin publicar)**
+### 2026-07-14 — Tier G: UI/UX — tres bugs que solo se veían mirando la app — **v2.4.0 (sin publicar)**
+
+Revisión de la interfaz **sobre capturas de la app real**, no leyendo el XAML. Y ahí estaba lo que el código
+no delataba: **tres bugs en producción desde el principio**.
+
+**🐞 1 — El contador de reintentos estaba invertido.** `CountToVisibilityConverter` **ignoraba su
+`ConverterParameter`** y el XAML le pasaba `Invert` dando por hecho que lo respetaba. Resultado: el `↻ 0` se
+veía en **todas** las filas (un cero que no dice nada) y el contador **se escondía justo cuando un archivo
+había reintentado** — el único momento en que ese número importa. Un converter mal escrito **no rompe el
+build**: solo enseña, o esconde, lo que no debe. La regla vive ahora en `Core/VisibilityRules` y se prueba.
+
+**🐞 2 — La carpeta de destino prometía algo que no existía.** El placeholder decía «Misma ubicación que
+archivos originales» y esa función **no estaba implementada**: al convertir sin carpeta elegida, la app
+**interrumpía con un diálogo** y, si el usuario decía que no, **cancelaba el lote entero**. Se ha
+implementado la promesa (cada documento se convierte junto al original) en vez de corregir el texto: es lo
+que el usuario espera al leerlo, y hace que la app funcione **sin configurar nada**.
+
+**🐞 3 — «Limpiar historial» borraba hasta 1000 registros sin preguntar.** La única acción irreversible de
+la app era la única sin confirmación.
+
+**La causa raíz de casi todo lo demás:** **ninguno de los 15 `[RelayCommand]` tenía `CanExecute`**. Los
+botones estaban siempre encendidos y la app compensaba **riñendo al usuario** con diálogos («No hay archivos
+seleccionados»). Ahora se apagan solos — y el arreglo **quita** código: tres diálogos y **cinco claves × 8
+idiomas** desaparecen.
+
+**Accesibilidad: la app era muda.** `AutomationProperties` no aparecía **ni una vez** en todo el XAML. Los
+botones de solo icono no tenían nombre accesible… y tampoco los tres `ToggleSwitch`, que **UI Automation
+expone como botones sin nombre** (su etiqueta es un `TextBlock` aparte que el lector no asocia): anunciaban
+«botón, activado» sin decir de qué. **Esos tres los encontró el test**, no la revisión visual.
+
+**Dos trampas de las propias pruebas, descubiertas de camino** (ver §4 *Pruebas*):
+- **Los UI tests conducían un `.exe` VIEJO**: `OfiConvert.UiTests` no referenciaba la app, así que
+  `dotnet test` no la recompilaba y las pruebas pasaban contra un binario que ya no existía.
+- **Dependían de los datos reales del usuario**: «el botón se apaga si no hay archivos» habría fallado en la
+  máquina de quien tuviera una cola pendiente, sin que la app tuviera fallo alguno.
+
+### 2026-07-14 — Tiers E y F: cara pública, legal e infraestructura agéntica — **v2.4.0 (sin publicar)**
+
+**Lo que hay que recordar de este tier no es lo que se construyó, sino lo que se descubrió al verificar.**
+
+**⚖️ "Verificar cada `.nuspec`, no de memoria" no era una frase bonita.** El plan mandaba portar el
+`THIRD-PARTY-NOTICES.txt` de WingetUSoft. **Ese archivo está mal**: declara el **Windows App SDK como
+MIT**. El repositorio de GitHub sí es MIT, pero **los binarios que el instalador redistribuye salen del
+paquete NuGet**, que trae un `license.txt` con los *Microsoft Software License Terms* — un EULA
+propietario. Copiarlo habría propagado un aviso legal falso a un tercer proyecto.
+
+Y no era la única: **Serilog es Apache-2.0** (no MIT), y su cláusula 4.a **exige entregar una copia de la
+licencia**, así que el texto íntegro de la Apache 2.0 viaja ahora dentro del `.exe`. **WebView2 es
+BSD-3-Clause** y llega como dependencia del App SDK, donde nadie lo había mirado. Todo comprobado leyendo
+los `.nuspec` y los `license.txt` de los paquetes realmente redistribuidos. Detalle en §4 *Legal*.
+
+**Lo construido (Tier E).**
+- `THIRD-PARTY-NOTICES.txt` (345 líneas, con los textos íntegros de MIT, BSD-3 y Apache-2.0) y `LICENSE`,
+  ambos **embebidos en el `.exe`** (`Core/LegalText`) y accesibles desde *Configuración → Acerca de*, con
+  sus 4 claves nuevas en los 8 idiomas (126 por archivo).
+- `tools/capture-screenshots.ps1` + `docs/screenshots/`: **4 capturas regeneradas conduciendo la app
+  real**. Tres cosas que costaron: se **respaldan y restauran** el `settings.json` y el `queue.json` del
+  usuario (la app es *unpackaged* y escribe donde escribe la instalación de verdad); se **siembra la cola**
+  con documentos de ejemplo (una captura de la cola vacía no enseña el producto); y se captura la
+  **pantalla**, no la ventana, porque un WinUI con Mica no se deja capturar por `PrintWindow` — con
+  `DWMWA_EXTENDED_FRAME_BOUNDS`, que `GetWindowRect` mete la sombra invisible del marco.
+- README con badges, capturas y una sección legal que **no miente sobre las licencias**.
+- **9 pruebas nuevas** (184 en total): `LegalTextTests` fija que las tres licencias no-MIT sigan ahí — si
+  alguien "simplifica" el archivo a un "todo es MIT", el build cae — y 3 UI tests abren los diálogos
+  legales de verdad y leen su contenido. Hacía falta: `LegalText` es defensivo, así que romper el
+  `EmbeddedResource` **no rompería nada visible**, solo dejaría de mostrar una atribución obligatoria.
+
+**Lo validado (Tier F).** Estaba **a medias sin que el ROADMAP lo supiera**: las 9 skills de C#/.NET, el
+`skills-lock.json` y el índice de codegraph **ya existían** (y bien: el índice se auto-ignora, así que sus
+2 MB no entran en el repo). Lo que faltaba era lo que los hace utilizables — **`.mcp.json`** (sin él, el
+grafo existía y **no había nada que lo sirviera**), **`.claude/CLAUDE.md`** y **`.claude/settings.json`**.
+
+**Otra que el plan daba por hecha y era falsa:** decía que el `CLAUDE.md` de WingetUSoft manda «leer
+`CONTEXT.md` al iniciar sesión y mantenerlo». **No lo dice** — su `CLAUDE.md` es solo el bloque que genera
+codegraph. Aquí esa parte se ha escrito de verdad (con los 6 invariantes que no se rompen), en vez de
+copiarla de donde no existía.
+
+### 2026-07-14 — Tier D: pruebas de verdad — y los dos bugs que encontraron — **v2.3.0**
 
 De **11 pruebas** (solo el updater) a **170**: 152 unitarias + 18 de UI conduciendo el `.exe` real. Pero lo
 que hay que contar de este tier no son las pruebas: es **lo que encontraron el día que se escribieron**.

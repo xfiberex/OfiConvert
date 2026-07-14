@@ -28,8 +28,9 @@ public sealed class AppFixture : IDisposable
     public AppFixture()
     {
         // La app guarda sus datos donde los guarda la instalación real del usuario: se respaldan antes de
-        // tocar nada y se restauran al terminar.
-        _settingsBackup = SettingsBackup.Capture();
+        // tocar nada, se deja un estado CONOCIDO (cola e historial vacíos, español) y se restaura todo al
+        // terminar. Sin sembrar ese estado, las pruebas dependerían de con qué se encuentren.
+        _settingsBackup = SettingsBackup.CaptureAndReset();
 
         App = Application.Launch(ResolveExePath());
         Automation = new UIA3Automation();

@@ -1,5 +1,13 @@
 # OfiConvert — Hoja de ruta
 
+> ## Estado (2026-07-14)
+>
+> Los tiers **0 y A–F están cerrados**: el proyecto ya tiene la infraestructura que sus hermanos habían
+> pagado (pipeline de release, actualización verificada, 184 pruebas, cara pública y documentación viva).
+>
+> **Tier G — UI/UX ✅**: tres bugs reales corregidos, los comandos se apagan solos y la app **deja de ser
+> muda** para un lector de pantalla. Sale en la **2.4.0** junto con los Tiers E y F. **204 pruebas.**
+
 > **Qué hay aquí:** el trabajo pendiente agrupado por **tiers**, con su porqué y dónde vive cada cosa.
 >
 > **Qué NO hay aquí:** el detalle de lo ya hecho y sus decisiones — eso vive en
@@ -21,9 +29,10 @@
 | **A** | Higiene: bugs de la auditoría, README real, `LICENSE`, build 0/0 | ✅ Completado (2026-07-13) | **2.1.0** ✔ publicada |
 | **B** | Pipeline de release: instalador scriptado + release en un paso + `.sha256` | ✅ Completado (2026-07-13) | **2.1.0** ✔ publicada |
 | **C** | Actualización confiable: verificar el instalador antes de ejecutarlo | ✅ Completado (2026-07-13) | **2.2.0** ✔ publicada |
-| **D** | Pruebas: extraer `Core/`, cobertura real, UI tests FlaUI | ✅ Completado (2026-07-14) | 2.3.0 *(sin publicar)* |
-| **E** | Cara pública: README de usuario, capturas reproducibles, legal in-app | ⬜ **Siguiente** | 2.4.0 |
-| **F** | Infraestructura agéntica (`.claude`, skills, codegraph) | ⬜ Pendiente | — |
+| **D** | Pruebas: extraer `Core/`, cobertura real, UI tests FlaUI | ✅ Completado (2026-07-14) | **2.3.0** ✔ publicada |
+| **E** | Cara pública: README de usuario, capturas reproducibles, legal in-app | ✅ Completado (2026-07-14) | 2.4.0 *(sin publicar)* |
+| **F** | Infraestructura agéntica (`.claude`, skills, codegraph) | ✅ Completado (2026-07-14) | — |
+| **G** | UI/UX: 3 bugs reales, comandos que se apagan solos, accesibilidad | ✅ Completado (2026-07-14) | 2.4.0 |
 
 \* Orden recomendado: **A → B → C → D → E** (F puede ir en cualquier momento). Idealmente D habría ido
 antes que C, pero C se trajo sus propios tests, como hicieron los hermanos.
@@ -136,23 +145,98 @@ oficio de inmediato — **encontraron dos bugs que nadie veía**, los dos en la 
 
 ---
 
-## 📣 Tier E — Cara pública *(SIGUIENTE)*
+## ✅ Tier E — Cara pública *(completado 2026-07-14)*
 
-| # | Ítem | Fuente |
-|---|------|--------|
-| 1 | **README de usuario**: badges, *Instalación* desde Releases, *Actualizaciones* con el modelo de confianza (alcance honesto del SHA-256), requisitos claros (Office **o** LibreOffice) | Tier D de WingetUSoft |
-| 2 | `THIRD-PARTY-NOTICES.txt` + licencia y avisos **embebidos en el `.exe`** con diálogo in-app. Redistribuye: .NET, Windows App SDK, H.NotifyIcon.WinUI, Serilog, CommunityToolkit.Mvvm — **verificar cada `.nuspec`, no de memoria** | `Core/LegalText` de cualquiera de los dos |
-| 3 | `docs/screenshots/` + `tools/capture-screenshots.ps1`: capturas **regeneradas** conduciendo la app real por UI Automation (`DWMWA_EXTENDED_FRAME_BOUNDS`, respaldo del `settings.json` real, sin elevación) | WingetUSoft |
+| # | Ítem | Dónde |
+|---|------|-------|
+| 1 | ✅ **README de usuario**: badges, capturas, *Instalación* desde Releases, modelo de confianza de las actualizaciones y sección legal honesta (**no todo es MIT**) | `README.md` |
+| 2 | ✅ **`THIRD-PARTY-NOTICES.txt`** + licencia y avisos **embebidos en el `.exe`**, con diálogo in-app en *Configuración → Acerca de* (8 idiomas) | `THIRD-PARTY-NOTICES.txt`, `Core/LegalText.cs`, `MainWindow.xaml(.cs)` |
+| 3 | ✅ **`tools/capture-screenshots.ps1`** + `docs/screenshots/`: 4 capturas **regeneradas** conduciendo la app real por UI Automation | `tools/`, `docs/screenshots/` |
+| 4 | ✅ **9 pruebas nuevas** (6 unitarias de `LegalText` + 3 de UI que abren los diálogos legales de verdad) | `tests/` |
+
+> ### ⚖️ Lo que encontró el "verificar cada `.nuspec`, no de memoria"
+>
+> **El `THIRD-PARTY-NOTICES.txt` de WingetUSoft está MAL**, y copiarlo habría propagado el error: declara
+> el **Windows App SDK como MIT**. El repositorio de GitHub sí es MIT, pero **los binarios que el
+> instalador redistribuye vienen del paquete NuGet**, que se publica bajo los *Microsoft Software License
+> Terms* (un EULA propietario). Verificado leyendo el `license.txt` del paquete.
+>
+> Y no es la única: **Serilog es Apache-2.0**, no MIT — y la Apache 2.0 (cláusula 4.a) **exige entregar
+> una copia de la licencia**, así que su texto íntegro viaja dentro del `.exe`. **WebView2 es BSD-3-Clause**
+> (llega como dependencia del App SDK; nadie lo había mirado).
+>
+> `LegalTextTests` fija estas tres: si alguien "simplifica" el archivo a un "todo es MIT", el build cae.
 
 ---
 
-## 🤖 Tier F — Infraestructura agéntica
+## ✅ Tier F — Infraestructura agéntica *(validado y completado 2026-07-14)*
 
-| # | Ítem | Fuente |
+Estaba **a medias sin que el ROADMAP lo supiera**: las skills y el índice de codegraph ya existían; lo
+que faltaba era todo lo que las hace *utilizables*.
+
+| # | Ítem | Estado |
 |---|------|--------|
-| 1 | `.claude/CLAUDE.md` (leer `CONTEXT.md` al iniciar sesión y mantenerlo) + `.claude/settings.json` | WingetUSoft |
-| 2 | `.agents/skills/` + `skills-lock.json` (skills C#/.NET del registro `github/awesome-copilot`; el framework de pruebas es **xUnit**) | Copia directa de los hermanos |
-| 3 | `.mcp.json` (codegraph) — inicializar el índice (`codegraph init`) es decisión del usuario | FormatDiskPro |
+| 1 | `.agents/skills/` + `.claude/skills/` + `skills-lock.json` — 9 skills C#/.NET de `github/awesome-copilot` | ✅ **Ya estaba** (y bien: sin la skill `accessibility` de WingetUSoft, que es de web) |
+| 2 | Índice de codegraph (`.codegraph/codegraph.db`) | ✅ **Ya estaba**, y correctamente **auto-ignorado**: solo se commitea su `.gitignore`, la base de 2 MB no entra en el repo |
+| 3 | **`.mcp.json`** (servidor codegraph) | ✅ **Añadido** — el índice existía pero **no había nada que lo sirviera**: 2 MB de grafo que ninguna herramienta podía consultar |
+| 4 | **`.claude/CLAUDE.md`** | ✅ **Añadido** — leer `CONTEXT.md` al empezar, los 6 invariantes que no se rompen, y cómo se compila/prueba/publica aquí |
+| 5 | **`.claude/settings.json`** | ✅ **Añadido** (permisos de las herramientas `codegraph_*`) |
+
+> **Ojo con lo que el plan daba por hecho:** decía que el `CLAUDE.md` de WingetUSoft manda *«leer
+> `CONTEXT.md` al iniciar sesión y mantenerlo»*. **No lo dice**: su `CLAUDE.md` es solo el bloque que
+> genera codegraph. Aquí esa parte se ha escrito de verdad, en vez de copiarla de donde no existía.
+
+---
+
+## ✅ Tier G — UI/UX *(completado 2026-07-14)*
+
+Nace de revisar la interfaz sobre **capturas de la app real**, no leyendo el XAML. Tres de los hallazgos
+resultaron ser **bugs**, no preferencias estéticas — y llevaban en producción desde el principio.
+
+### 1. Los tres bugs
+
+| # | Ítem | Dónde |
+|---|------|-------|
+| 1 | ✅ **El contador de reintentos estaba INVERTIDO.** `CountToVisibilityConverter` **ignoraba su `ConverterParameter`** y el XAML le pasaba `Invert` creyendo que lo respetaba: el contador se veía cuando valía **0** (`↻ 0` en todas las filas) y **se escondía justo cuando un archivo había reintentado** | `Core/VisibilityRules.cs`, `Converters/CountToVisibilityConverter.cs` |
+| 2 | ✅ **La carpeta de destino prometía algo que no existía.** El placeholder decía *«Misma ubicación que archivos originales»* y esa función **no estaba implementada**: al convertir sin carpeta, la app interrumpía con un diálogo y, si decías que no, **cancelaba el lote entero**. **Ahora la promesa se cumple**: cada documento se convierte junto al original y la app funciona **sin configurar nada** | `MainViewModel.GetDestinationFolder`, `Core/OutputPath.GetSafeFolder` |
+| 3 | ✅ **«Limpiar historial» borraba hasta 1000 registros sin preguntar** — la única acción irreversible de la app, y la única sin confirmación | `MainViewModel.ClearHistoryAsync` |
+
+### 2. La causa raíz: la app dejaba hacer lo imposible y luego regañaba
+
+✅ **Ninguno de los 15 `[RelayCommand]` tenía `CanExecute`.** «Convertir» estaba habilitado con la cola
+vacía, «Limpiar» sin nada que limpiar, «Exportar CSV» con el historial vacío (generaba un CSV con solo la
+cabecera). La app lo compensaba con diálogos que reñían al usuario.
+
+Ahora **los botones se apagan solos** — y el arreglo **quita** código: desaparecen tres diálogos y **cinco
+claves de localización × 8 idiomas**.
+
+### 3. Accesibilidad: la app era muda para un lector de pantalla
+
+✅ `AutomationProperties` no aparecía **ni una vez** en todo el XAML. Nombre accesible + tooltip para los
+botones de solo icono… y **para los tres `ToggleSwitch`**, que UI Automation expone **como botones sin
+nombre** (su etiqueta es un `TextBlock` aparte que el lector no asocia): anunciaban *«botón, activado»* sin
+decir de qué. **Esos tres los encontró el propio test**, no la revisión visual.
+
+### 4. Jerarquía visual
+
+| # | Ítem |
+|---|------|
+| ✅ | **Un solo botón de acento**: «Convertir». «Archivo» pasa a neutro |
+| ✅ | La **barra de progreso** solo existe mientras se convierte (antes: una barra vacía y un «0%» ocupando sitio para no decir nada) |
+| ✅ | **Estado vacío del historial** con icono + título + subtítulo, igual que el de la pestaña de conversión |
+| ✅ | **Ajustes agrupado** en tres cabeceras (Apariencia · Conversión · Integración) |
+
+### 5. Lo que se descubrió de camino *(y no estaba en el plan)*
+
+- 🐞 **Los UI tests conducían un `.exe` VIEJO.** `OfiConvert.UiTests` no referenciaba la app (a propósito,
+  para no cargar WinUI en el proceso de test), y por eso `dotnet test` **no la recompilaba**: las pruebas
+  pasaban en verde contra un binario que ya no existía. *Un test que aprueba código que no se va a publicar
+  es peor que no tener test.* Resuelto con `ProjectReference ReferenceOutputAssembly="false"` (dependencia
+  de compilación, sin referencia al ensamblado).
+- 🐞 **Los UI tests dependían de los datos reales del usuario.** «El botón se apaga si no hay archivos»
+  habría fallado en la máquina de quien tuviera una cola pendiente — sin que la app tuviera ningún fallo.
+  `SettingsBackup` ahora **siembra un estado conocido** (cola e historial vacíos, español) además de
+  respaldar y restaurar.
 
 ---
 
