@@ -5,8 +5,11 @@
 > Los tiers **0 y A–F están cerrados**: el proyecto ya tiene la infraestructura que sus hermanos habían
 > pagado (pipeline de release, actualización verificada, 184 pruebas, cara pública y documentación viva).
 >
-> **Tier G — UI/UX ✅**: tres bugs reales corregidos, los comandos se apagan solos y la app **deja de ser
-> muda** para un lector de pantalla. Sale en la **2.4.0** junto con los Tiers E y F. **204 pruebas.**
+> **Tier G — UI/UX ✅** (v2.4.0): tres bugs reales, los comandos se apagan solos y la app deja de ser muda
+> para un lector de pantalla.
+>
+> **Tier H — Instalador end-to-end ✅** (v2.5.0): probarlo de verdad destapó que **`/VERYSILENT` no era
+> silencioso** — bloqueaba con un diálogo modal. Era el último hueco sin cubrir. **226 pruebas.**
 
 > **Qué hay aquí:** el trabajo pendiente agrupado por **tiers**, con su porqué y dónde vive cada cosa.
 >
@@ -33,6 +36,7 @@
 | **E** | Cara pública: README de usuario, capturas reproducibles, legal in-app | ✅ Completado (2026-07-14) | 2.4.0 *(sin publicar)* |
 | **F** | Infraestructura agéntica (`.claude`, skills, codegraph) | ✅ Completado (2026-07-14) | — |
 | **G** | UI/UX: 3 bugs reales, comandos que se apagan solos, accesibilidad | ✅ Completado (2026-07-14) | 2.4.0 |
+| **H** | Instalador end-to-end: el `/VERYSILENT` que no era silencioso | ✅ Completado (2026-07-14) | 2.5.0 |
 
 \* Orden recomendado: **A → B → C → D → E** (F puede ir en cualquier momento). Idealmente D habría ido
 antes que C, pero C se trajo sus propios tests, como hicieron los hermanos.
@@ -237,6 +241,54 @@ decir de qué. **Esos tres los encontró el propio test**, no la revisión visua
   habría fallado en la máquina de quien tuviera una cola pendiente — sin que la app tuviera ningún fallo.
   `SettingsBackup` ahora **siembra un estado conocido** (cola e historial vacíos, español) además de
   respaldar y restaurar.
+
+---
+
+## ✅ Tier H — El instalador, probado de punta a punta *(completado 2026-07-14)*
+
+Era **el único hueco que ninguna prueba cubría**, y estaba señalado desde el Tier 0: *«el instalador nunca
+se ha probado end-to-end; FormatDiskPro encontró ahí un fallo con un diálogo modal»*. Pues eso mismo, casi
+palabra por palabra.
+
+### 🐞 `/VERYSILENT` no era silencioso
+
+Con `PrivilegesRequiredOverridesAllowed=dialog`, Inno Setup planta el cuadro **«Seleccione el modo de
+instalación»** (solo para mí / para todos los usuarios) **aunque se le pase `/VERYSILENT`**, y se queda ahí
+**bloqueado esperando un clic**.
+
+En la instalación limpia de prueba tardó **76 segundos en vez de 9**: los que tardó el humano en verlo y
+pulsar. En una instalación desatendida colgaría para siempre. Y en la **auto-actualización** es peor: la app
+**ya se ha cerrado**, así que el usuario ve su programa esfumarse y aparecer un diálogo que no ha pedido.
+*(No saltaba en la actualización porque Inno recuerda el modo de la instalación anterior — de ahí que
+llevara cuatro versiones escondido.)*
+
+| # | Ítem | Dónde |
+|---|------|-------|
+| 1 | ✅ `PrivilegesRequiredOverridesAllowed=**commandline** dialog` — sin `commandline`, Inno **rechaza** `/ALLUSERS` y `/CURRENTUSER` | `installer/OfiConvert.iss` |
+| 2 | ✅ El updater manda el modo **que el usuario ya eligió** (`/ALLUSERS` si está bajo `Program Files`, `/CURRENTUSER` si no): una actualización no puede mover la app de sitio por sorpresa | `Core/InstallScope.cs` |
+
+### 🐞 La app se cerraba aunque el usuario rechazara el UAC
+
+Instalada *para todos los usuarios*, el instalador **pide UAC**. La app lanzaba el instalador, esperaba 1,5 s
+y hacía `Application.Current.Exit()` **sin mirar nada**: si el usuario decía que no, el programa **desaparecía
+igual**, seguía en la versión vieja y no recibía explicación alguna. Ahora se detecta `ERROR_CANCELLED` (y un
+instalador que muere con error) y la app **sigue viva**, avisando de lo ocurrido.
+
+### 🐞 Y el mismo bug de localización, por CUARTA vez
+
+Todo el flujo de actualización estaba **en español a fuego** (*«Descargando… 42%»*, *«Instalar ahora»*,
+*«Comprobando…»*), igual que los diálogos de `DialogService` (*«Sí»*, *«No»*, *«Aceptar»*, *«Error»*). Y otra
+clave inexistente tapada por un *fallback defensivo* (`MsgCheckingUpdate`).
+
+**Lo grave es por qué no se cazó:** `LocalizationUsageTests` buscaba `LocalizationService.Instance["…"]` y
+`GetLocalizedString("…")`, pero **no `loc["…"]`** — la forma que usa medio `MainWindow`. *Un escáner que no
+mira donde de verdad se usa el código no prueba nada.*
+
+| # | Ítem |
+|---|------|
+| ✅ | **`HardcodedUiTextTests`**: ningún literal puede asignarse a `Title`/`Message`/`Content`/`…ButtonText` en el código de UI. Es la prueba que faltaba para que esto no vuelva una quinta vez |
+| ✅ | `LocalizationUsageTests` amplía su escáner a `loc["…"]` |
+| ✅ | 15 claves nuevas × 8 idiomas (136 por archivo) y **fuera todos los fallbacks defensivos** |
 
 ---
 

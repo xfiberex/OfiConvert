@@ -168,4 +168,16 @@ Se intentará usar LibreOffice como alternativa si está disponible.</system:Str
     <system:String x:Key="LblGroupConversion">Conversión</system:String>
     <system:String x:Key="LblGroupIntegration">Integración y actualizaciones</system:String>
 
+
+    <!-- Tier H: instalador y diálogos -->
+    <system:String x:Key="BtnInstallUpdate">Instalar ahora</system:String>
+    <system:String x:Key="BtnOk">Aceptar</system:String>
+    <system:String x:Key="MsgInformation">Información</system:String>
+    <system:String x:Key="MsgDownloading">Descargando... {0}</system:String>
+    <system:String x:Key="MsgInstalling">Instalando... La aplicación se reiniciará automáticamente.</system:String>
+    <system:String x:Key="MsgUpdateElevationDenied">Actualización cancelada: no se concedieron permisos de administrador. La aplicación sigue funcionando con la versión actual.</system:String>
+    <system:String x:Key="MsgUpdateInstallFailed">No se pudo instalar la actualización (código {0}). Descárgala manualmente desde GitHub.</system:String>
+
+    <system:String x:Key="MsgCheckingUpdate">Comprobando...</system:String>
+
 </ResourceDictionary>

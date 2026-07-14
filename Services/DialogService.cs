@@ -1,5 +1,6 @@
 ﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using OfiConvert.Helpers;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 
@@ -55,27 +56,33 @@ public class DialogService : IDialogService
         return file?.Path;
     }
 
-    public async void ShowInformation(string message, string title = "Información")
+    // Los títulos y los botones de estos diálogos estaban EN DURO en español ("Sí", "No", "Aceptar",
+    // "Error"…): salían así en los ocho idiomas. Es la tercera vez que aparece el mismo fallo en este
+    // proyecto —antes, el diálogo de cierre y la barra de actualización—, y por eso ahora lo caza una
+    // prueba (HardcodedUiTextTests).
+    private static string T(string key) => LocalizationService.Instance[key];
+
+    public async void ShowInformation(string message, string? title = null)
     {
-        await ShowDialogAsync(title, message);
+        await ShowDialogAsync(title ?? T("MsgInformation"), message);
     }
 
-    public async void ShowError(string message, string title = "Error")
+    public async void ShowError(string message, string? title = null)
     {
-        await ShowDialogAsync(title, message);
+        await ShowDialogAsync(title ?? T("MsgError"), message);
     }
 
-    public async Task<bool> ShowConfirmationAsync(string message, string title = "Confirmación")
+    public async Task<bool> ShowConfirmationAsync(string message, string? title = null)
     {
         var window = App.MainWindow;
         if (window?.Content?.XamlRoot is null) return false;
 
         var dialog = new ContentDialog
         {
-            Title = title,
+            Title = title ?? T("MsgConfirmation"),
             Content = message,
-            PrimaryButtonText = "Sí",
-            CloseButtonText = "No",
+            PrimaryButtonText = T("BtnYes"),
+            CloseButtonText = T("BtnNo"),
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot
         };
@@ -93,7 +100,7 @@ public class DialogService : IDialogService
         {
             Title = title,
             Content = message,
-            CloseButtonText = "Aceptar",
+            CloseButtonText = T("BtnOk"),
             XamlRoot = window.Content.XamlRoot
         };
 

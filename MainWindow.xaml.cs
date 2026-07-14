@@ -300,14 +300,17 @@ public sealed partial class MainWindow : Window
         if (string.IsNullOrEmpty(_appUpdateUrl)) return;
 
         btnInstalarUpdate.IsEnabled = false;
-        btnInstalarUpdate.Content = "Descargando...";
+        // El botón se deshabilita y ya está: el progreso lo cuenta la InfoBar ("Descargando... 42%"). Antes
+        // se le metía aquí un texto en duro, en español, para los ocho idiomas.
         pbUpdate.Visibility = Visibility.Visible;
         infoBarUpdate.IsClosable = false;
+
+        var loc = LocalizationService.Instance;
 
         var progress = new Progress<double>(p =>
         {
             pbUpdate.Value = p;
-            infoBarUpdate.Message = $"Descargando... {p:P0}";
+            infoBarUpdate.Message = string.Format(loc["MsgDownloading"], p.ToString("P0"));
         });
 
         try
@@ -317,21 +320,42 @@ public sealed partial class MainWindow : Window
             // aqu\u00ed una ruta, es de un instalador en el que se conf\u00eda.
             string installerPath = await OfiConvert.Services.GitHubUpdateService
                 .DownloadInstallerAsync(_appUpdateUrl, _appUpdateChecksumUrl, progress);
-            infoBarUpdate.Message = "Instalando... La aplicaci\u00f3n se reiniciar\u00e1 autom\u00e1ticamente.";
+            infoBarUpdate.Message = loc["MsgInstalling"];
 
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(installerPath)
+            // /ALLUSERS o /CURRENTUSER: SIN ellos, Inno planta el di\u00e1logo "Seleccione el modo de
+            // instalaci\u00f3n" AUNQUE se le pase /VERYSILENT, y se queda esperando un clic \u2014 con esta app ya
+            // cerrada. Se le manda el modo con el que el usuario instal\u00f3 (ver Core/InstallScope).
+            var scope = InstallScope.InnoSwitchForCurrentInstall();
+
+            var installer = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(installerPath)
             {
-                Arguments = "/VERYSILENT /NORESTART /autoinstall=1",
+                Arguments = $"/VERYSILENT /NORESTART {scope} /autoinstall=1",
                 UseShellExecute = true
             });
-            await Task.Delay(1500);
+
+            // Instalada para todos los usuarios, el instalador PIDE UAC. Si el usuario dice que no, o si
+            // muere enseguida por cualquier motivo, la app NO se cierra: antes se cerraba igual, 1,5 s
+            // despu\u00e9s de lanzarlo y sin mirar nada, as\u00ed que el usuario ve\u00eda su programa esfumarse, segu\u00eda
+            // en la versi\u00f3n vieja y no recib\u00eda explicaci\u00f3n alguna.
+            if (installer is not null && installer.WaitForExit(4000) && installer.ExitCode != 0)
+                throw new InvalidOperationException(string.Format(loc["MsgUpdateInstallFailed"], installer.ExitCode));
+
             Application.Current.Exit();
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)   // ERROR_CANCELLED
+        {
+            // El usuario dijo que NO al UAC. No es un fallo: es una decisi\u00f3n suya, y se le trata como tal.
+            pbUpdate.Visibility = Visibility.Collapsed;
+            btnInstalarUpdate.IsEnabled = true;
+            infoBarUpdate.IsClosable = true;
+            infoBarUpdate.Severity = InfoBarSeverity.Warning;
+            infoBarUpdate.Message = loc["MsgUpdateElevationDenied"];
+            Serilog.Log.Information("Actualizaci\u00f3n cancelada: el usuario no concedi\u00f3 permisos de administrador");
         }
         catch (Exception ex)
         {
             pbUpdate.Visibility = Visibility.Collapsed;
             btnInstalarUpdate.IsEnabled = true;
-            btnInstalarUpdate.Content = "Instalar ahora";
             infoBarUpdate.IsClosable = true;
             infoBarUpdate.Severity = InfoBarSeverity.Error;
             infoBarUpdate.Message = ex.Message;
@@ -393,8 +417,12 @@ public sealed partial class MainWindow : Window
         btnBuscarActualizacion.IsEnabled = false;
         var loc = LocalizationService.Instance;
         string originalContent = btnBuscarActualizacion.Content as string ?? "";
-        btnBuscarActualizacion.Content = loc["MsgCheckingUpdate"] is string s && s != "MsgCheckingUpdate"
-            ? s : "Comprobando...";
+
+        // Las claves se piden directamente. Los "fallbacks defensivos" (loc[k] != k ? loc[k] : "texto")
+        // son los que llevan tapando claves inexistentes desde el principio: MsgCheckingUpdate NO existía,
+        // y este botón decía "Comprobando..." en los ocho idiomas sin que nada fallara. Si falta una clave,
+        // que la cacen LocalizationUsageTests y HardcodedUiTextTests.
+        btnBuscarActualizacion.Content = loc["MsgCheckingUpdate"];
         try
         {
             OfiConvert.Services.GitHubReleaseInfo? info =
@@ -405,9 +433,9 @@ public sealed partial class MainWindow : Window
                 btnBuscarActualizacion.Content = originalContent;
                 var dialog = new ContentDialog
                 {
-                    Title = loc["TitleNoUpdates"] is string t && t != "TitleNoUpdates" ? t : "Sin actualizaciones",
+                    Title = loc["TitleNoUpdates"],
                     Content = new TextBlock { Text = loc["MsgNoUpdates"], TextWrapping = TextWrapping.Wrap },
-                    CloseButtonText = "OK",
+                    CloseButtonText = loc["BtnOk"],
                     XamlRoot = Content.XamlRoot
                 };
                 await dialog.ShowAsync();
@@ -429,8 +457,8 @@ public sealed partial class MainWindow : Window
                         Text = $"{loc["TitleUpdateAvailable"]}: {info.Version}\n\n{loc["MsgUpdateAvailable"]}",
                         TextWrapping = TextWrapping.Wrap
                     },
-                    PrimaryButtonText = loc["BtnYes"] is string y && y != "BtnYes" ? y : "S\u00ed",
-                    CloseButtonText = loc["BtnNo"] is string n && n != "BtnNo" ? n : "No",
+                    PrimaryButtonText = loc["BtnYes"],
+                    CloseButtonText = loc["BtnNo"],
                     DefaultButton = ContentDialogButton.Primary,
                     XamlRoot = Content.XamlRoot
                 };

@@ -168,4 +168,16 @@ Continue?</system:String>
     <system:String x:Key="LblGroupConversion">Conversion</system:String>
     <system:String x:Key="LblGroupIntegration">Integration and updates</system:String>
 
+
+    <!-- Tier H: instalador y diálogos -->
+    <system:String x:Key="BtnInstallUpdate">Install now</system:String>
+    <system:String x:Key="BtnOk">OK</system:String>
+    <system:String x:Key="MsgInformation">Information</system:String>
+    <system:String x:Key="MsgDownloading">Downloading... {0}</system:String>
+    <system:String x:Key="MsgInstalling">Installing... The application will restart automatically.</system:String>
+    <system:String x:Key="MsgUpdateElevationDenied">Update cancelled: administrator permission was not granted. The application keeps running on the current version.</system:String>
+    <system:String x:Key="MsgUpdateInstallFailed">The update could not be installed (code {0}). Please download it manually from GitHub.</system:String>
+
+    <system:String x:Key="MsgCheckingUpdate">Checking...</system:String>
+
 </ResourceDictionary>

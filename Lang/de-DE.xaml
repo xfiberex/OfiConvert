@@ -168,4 +168,16 @@ Fortfahren?</system:String>
     <system:String x:Key="LblGroupConversion">Konvertierung</system:String>
     <system:String x:Key="LblGroupIntegration">Integration und Updates</system:String>
 
+
+    <!-- Tier H: instalador y diálogos -->
+    <system:String x:Key="BtnInstallUpdate">Jetzt installieren</system:String>
+    <system:String x:Key="BtnOk">OK</system:String>
+    <system:String x:Key="MsgInformation">Information</system:String>
+    <system:String x:Key="MsgDownloading">Wird heruntergeladen... {0}</system:String>
+    <system:String x:Key="MsgInstalling">Wird installiert... Die Anwendung startet automatisch neu.</system:String>
+    <system:String x:Key="MsgUpdateElevationDenied">Update abgebrochen: Es wurden keine Administratorrechte erteilt. Die Anwendung läuft weiter mit der aktuellen Version.</system:String>
+    <system:String x:Key="MsgUpdateInstallFailed">Das Update konnte nicht installiert werden (Code {0}). Bitte laden Sie es manuell von GitHub herunter.</system:String>
+
+    <system:String x:Key="MsgCheckingUpdate">Wird geprüft...</system:String>
+
 </ResourceDictionary>

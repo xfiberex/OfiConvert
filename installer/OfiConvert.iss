@@ -42,7 +42,17 @@ WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
+; "commandline" ADEMAS de "dialog", y no es opcional:
+;
+; Con solo "dialog", Inno muestra el cuadro "Seleccione el modo de instalacion" (solo para mi / para todos
+; los usuarios) INCLUSO CON /VERYSILENT, y se queda ahi bloqueado esperando un clic. En una instalacion
+; desatendida eso cuelga el proceso para siempre; y en la AUTO-ACTUALIZACION, la app ya se ha cerrado, asi
+; que el usuario ve su programa desaparecer y aparecer un dialogo que no ha pedido. Se descubrio probando
+; el instalador de punta a punta (2026-07-14).
+;
+; Con "commandline", /ALLUSERS y /CURRENTUSER pasan a estar permitidos: el updater manda el que conserva
+; el alcance con el que el usuario instalo la app (ver Core/InstallScope.cs) y el dialogo no aparece.
+PrivilegesRequiredOverridesAllowed=commandline dialog
 CloseApplications=yes
 CloseApplicationsFilter=*{#MyAppExeName}*
 UsePreviousAppDir=yes

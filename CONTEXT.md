@@ -17,12 +17,12 @@
 | | |
 |---|---|
 | **Repositorio** | https://github.com/xfiberex/OfiConvert |
-| **Versión publicada** | **2.3.0** (2026-07-14) — Tier D. Instalador sin firmar, **con `.sha256`** |
-| **En `main`, sin publicar** | **Tiers E, F y G**: legal in-app, capturas, README público, infraestructura agéntica y **3 bugs de UI/UX** → sale en la **2.4.0** |
-| **Estado** | Funcional; **hoja de ruta COMPLETADA** — Tiers 0 y A–G ✅ |
+| **Versión publicada** | **2.4.0** (2026-07-14) — Tiers E, F y G. Instalador sin firmar, **con `.sha256`** |
+| **En `main`, sin publicar** | **Tier H**: el instalador, probado de punta a punta — **`/VERYSILENT` no era silencioso** → sale en la **2.5.0** |
+| **Estado** | Funcional; **hoja de ruta COMPLETADA** — Tiers 0 y A–H ✅ |
 | **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · **xUnit** + **FlaUI** · Inno Setup 6 |
 | **Licencia** | **MIT** ([`LICENSE`](LICENSE)) — pero **lo que redistribuye NO es todo MIT**: ver §4 *Legal* |
-| **Pruebas** | **212**: 182 unitarias (181 + 1 de red, omitida salvo `OFICONVERT_NETWORK_TESTS=1`) + **30 de UI** (FlaUI, contra la app real) |
+| **Pruebas** | **226**: 196 unitarias (195 + 1 de red, omitida salvo `OFICONVERT_NETWORK_TESTS=1`) + **30 de UI** (FlaUI, contra la app real) |
 | **Hoja de ruta** | [`ROADMAP.md`](ROADMAP.md) — **cerrada** |
 | **Última actualización** | 2026-07-14 |
 
@@ -102,11 +102,12 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas unitarias | **181 pasan · 1 se omite (la de red) · 0 fallan** |
+| Pruebas unitarias | **195 pasan · 1 se omite (la de red) · 0 fallan** |
 | Pruebas de UI | **30 pasan · 0 fallan** (FlaUI, arrancan la app real) |
-| Publicado | **v2.3.0** (2.1.0, 2.2.0 y 2.3.0 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
+| Publicado | **v2.4.0** (2.1.0 → 2.4.0 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
-| Pendiente de release | **Tiers E y F** → **2.4.0** |
+| Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real |
+| Pendiente de release | **Tier H** → **2.5.0** |
 
 **Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **hoja de ruta cerrada**
 
@@ -120,6 +121,7 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | **E** | **Cara pública (README, capturas reproducibles, legal in-app)** | ✅ |
 | **F** | **Infraestructura agéntica (`.mcp.json`, `CLAUDE.md`, skills, codegraph)** | ✅ |
 | **G** | **UI/UX (3 bugs, comandos que se apagan solos, accesibilidad)** | ✅ |
+| **H** | **Instalador end-to-end (el `/VERYSILENT` que no era silencioso)** | ✅ |
 
 ---
 
@@ -241,6 +243,16 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
   del usuario.
 - **`[Files]` del `.iss` ya NO lleva `skipifsourcedoesntexist`:** con esa bandera, un publish ausente o
   vacío producía un instalador que se compilaba sin quejarse… **y no llevaba la aplicación dentro**.
+- 🔴 **`/VERYSILENT` NO ES SILENCIOSO POR SÍ SOLO.** Con `PrivilegesRequiredOverridesAllowed=dialog`, Inno
+  planta el cuadro «Seleccione el modo de instalación» **aunque se le pase `/VERYSILENT`** y **se bloquea
+  esperando un clic**. Por eso el `.iss` lleva `commandline dialog` y **el updater manda siempre
+  `/ALLUSERS` o `/CURRENTUSER`** (`Core/InstallScope`), el que corresponda a **cómo está instalada la app
+  ahora** — actualizar no puede cambiarle el alcance al usuario. **No quitar ni el `commandline` ni el
+  modificador.** Se descubrió probando el instalador de punta a punta; llevaba cuatro versiones escondido
+  porque, al ACTUALIZAR, Inno recuerda el modo anterior y no pregunta.
+- **La auto-actualización de una instalación *para todos los usuarios* PIDE UAC**, y eso es inevitable
+  (escribe en `Program Files`). Lo que sí se arregló: **si el usuario lo rechaza, la app ya no se cierra**.
+  Solo la instalación per-user (la opción por defecto) se actualiza de forma verdaderamente silenciosa.
 
 ### Pruebas
 
@@ -369,6 +381,15 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
   el código o el XAML **existe** en los diccionarios).
   - **No añadir "fallbacks defensivos"** del tipo `Instance[k] is string s && s != k ? s : "texto"`: son
     exactamente lo que ocultó el bug durante versiones. Si falta una clave, que se rompa el test.
+- 🔴 **NUNCA escribir texto de UI en duro.** El mismo fallo se ha cometido **cuatro veces** —el diálogo de
+  cierre, la barra de actualización, los diálogos de `DialogService` y el botón de comprobar
+  actualizaciones—, y las cuatro salían **en español en los ocho idiomas** sin romper nada. Ahora lo
+  prohíbe **`HardcodedUiTextTests`**: ningún literal puede asignarse a `Title`/`Message`/`Content`/
+  `Text`/`…ButtonText` en el código de UI.
+- ⚠️ **El escáner de claves debe cubrir TODAS las formas de pedirlas**: `GetLocalizedString("…")`,
+  `LocalizationService.Instance["…"]` **y `loc["…"]`** (variable local, la que usa medio `MainWindow`). Le
+  faltaba la tercera, y por eso se le escapó una clave inexistente. *Un escáner que no mira donde de verdad
+  se usa el código no prueba nada.*
 - **No hay detección del idioma del sistema:** arranca en español salvo ajuste guardado.
 
 ### Legal (Tier E) — no simplificar
@@ -437,10 +458,7 @@ y los de firma.
 
 El plan por tiers está en [`ROADMAP.md`](ROADMAP.md).
 
-1. ⚠️ **El instalador nunca se ha probado end-to-end** (instalación limpia + actualización in-place con el
-   flujo silencioso real). FormatDiskPro encontró ahí un fallo con un diálogo modal abierto. **Es lo único
-   relevante que ninguna prueba cubre.**
-2. **La conversión en sí (COM/LibreOffice) sigue sin pruebas automatizadas**, y seguirá: exige Office
+1. **La conversión en sí (COM/LibreOffice) sigue sin pruebas automatizadas**, y seguirá: exige Office
    instalado y lanza procesos. Lo que el Tier D sí cubre es todo lo que la rodea (validación previa,
    rutas de salida, mapeo de formatos, cola). Se verifica **conduciendo la app a mano**.
 3. **Firma de código (OV/EV): descartada por ahora.** SmartScreen seguirá diciendo "editor desconocido", y
@@ -455,12 +473,13 @@ Menores, sin tier asignado:
 
 - **Sin detección del idioma del sistema** en el primer arranque (los hermanos sí la tienen): la app
   abre en español hasta que el usuario elija.
-- **`DialogService` tiene textos en duro** (`"Sí"`, `"No"`, `"Aceptar"`, `"Error"`) que no pasan por
-  `LocalizationService`. Ojo: `LocalizationUsageTests` **no** lo caza — comprueba que las claves *usadas*
-  existan, no que no haya literales sin traducir. Desde el Tier D existen las claves `BtnYes`/`BtnNo` en
-  los 8 idiomas, así que al menos dos de esos cuatro textos ya tienen a dónde ir.
 - **`FileValidationService` devuelve sus mensajes de error en español a fuego** ("El archivo está
-  vacío.", "…protegido con contraseña."), y llegan a la UI tal cual.
+  vacío.", "…protegido con contraseña."), y llegan a la UI tal cual. Es el último rincón sin traducir:
+  `HardcodedUiTextTests` **no** lo caza, porque ahí los literales no se asignan a una propiedad de UI, sino
+  que viajan dentro de un `FileValidationResult`.
+
+> ✅ **Resuelto en el Tier H** (2026-07-14): los textos en duro de `DialogService` («Sí», «No», «Aceptar»,
+> «Error») y los del flujo de actualización. Los prohíbe ahora `HardcodedUiTextTests`.
 
 ---
 
@@ -480,7 +499,8 @@ Menores, sin tier asignado:
 
 | Versión | Qué trajo |
 |---|---|
-| **2.4.0** *(sin publicar)* | **Tiers E, F y G** — legal in-app (licencia y avisos **embebidos**, 8 idiomas), `THIRD-PARTY-NOTICES.txt` **verificado paquete a paquete** (no todo es MIT), capturas regenerables, README público, infraestructura agéntica, y **UI/UX: 3 bugs** (contador de reintentos invertido, carpeta de destino que prometía lo que no hacía, historial que se borraba sin preguntar) + **accesibilidad**. **212 pruebas.** |
+| **2.5.0** *(sin publicar)* | **Tier H** — el instalador probado de punta a punta: **`/VERYSILENT` no era silencioso** (bloqueaba con un diálogo modal), la app **se cerraba aunque el usuario rechazara el UAC**, y el flujo de actualización estaba **en español a fuego**. **226 pruebas.** |
+| **2.4.0** | **Tiers E, F y G** — legal in-app (licencia y avisos **embebidos**, 8 idiomas), `THIRD-PARTY-NOTICES.txt` **verificado paquete a paquete** (no todo es MIT), capturas regenerables, README público, infraestructura agéntica, y **UI/UX: 3 bugs** (contador de reintentos invertido, carpeta de destino que prometía lo que no hacía, historial que se borraba sin preguntar) + **accesibilidad**. **212 pruebas.** |
 | **2.3.0** | **Tier D** — `Core/` extraído y **170 pruebas** (152 unitarias + 18 de UI con FlaUI). Las pruebas destaparon **dos bugs de localización** en producción: la UI estaba **en español en los 8 idiomas**, y el diálogo de cierre no se traducía. |
 | **2.2.0** | **Tier C** — el updater **verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256). Primeras pruebas del proyecto (11, xUnit). |
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
@@ -489,7 +509,43 @@ Menores, sin tier asignado:
 
 ---
 
-### 2026-07-14 — Tier G: UI/UX — tres bugs que solo se veían mirando la app — **v2.4.0 (sin publicar)**
+### 2026-07-14 — Tier H: el instalador, probado de verdad — **v2.5.0 (sin publicar)**
+
+Era **el único hueco que ninguna prueba cubría**, y este documento lo señalaba desde el principio: *«el
+instalador nunca se ha probado end-to-end; FormatDiskPro encontró ahí un fallo con un diálogo modal»*. Se
+probó (instalación limpia, desinstalación y actualización in-place sobre la instalación real) y apareció
+**el mismo fallo, casi palabra por palabra**.
+
+**🐞 1 — `/VERYSILENT` NO ERA SILENCIOSO.** Con `PrivilegesRequiredOverridesAllowed=dialog`, Inno planta el
+cuadro «Seleccione el modo de instalación» **aunque se le pase `/VERYSILENT`**, y se queda **bloqueado
+esperando un clic**. La instalación limpia de prueba tardó **76 s en lugar de 9** — los que tardó un humano
+en verlo y pulsar. Desatendida, colgaría para siempre; y en la **auto-actualización** la app **ya se ha
+cerrado**, así que el usuario vería su programa esfumarse y aparecer un diálogo que no ha pedido.
+*Llevaba cuatro versiones escondido porque en una actualización Inno recuerda el modo anterior y no
+pregunta.* Arreglo: `PrivilegesRequiredOverridesAllowed=commandline dialog` + el updater manda
+`/ALLUSERS` o `/CURRENTUSER` **según cómo esté instalada la app** (`Core/InstallScope`) — una actualización
+no puede mover la app de sitio por sorpresa.
+
+**🐞 2 — La app se cerraba aunque el usuario rechazara el UAC.** Instalada *para todos los usuarios*, el
+instalador pide elevación. La app lo lanzaba, esperaba 1,5 s y hacía `Application.Current.Exit()` **sin
+comprobar nada**: si el usuario decía que no, el programa **desaparecía igual**, seguía en la versión vieja y
+no recibía explicación. Ahora se captura `ERROR_CANCELLED` (y el instalador que muere con error) y **la app
+sigue viva**, diciendo lo que ha pasado.
+
+**🐞 3 — El mismo bug de localización, por CUARTA vez.** Todo el flujo de actualización estaba en español a
+fuego («Descargando… 42%», «Instalar ahora», «Comprobando…»), igual que los diálogos de `DialogService`
+(«Sí», «No», «Aceptar», «Error»). Y otra clave inexistente tapada por un fallback defensivo
+(`MsgCheckingUpdate`).
+**Y lo importante es por qué no se cazó:** `LocalizationUsageTests` buscaba `LocalizationService.Instance["…"]`
+y `GetLocalizedString("…")`, pero **no `loc["…"]`**, que es la forma que usa medio `MainWindow`. *Un escáner
+que no mira donde de verdad se usa el código no prueba nada.* Se amplía el escáner y se añade
+**`HardcodedUiTextTests`**, que prohíbe asignar literales a las propiedades de texto de la UI.
+
+**Lo que sí funcionaba** (verificado sobre la instalación real): actualización in-place sin duplicar la
+instalación, cierre y **relanzado automático** de la app, `.pri` y los 8 idiomas en su sitio, datos del
+usuario intactos, y desinstalación que **no borra** `%AppData%\OfiConvert`.
+
+### 2026-07-14 — Tier G: UI/UX — tres bugs que solo se veían mirando la app — **v2.4.0**
 
 Revisión de la interfaz **sobre capturas de la app real**, no leyendo el XAML. Y ahí estaba lo que el código
 no delataba: **tres bugs en producción desde el principio**.

@@ -62,7 +62,7 @@
                 </InfoBar.Content>
                 <InfoBar.ActionButton>
                     <Button x:Name="btnInstalarUpdate"
-                            Content="Instalar ahora"
+                            Content="{Binding [BtnInstallUpdate], Source={StaticResource Loc}}"
                             Click="BtnDownloadUpdate_Click" />
                 </InfoBar.ActionButton>
             </InfoBar>

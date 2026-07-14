@@ -168,4 +168,16 @@
     <system:String x:Key="LblGroupConversion">変換</system:String>
     <system:String x:Key="LblGroupIntegration">統合と更新</system:String>
 
+
+    <!-- Tier H: instalador y diálogos -->
+    <system:String x:Key="BtnInstallUpdate">今すぐインストール</system:String>
+    <system:String x:Key="BtnOk">OK</system:String>
+    <system:String x:Key="MsgInformation">情報</system:String>
+    <system:String x:Key="MsgDownloading">ダウンロード中... {0}</system:String>
+    <system:String x:Key="MsgInstalling">インストール中... アプリケーションは自動的に再起動します。</system:String>
+    <system:String x:Key="MsgUpdateElevationDenied">更新はキャンセルされました：管理者権限が付与されませんでした。アプリケーションは現在のバージョンのまま動作します。</system:String>
+    <system:String x:Key="MsgUpdateInstallFailed">更新をインストールできませんでした（コード {0}）。GitHub から手動でダウンロードしてください。</system:String>
+
+    <system:String x:Key="MsgCheckingUpdate">確認中...</system:String>
+
 </ResourceDictionary>

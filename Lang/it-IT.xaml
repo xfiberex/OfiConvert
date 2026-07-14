@@ -168,4 +168,16 @@ Continuare?</system:String>
     <system:String x:Key="LblGroupConversion">Conversione</system:String>
     <system:String x:Key="LblGroupIntegration">Integrazione e aggiornamenti</system:String>
 
+
+    <!-- Tier H: instalador y diálogos -->
+    <system:String x:Key="BtnInstallUpdate">Installa ora</system:String>
+    <system:String x:Key="BtnOk">OK</system:String>
+    <system:String x:Key="MsgInformation">Informazione</system:String>
+    <system:String x:Key="MsgDownloading">Download in corso... {0}</system:String>
+    <system:String x:Key="MsgInstalling">Installazione... L'applicazione verrà riavviata automaticamente.</system:String>
+    <system:String x:Key="MsgUpdateElevationDenied">Aggiornamento annullato: non sono stati concessi i permessi di amministratore. L'applicazione continua con la versione attuale.</system:String>
+    <system:String x:Key="MsgUpdateInstallFailed">Impossibile installare l'aggiornamento (codice {0}). Scaricalo manualmente da GitHub.</system:String>
+
+    <system:String x:Key="MsgCheckingUpdate">Verifica in corso...</system:String>
+
 </ResourceDictionary>

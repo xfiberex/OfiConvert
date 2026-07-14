@@ -166,4 +166,16 @@ Continuer ?</system:String>
     <system:String x:Key="LblGroupConversion">Conversion</system:String>
     <system:String x:Key="LblGroupIntegration">Intégration et mises à jour</system:String>
 
+
+    <!-- Tier H: instalador y diálogos -->
+    <system:String x:Key="BtnInstallUpdate">Installer maintenant</system:String>
+    <system:String x:Key="BtnOk">OK</system:String>
+    <system:String x:Key="MsgInformation">Information</system:String>
+    <system:String x:Key="MsgDownloading">Téléchargement... {0}</system:String>
+    <system:String x:Key="MsgInstalling">Installation... L'application redémarrera automatiquement.</system:String>
+    <system:String x:Key="MsgUpdateElevationDenied">Mise à jour annulée : les droits d'administrateur n'ont pas été accordés. L'application continue avec la version actuelle.</system:String>
+    <system:String x:Key="MsgUpdateInstallFailed">Impossible d'installer la mise à jour (code {0}). Téléchargez-la manuellement depuis GitHub.</system:String>
+
+    <system:String x:Key="MsgCheckingUpdate">Vérification...</system:String>
+
 </ResourceDictionary>

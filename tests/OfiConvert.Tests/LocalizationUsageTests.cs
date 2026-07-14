@@ -21,9 +21,12 @@ public sealed class LocalizationUsageTests
     /// <summary>Claves que se construyen en runtime (no son literales) y que este test no puede resolver.</summary>
     private static readonly HashSet<string> DynamicKeysAllowed = new(StringComparer.Ordinal);
 
-    // GetLocalizedString("Clave") y LocalizationService.Instance["Clave"] — el literal siempre va primero.
+    // Las tres formas de pedir una clave. La tercera —`loc["Clave"]`, con `loc` una variable local— FALTABA,
+    // y por eso a este test se le escapó `MsgCheckingUpdate`: una clave que NO existía, usada en el botón
+    // de buscar actualizaciones, tapada por un fallback defensivo. Un escáner que no mira donde se usa el
+    // código no prueba nada.
     private static readonly Regex CodeUsage = new(
-        """(?:GetLocalizedString\(\s*"([^"]+)"|LocalizationService\.Instance\[\s*"([^"]+)"\])""",
+        """(?:GetLocalizedString\(\s*"([^"]+)"|LocalizationService\.Instance\[\s*"([^"]+)"\]|\bloc\[\s*"([^"]+)"\])""",
         RegexOptions.Compiled);
 
     // {Binding [Clave], Source={StaticResource Loc}}
@@ -53,7 +56,12 @@ public sealed class LocalizationUsageTests
             var code = File.ReadAllText(file);
             foreach (Match match in CodeUsage.Matches(code))
             {
-                var key = match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value;
+                var key = match.Groups
+                    .Cast<Group>()
+                    .Skip(1)
+                    .First(g => g.Success)
+                    .Value;
+
                 used[key] = Path.GetFileName(file);
             }
         }
