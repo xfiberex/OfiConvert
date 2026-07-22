@@ -16,6 +16,11 @@
             <converters:StateToColorConverter x:Key="StateToColorConverter"/>
             <converters:StateToIconConverter x:Key="StateToIconConverter"/>
             <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+            <converters:BoolToStatusIconConverter x:Key="BoolToStatusIconConverter"/>
+            <converters:BoolToStatusColorConverter x:Key="BoolToStatusColorConverter"/>
+            <converters:DurationToTextConverter x:Key="DurationToTextConverter"/>
+            <converters:ErrorsToResultIconConverter x:Key="ErrorsToResultIconConverter"/>
+            <converters:ErrorsToResultColorConverter x:Key="ErrorsToResultColorConverter"/>
             <!-- Esto construye SU PROPIA instancia de LocalizationService: no es el singleton que usa el
                  código (LocalizationService.Instance). Funciona porque el idioma es ESTADO COMPARTIDO por
                  todas las instancias — ver LocalizationService, que documenta por qué tiene que serlo. -->
@@ -102,84 +107,107 @@
                                     <TextBlock Text="{Binding [LblSelectFiles], Source={StaticResource Loc}}"
                                                Style="{StaticResource BodyStrongTextBlockStyle}"/>
 
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <!-- Sin estilo de acento: el acento marca UNA acción principal, y aquí
-                                             la principal es Convertir. Dos botones rojos compitiendo no
-                                             señalan nada. -->
-                                        <Button x:Name="btnSelectFile"
-                                                Content="{Binding [BtnSelectFile], Source={StaticResource Loc}}"
-                                                IsEnabled="{Binding IsConverting, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
-                                                Command="{Binding SelectFilesCommand}"
-                                                MinWidth="100" Height="36">
-                                            <Button.KeyboardAccelerators>
-                                                <KeyboardAccelerator Key="O" Modifiers="Control" />
-                                            </Button.KeyboardAccelerators>
-                                        </Button>
+                                    <!-- Fila de acciones: origen a la IZQUIERDA (archivo + formato), acciones a la
+                                         DERECHA (convertir + transitorios + limpiar). Antes iba todo pegado a la
+                                         izquierda y sobraba medio ancho a la derecha. -->
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
 
-                                        <!-- Format Selector -->
-                                        <TextBlock Text="{Binding [LblFormat], Source={StaticResource Loc}}"
-                                                   VerticalAlignment="Center" FontSize="13"/>
-                                        <ComboBox x:Name="cmbFormat" Width="110"
-                                                  SelectedIndex="0"
-                                                  IsEnabled="{Binding IsConverting, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
-                                                  SelectionChanged="CmbFormat_SelectionChanged">
-                                            <ComboBoxItem Content="PDF" />
-                                            <ComboBoxItem Content="HTML" />
-                                            <ComboBoxItem Content="CSV" />
-                                            <ComboBoxItem Content="PNG" />
-                                            <ComboBoxItem Content="JPG" />
-                                        </ComboBox>
+                                        <!-- Origen: elegir archivo + formato de salida -->
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                            <Button x:Name="btnSelectFile"
+                                                    Content="{Binding [BtnSelectFile], Source={StaticResource Loc}}"
+                                                    IsEnabled="{Binding IsConverting, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
+                                                    Command="{Binding SelectFilesCommand}"
+                                                    MinWidth="100" Height="36">
+                                                <Button.KeyboardAccelerators>
+                                                    <KeyboardAccelerator Key="O" Modifiers="Control" />
+                                                </Button.KeyboardAccelerators>
+                                            </Button>
 
-                                        <Button x:Name="btnConvert"
-                                                Style="{StaticResource AccentButtonStyle}"
-                                                Content="{Binding [BtnConvert], Source={StaticResource Loc}}"
-                                                IsEnabled="{Binding IsConverting, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
-                                                Command="{Binding ConvertFilesCommand}"
-                                                MinWidth="100" Height="36"/>
+                                            <TextBlock Text="{Binding [LblFormat], Source={StaticResource Loc}}"
+                                                       VerticalAlignment="Center" FontSize="13"/>
+                                            <ComboBox x:Name="cmbFormat" Width="110"
+                                                      SelectedIndex="0"
+                                                      IsEnabled="{Binding IsConverting, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
+                                                      SelectionChanged="CmbFormat_SelectionChanged">
+                                                <ComboBoxItem Content="PDF" />
+                                                <ComboBoxItem Content="HTML" />
+                                                <ComboBoxItem Content="CSV" />
+                                                <ComboBoxItem Content="PNG" />
+                                                <ComboBoxItem Content="JPG" />
+                                            </ComboBox>
+                                        </StackPanel>
 
-                                        <Button x:Name="btnPause"
-                                                Content="{Binding [BtnPause], Source={StaticResource Loc}}"
-                                                Visibility="{Binding IsConverting, Mode=OneWay}"
-                                                Command="{Binding PauseConversionCommand}"
-                                                Height="36"/>
+                                        <!-- Acciones: Convertir es la única de acento (una acción principal); los
+                                             transitorios y Limpiar la acompañan. -->
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                            <Button x:Name="btnConvert"
+                                                    Style="{StaticResource AccentButtonStyle}"
+                                                    Content="{Binding [BtnConvert], Source={StaticResource Loc}}"
+                                                    IsEnabled="{Binding IsConverting, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
+                                                    Command="{Binding ConvertFilesCommand}"
+                                                    MinWidth="100" Height="36"/>
 
-                                        <Button x:Name="btnResume"
-                                                Content="{Binding [BtnResume], Source={StaticResource Loc}}"
-                                                Visibility="{Binding IsPaused, Mode=OneWay}"
-                                                Command="{Binding ResumeConversionCommand}"
-                                                Height="36"/>
+                                            <Button x:Name="btnPause"
+                                                    Content="{Binding [BtnPause], Source={StaticResource Loc}}"
+                                                    Visibility="{Binding IsConverting, Mode=OneWay}"
+                                                    Command="{Binding PauseConversionCommand}"
+                                                    Height="36"/>
 
-                                        <Button x:Name="btnCancel"
-                                                Content="{Binding [BtnCancel], Source={StaticResource Loc}}"
-                                                Visibility="{Binding IsConverting, Mode=OneWay}"
-                                                Command="{Binding CancelConversionCommand}"
-                                                Height="36">
-                                            <Button.Resources>
-                                                <ResourceDictionary>
-                                                    <ResourceDictionary.ThemeDictionaries>
-                                                        <ResourceDictionary x:Key="Light">
-                                                            <SolidColorBrush x:Key="ButtonBackground" Color="#FFBA4636"/>
-                                                            <SolidColorBrush x:Key="ButtonForeground" Color="White"/>
-                                                            <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#FFD05040"/>
-                                                            <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="White"/>
-                                                        </ResourceDictionary>
-                                                        <ResourceDictionary x:Key="Dark">
-                                                            <SolidColorBrush x:Key="ButtonBackground" Color="#FFD55C4C"/>
-                                                            <SolidColorBrush x:Key="ButtonForeground" Color="White"/>
-                                                            <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#FFE06858"/>
-                                                            <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="White"/>
-                                                        </ResourceDictionary>
-                                                    </ResourceDictionary.ThemeDictionaries>
-                                                </ResourceDictionary>
-                                            </Button.Resources>
-                                        </Button>
+                                            <Button x:Name="btnResume"
+                                                    Content="{Binding [BtnResume], Source={StaticResource Loc}}"
+                                                    Visibility="{Binding IsPaused, Mode=OneWay}"
+                                                    Command="{Binding ResumeConversionCommand}"
+                                                    Height="36"/>
 
-                                        <Button x:Name="btnClear"
-                                                Content="{Binding [BtnClear], Source={StaticResource Loc}}"
-                                                IsEnabled="{Binding IsConverting, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
-                                                Command="{Binding ClearFilesCommand}"
-                                                Height="36"/>
-                                    </StackPanel>
+                                            <!-- Destructivo OUTLINE: rojo en texto y borde, no relleno sólido. Así se lee
+                                                 como destructivo con CUALQUIER acento del sistema (un relleno rojo choca
+                                                 con acentos cálidos). Mismo criterio para Limpiar historial y Desregistrar. -->
+                                            <Button x:Name="btnCancel"
+                                                    Content="{Binding [BtnCancel], Source={StaticResource Loc}}"
+                                                    Visibility="{Binding IsConverting, Mode=OneWay}"
+                                                    Command="{Binding CancelConversionCommand}"
+                                                    Height="36">
+                                                <Button.Resources>
+                                                    <ResourceDictionary>
+                                                        <ResourceDictionary.ThemeDictionaries>
+                                                            <ResourceDictionary x:Key="Light">
+                                                                <SolidColorBrush x:Key="ButtonBackground" Color="Transparent"/>
+                                                                <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#1AC42B1C"/>
+                                                                <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#33C42B1C"/>
+                                                                <SolidColorBrush x:Key="ButtonForeground" Color="#C42B1C"/>
+                                                                <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="#C42B1C"/>
+                                                                <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#C42B1C"/>
+                                                                <SolidColorBrush x:Key="ButtonBorderBrush" Color="#C42B1C"/>
+                                                                <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#C42B1C"/>
+                                                            </ResourceDictionary>
+                                                            <ResourceDictionary x:Key="Dark">
+                                                                <SolidColorBrush x:Key="ButtonBackground" Color="Transparent"/>
+                                                                <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#26E8776A"/>
+                                                                <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#40E8776A"/>
+                                                                <SolidColorBrush x:Key="ButtonForeground" Color="#E8776A"/>
+                                                                <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="#E8776A"/>
+                                                                <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#E8776A"/>
+                                                                <SolidColorBrush x:Key="ButtonBorderBrush" Color="#E8776A"/>
+                                                                <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#E8776A"/>
+                                                            </ResourceDictionary>
+                                                        </ResourceDictionary.ThemeDictionaries>
+                                                    </ResourceDictionary>
+                                                </Button.Resources>
+                                            </Button>
+
+                                            <Button x:Name="btnClear"
+                                                    Content="{Binding [BtnClear], Source={StaticResource Loc}}"
+                                                    IsEnabled="{Binding IsConverting, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
+                                                    Command="{Binding ClearFilesCommand}"
+                                                    Height="36"/>
+                                        </StackPanel>
+                                    </Grid>
                                 </StackPanel>
                             </Border>
 
@@ -228,20 +256,16 @@
                                 </StackPanel>
                             </Border>
 
-                            <!-- Files Header -->
-                            <Border Grid.Row="2"
-                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                    BorderThickness="1" CornerRadius="8" Padding="12,8">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBlock Text="{Binding [LblDocumentsHeader], Source={StaticResource Loc}}"
-                                               Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding [LblDragHint], Source={StaticResource Loc}}"
-                                               FontSize="12" FontStyle="Italic"
-                                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                               VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
+                            <!-- Files Header: es una ETIQUETA de la lista, no una tarjeta. Sin chrome (antes era
+                                 otro rectángulo idéntico) se lee como el título de la zona de abajo. -->
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="4,4,4,0">
+                                <TextBlock Text="{Binding [LblDocumentsHeader], Source={StaticResource Loc}}"
+                                           Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding [LblDragHint], Source={StaticResource Loc}}"
+                                           FontSize="12" FontStyle="Italic"
+                                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
 
                             <!-- Files List / Drop Zone -->
                             <Border Grid.Row="3" x:Name="DropZone"
@@ -389,8 +413,12 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
 
-                                        <FontIcon Grid.Column="0" x:Name="iconResult" Glyph="&#xE73E;" FontSize="22" Margin="0,0,10,0"
-                                                  Foreground="{StaticResource SuccessColorBrush}" VerticalAlignment="Center"/>
+                                        <!-- El icono refleja si hubo errores (antes: tilde verde FIJO, incluso en
+                                             "finalizada con errores"). Ámbar de aviso, no rojo: parte del lote sí se convirtió. -->
+                                        <FontIcon Grid.Column="0" x:Name="iconResult" FontSize="22" Margin="0,0,10,0"
+                                                  Glyph="{Binding HasConversionErrors, Mode=OneWay, Converter={StaticResource ErrorsToResultIconConverter}}"
+                                                  Foreground="{Binding HasConversionErrors, Mode=OneWay, Converter={StaticResource ErrorsToResultColorConverter}}"
+                                                  VerticalAlignment="Center"/>
 
                                         <TextBlock Grid.Column="1" Text="{Binding ConversionResultTitle, Mode=OneWay}"
                                                    FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
@@ -431,11 +459,12 @@
                                 </StackPanel>
                             </Border>
 
-                            <!-- Footer -->
+                            <!-- Footer: barra de resumen, no una tarjeta más. Fondo transparente y solo una línea
+                                 divisoria arriba: recede en vez de competir con las tarjetas de acción. -->
                             <Border Grid.Row="6"
-                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                    BorderThickness="1" CornerRadius="8" Padding="14">
+                                    Background="Transparent"
+                                    BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                                    BorderThickness="0,1,0,0" Padding="4,12,4,0">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
@@ -495,6 +524,7 @@
                                 <Button x:Name="btnExportTxt"
                                         Content="{Binding [BtnExportTxt], Source={StaticResource Loc}}"
                                         Command="{Binding ExportHistoryTxtCommand}" Height="36"/>
+                                <!-- Destructivo OUTLINE (ver btnCancel): rojo en texto y borde, no relleno. -->
                                 <Button x:Name="btnClearHistory"
                                         Content="{Binding [BtnClearHistory], Source={StaticResource Loc}}"
                                         Command="{Binding ClearHistoryCommand}" Height="36">
@@ -502,16 +532,24 @@
                                         <ResourceDictionary>
                                             <ResourceDictionary.ThemeDictionaries>
                                                 <ResourceDictionary x:Key="Light">
-                                                    <SolidColorBrush x:Key="ButtonBackground" Color="#FFBA4636"/>
-                                                    <SolidColorBrush x:Key="ButtonForeground" Color="White"/>
-                                                    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#FFD05040"/>
-                                                    <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="White"/>
+                                                    <SolidColorBrush x:Key="ButtonBackground" Color="Transparent"/>
+                                                    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#1AC42B1C"/>
+                                                    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#33C42B1C"/>
+                                                    <SolidColorBrush x:Key="ButtonForeground" Color="#C42B1C"/>
+                                                    <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="#C42B1C"/>
+                                                    <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#C42B1C"/>
+                                                    <SolidColorBrush x:Key="ButtonBorderBrush" Color="#C42B1C"/>
+                                                    <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#C42B1C"/>
                                                 </ResourceDictionary>
                                                 <ResourceDictionary x:Key="Dark">
-                                                    <SolidColorBrush x:Key="ButtonBackground" Color="#FFD55C4C"/>
-                                                    <SolidColorBrush x:Key="ButtonForeground" Color="White"/>
-                                                    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#FFE06858"/>
-                                                    <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="White"/>
+                                                    <SolidColorBrush x:Key="ButtonBackground" Color="Transparent"/>
+                                                    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#26E8776A"/>
+                                                    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#40E8776A"/>
+                                                    <SolidColorBrush x:Key="ButtonForeground" Color="#E8776A"/>
+                                                    <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="#E8776A"/>
+                                                    <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#E8776A"/>
+                                                    <SolidColorBrush x:Key="ButtonBorderBrush" Color="#E8776A"/>
+                                                    <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#E8776A"/>
                                                 </ResourceDictionary>
                                             </ResourceDictionary.ThemeDictionaries>
                                         </ResourceDictionary>
@@ -558,16 +596,18 @@
                                                         <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
 
-                                                    <!-- Status Icon -->
-                                                    <FontIcon Grid.Column="0" x:Name="historyIcon"
-                                                              Glyph="&#xE73E;" FontSize="20"
-                                                              Foreground="{StaticResource SuccessColorBrush}"
+                                                    <!-- Status Icon: refleja Success (antes: tilde verde FIJO
+                                                         para todas las filas, incluidas las fallidas). -->
+                                                    <FontIcon Grid.Column="0"
+                                                              Glyph="{Binding Success, Converter={StaticResource BoolToStatusIconConverter}}"
+                                                              Foreground="{Binding Success, Converter={StaticResource BoolToStatusColorConverter}}"
+                                                              FontSize="20"
                                                               VerticalAlignment="Center"/>
 
-                                                    <!-- File Info -->
+                                                    <!-- File Info: nombre + metadata (fecha · formato · duración). La duración
+                                                         vive aquí, con unidad, en vez de ser un número suelto en su columna. -->
                                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                                         <TextBlock Text="{Binding SourceFileName}" FontWeight="Medium"
                                                                    FontSize="13" TextTrimming="CharacterEllipsis"/>
@@ -578,19 +618,37 @@
                                                                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
                                                             <TextBlock Text="{Binding Format}" FontSize="11"
                                                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontWeight="SemiBold"/>
+                                                            <TextBlock Text="&#xB7;" FontSize="11"
+                                                                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
+                                                            <TextBlock Text="{Binding DurationSeconds, Converter={StaticResource DurationToTextConverter}}"
+                                                                       FontSize="11"
+                                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                                         </StackPanel>
+                                                        <!-- El motivo del fallo, solo en las filas que fallaron. Sin esto, un error
+                                                             era indistinguible de un éxito (y su ruta de salida iba vacía). -->
+                                                        <TextBlock Text="{Binding ErrorMessage}" FontSize="11"
+                                                                   Foreground="{StaticResource ErrorColorBrush}"
+                                                                   TextWrapping="Wrap"
+                                                                   Visibility="{Binding Success, Converter={StaticResource InverseBoolConverter}}"/>
                                                     </StackPanel>
 
-                                                    <!-- Duration -->
-                                                    <TextBlock Grid.Column="2" VerticalAlignment="Center"
-                                                               FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                               Text="{Binding DurationSeconds}"/>
-
-                                                    <!-- Output Path -->
-                                                    <TextBlock Grid.Column="3" VerticalAlignment="Center" MaxWidth="200"
-                                                               FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                                               Text="{Binding OutputPath}" TextTrimming="CharacterEllipsis"
-                                                               ToolTipService.ToolTip="{Binding OutputPath}"/>
+                                                    <!-- Output Path: solo en filas con éxito (las fallidas no tienen ruta). Icono
+                                                         de carpeta + ruta, alineado a la derecha, con más sitio que antes. -->
+                                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
+                                                                VerticalAlignment="Center" MaxWidth="300"
+                                                                HorizontalAlignment="Right"
+                                                                Visibility="{Binding Success, Mode=OneWay}"
+                                                                ToolTipService.ToolTip="{Binding OutputPath}">
+                                                        <FontIcon Glyph="&#xE8B7;" FontSize="12"
+                                                                  Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                                  VerticalAlignment="Center"/>
+                                                        <!-- MaxWidth en el TextBlock (no solo en el StackPanel): en un StackPanel
+                                                             horizontal el hijo recibe ancho infinito y el TextTrimming no dispara,
+                                                             así que la ruta se cortaba a hueso contra el borde, sin elipsis. -->
+                                                        <TextBlock Text="{Binding OutputPath}" FontSize="11" MaxWidth="260"
+                                                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                    </StackPanel>
                                                 </Grid>
                                             </Border>
                                         </DataTemplate>
@@ -804,6 +862,8 @@
                                                 IsEnabled="{Binding IsContextMenuRegistered, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
                                                 Command="{Binding RegisterContextMenuCommand}"
                                                 Height="36"/>
+                                        <!-- Destructivo OUTLINE (ver btnCancel): junto a "Registrar" (acento), un
+                                             relleno rojo se confundía con el acento en sistemas de acento cálido. -->
                                         <Button Content="{Binding [BtnUnregisterMenu], Source={StaticResource Loc}}"
                                                 IsEnabled="{Binding IsContextMenuRegistered, Mode=OneWay}"
                                                 Command="{Binding UnregisterContextMenuCommand}"
@@ -812,12 +872,24 @@
                                                 <ResourceDictionary>
                                                     <ResourceDictionary.ThemeDictionaries>
                                                         <ResourceDictionary x:Key="Light">
-                                                            <SolidColorBrush x:Key="ButtonBackground" Color="#FFBA4636"/>
-                                                            <SolidColorBrush x:Key="ButtonForeground" Color="White"/>
+                                                            <SolidColorBrush x:Key="ButtonBackground" Color="Transparent"/>
+                                                            <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#1AC42B1C"/>
+                                                            <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#33C42B1C"/>
+                                                            <SolidColorBrush x:Key="ButtonForeground" Color="#C42B1C"/>
+                                                            <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="#C42B1C"/>
+                                                            <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#C42B1C"/>
+                                                            <SolidColorBrush x:Key="ButtonBorderBrush" Color="#C42B1C"/>
+                                                            <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#C42B1C"/>
                                                         </ResourceDictionary>
                                                         <ResourceDictionary x:Key="Dark">
-                                                            <SolidColorBrush x:Key="ButtonBackground" Color="#FFD55C4C"/>
-                                                            <SolidColorBrush x:Key="ButtonForeground" Color="White"/>
+                                                            <SolidColorBrush x:Key="ButtonBackground" Color="Transparent"/>
+                                                            <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#26E8776A"/>
+                                                            <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#40E8776A"/>
+                                                            <SolidColorBrush x:Key="ButtonForeground" Color="#E8776A"/>
+                                                            <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="#E8776A"/>
+                                                            <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#E8776A"/>
+                                                            <SolidColorBrush x:Key="ButtonBorderBrush" Color="#E8776A"/>
+                                                            <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#E8776A"/>
                                                         </ResourceDictionary>
                                                     </ResourceDictionary.ThemeDictionaries>
                                                 </ResourceDictionary>

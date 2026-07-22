@@ -22,7 +22,7 @@
     <system:String x:Key="BtnNo">いいえ</system:String>
 
     <!-- Labels -->
-    <system:String x:Key="LblSelectFiles">選択：</system:String>
+    <system:String x:Key="LblSelectFiles">ファイルと形式</system:String>
     <system:String x:Key="LblFormat">形式：</system:String>
     <system:String x:Key="LblOutputFolder">出力フォルダー：</system:String>
     <system:String x:Key="LblDefaultFolder">元のファイルと同じ場所</system:String>
@@ -102,6 +102,7 @@
     <system:String x:Key="LblDestination">出力先</system:String>
     <system:String x:Key="LblResult">結果</system:String>
     <system:String x:Key="LblDuration">所要時間</system:String>
+    <system:String x:Key="UnitSeconds">秒</system:String>
     <system:String x:Key="LblSuccess">成功</system:String>
     <system:String x:Key="LblNoHistory">変換記録がありません</system:String>
 

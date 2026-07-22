@@ -22,7 +22,7 @@
     <system:String x:Key="BtnNo">否</system:String>
 
     <!-- Labels -->
-    <system:String x:Key="LblSelectFiles">选择：</system:String>
+    <system:String x:Key="LblSelectFiles">文件和格式</system:String>
     <system:String x:Key="LblFormat">格式：</system:String>
     <system:String x:Key="LblOutputFolder">输出文件夹：</system:String>
     <system:String x:Key="LblDefaultFolder">与原始文件相同的位置</system:String>
@@ -102,6 +102,7 @@
     <system:String x:Key="LblDestination">目标</system:String>
     <system:String x:Key="LblResult">结果</system:String>
     <system:String x:Key="LblDuration">时长</system:String>
+    <system:String x:Key="UnitSeconds">秒</system:String>
     <system:String x:Key="LblSuccess">成功</system:String>
     <system:String x:Key="LblNoHistory">没有转换记录</system:String>
 

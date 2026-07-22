@@ -17,14 +17,14 @@
 | | |
 |---|---|
 | **Repositorio** | https://github.com/xfiberex/OfiConvert |
-| **Versión publicada** | **2.4.0** (2026-07-14) — Tiers E, F y G. Instalador sin firmar, **con `.sha256`** |
-| **En `main`, sin publicar** | **Tier H**: el instalador, probado de punta a punta — **`/VERYSILENT` no era silencioso** → sale en la **2.5.0** |
+| **Versión publicada** | **2.6.0** (2026-07-21) — **pase de UX/UI** (3 bugs vistos solo mirando la app, pulido en claro/oscuro), sobre el **Tier H** que trajo la 2.5.0. Instalador sin firmar, **con `.sha256`** |
+| **En `main`, sin publicar** | — (al día) |
 | **Estado** | Funcional; **hoja de ruta COMPLETADA** — Tiers 0 y A–H ✅ |
 | **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · **xUnit** + **FlaUI** · Inno Setup 6 |
 | **Licencia** | **MIT** ([`LICENSE`](LICENSE)) — pero **lo que redistribuye NO es todo MIT**: ver §4 *Legal* |
-| **Pruebas** | **226**: 196 unitarias (195 + 1 de red, omitida salvo `OFICONVERT_NETWORK_TESTS=1`) + **30 de UI** (FlaUI, contra la app real) |
+| **Pruebas** | **230**: 200 unitarias (199 + 1 de red, omitida salvo `OFICONVERT_NETWORK_TESTS=1`) + **30 de UI** (FlaUI, contra la app real) |
 | **Hoja de ruta** | [`ROADMAP.md`](ROADMAP.md) — **cerrada** |
-| **Última actualización** | 2026-07-14 |
+| **Última actualización** | 2026-07-21 |
 
 ---
 
@@ -102,12 +102,12 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas unitarias | **195 pasan · 1 se omite (la de red) · 0 fallan** |
+| Pruebas unitarias | **199 pasan · 1 se omite (la de red) · 0 fallan** |
 | Pruebas de UI | **30 pasan · 0 fallan** (FlaUI, arrancan la app real) |
-| Publicado | **v2.4.0** (2.1.0 → 2.4.0 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
+| Publicado | **v2.6.0** (2.1.0 → 2.6.0 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
 | Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real |
-| Pendiente de release | **Tier H** → **2.5.0** |
+| Pendiente de release | — (al día) |
 
 **Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **hoja de ruta cerrada**
 
@@ -150,6 +150,27 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
   descartaron: en una app *unpackaged* exige registrar un servidor COM del `AppNotificationManager`,
   mucha fontanería para un beneficio marginal. Antes esto era un `ContentDialog` **modal**, pese a que
   sus claves de localización se llamaban `TrayNotif*`.
+
+### UI/UX — trampas y convenciones (pase de 2026-07-21, sobre capturas)
+
+- 🔴 **UN `ContentDialog` NO HEREDA EL TEMA DE LA APP.** `ApplyTheme` fija `RequestedTheme` en `Content`
+  (el root), pero un diálogo se enraíza en la **capa de popups**, hermana de `Content`, no dentro: se
+  queda en el tema del **sistema**. Con la app en Claro sobre un Windows en Oscuro, **los diálogos salían
+  negros**. Todo `ContentDialog` debe recibir `RequestedTheme = RootTheme` a mano (`MainWindow` tiene el
+  helper). Afecta a los cuatro: legal, cierre, sin-actualizaciones y actualización.
+- **El icono de estado del historial iba en DURO** (tilde verde para TODAS las filas): un fallo se veía
+  idéntico a un éxito, sin ruta y sin motivo. Ahora el glifo/color salen de `Success` (converters
+  `BoolToStatus*`), la decisión de glifo vive en `Core/HistoryStatus` (pura, la cubre `HistoryStatusTests`)
+  y las filas fallidas muestran su `ErrorMessage`. Mismo patrón que el bug del contador de reintentos:
+  *un `FontIcon` en duro no rompe el build, solo enseña lo que no debe*.
+- **Botones destructivos = OUTLINE, no relleno sólido** (`btnCancel`, `btnClearHistory`, `Desregistrar`):
+  rojo en texto y borde, fondo transparente. Un relleno rojo sólido **choca con acentos de sistema
+  cálidos** (la app respeta el acento de Windows, no lo fija), y junto a un botón de acento —`Registrar`—
+  los dos salían rojos e indistinguibles. El outline se lee como destructivo con **cualquier** acento.
+- **Las capturas fijan un acento NEUTRO, la app NO.** La app sigue el acento del sistema; para que las
+  imágenes del README no salgan con el acento personal de quien las genera, los scripts de captura ponen
+  `OFICONVERT_ACCENT` (azul `#0078D4`) y `App.OnLaunched` lo lee **solo para esto** (gated por env var; en
+  producción, no hace nada). Sin esto, el repo mostraba capturas en el rojo del equipo del autor.
 
 ### Conversión COM (no romper)
 
@@ -434,7 +455,8 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | Pruebas unitarias | `dotnet test tests\OfiConvert.Tests\OfiConvert.Tests.csproj` |
 | **Pruebas de UI** (abren la app; requieren la app compilada) | `dotnet test tests\OfiConvert.UiTests\OfiConvert.UiTests.csproj` |
 | Pruebas **con red** (verifica el release real de GitHub) | `$env:OFICONVERT_NETWORK_TESTS = "1"; dotnet test …` |
-| **Regenerar las capturas** del README | `.\tools\capture-screenshots.ps1` |
+| **Regenerar las capturas** del README | `.\tools\capture-screenshots.ps1` (acento neutro por defecto) |
+| **Galería de revisión** de UI (todos los estados ×claro/oscuro) | `.\tools\capture-ui-states.ps1` |
 | Instalador | `.\installer\build-installer.ps1` (`-CertThumbprint <huella>` para firmar) |
 | **Publicar versión** | `.\release.ps1 -Version X.Y.Z` (`-DryRun` para simular) |
 
@@ -499,7 +521,8 @@ Menores, sin tier asignado:
 
 | Versión | Qué trajo |
 |---|---|
-| **2.5.0** *(sin publicar)* | **Tier H** — el instalador probado de punta a punta: **`/VERYSILENT` no era silencioso** (bloqueaba con un diálogo modal), la app **se cerraba aunque el usuario rechazara el UAC**, y el flujo de actualización estaba **en español a fuego**. **226 pruebas.** |
+| **2.6.0** | **Pase de UX/UI sobre capturas** — galería de todos los estados (×claro/oscuro, incluidos convirtiendo/resultados con conversión real) que destapó **3 bugs** vistos solo mirando la app (historial que no distinguía éxito de fallo, diálogos que ignoraban el tema, panel de resultados con tilde verde sobre errores) + pulido (destructivos *outline*, jerarquía de tarjetas, layout, diálogo legal, duración con unidad). **230 pruebas.** |
+| **2.5.0** | **Tier H** — el instalador probado de punta a punta: **`/VERYSILENT` no era silencioso** (bloqueaba con un diálogo modal), la app **se cerraba aunque el usuario rechazara el UAC**, y el flujo de actualización estaba **en español a fuego**. **226 pruebas.** |
 | **2.4.0** | **Tiers E, F y G** — legal in-app (licencia y avisos **embebidos**, 8 idiomas), `THIRD-PARTY-NOTICES.txt` **verificado paquete a paquete** (no todo es MIT), capturas regenerables, README público, infraestructura agéntica, y **UI/UX: 3 bugs** (contador de reintentos invertido, carpeta de destino que prometía lo que no hacía, historial que se borraba sin preguntar) + **accesibilidad**. **212 pruebas.** |
 | **2.3.0** | **Tier D** — `Core/` extraído y **170 pruebas** (152 unitarias + 18 de UI con FlaUI). Las pruebas destaparon **dos bugs de localización** en producción: la UI estaba **en español en los 8 idiomas**, y el diálogo de cierre no se traducía. |
 | **2.2.0** | **Tier C** — el updater **verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256). Primeras pruebas del proyecto (11, xUnit). |
@@ -509,7 +532,47 @@ Menores, sin tier asignado:
 
 ---
 
-### 2026-07-14 — Tier H: el instalador, probado de verdad — **v2.5.0 (sin publicar)**
+### 2026-07-21 — Pase de UX/UI: mirar la app, no leer el XAML — **v2.6.0**
+
+Se instrumentó primero y se pulió después. La instrumentación: **`tools/capture-ui-states.ps1`**, primo de
+`capture-screenshots.ps1` que fotografía **todos** los estados (vacío, con cola, historial poblado, historial
+vacío, ajustes arriba y abajo, y el diálogo legal abierto) en **claro y oscuro** — 14 imágenes por corrida,
+sembrando cada estado por JSON. Con esa galería delante aparecieron dos cosas que el XAML no delataba.
+
+**🐞 1 — El historial no distinguía un fallo de un éxito.** El `FontIcon` de estado tenía el glifo (tilde) y
+el color (verde) **en duro**, sin mirar `Success`. Una conversión fallida se veía **idéntica** a una correcta:
+tilde verde, sin ruta y **sin decir el motivo**. Ahora el glifo/color salen de `Success` (converters
+`BoolToStatus*`; la decisión de glifo vive en `Core/HistoryStatus`, pura y con test que se comprobó en rojo),
+y las filas fallidas muestran su `ErrorMessage` en rojo. *Un `FontIcon` en duro no rompe el build: solo miente.*
+
+**🐞 2 — Los `ContentDialog` ignoraban el tema de la app.** En modo Claro (con el Windows del equipo en
+Oscuro), el diálogo de licencia salía **negro**: un diálogo se enraíza en la capa de popups, hermana de
+`Content`, así que no hereda el `RequestedTheme` que se fija en el root. Se les pasa el tema a mano
+(`RootTheme`). Afecta a los cuatro diálogos. Detalle en §4 *UI/UX*.
+
+**🐞 3 — El panel de resultados encabezaba los errores con un tilde verde.** El mismo patrón que el bug 1,
+en otro sitio: `iconResult` tenía el glifo y el color **en duro** (tilde + verde), así que *"Conversión
+finalizada con errores"* salía con un check de éxito al lado. Se descubrió capturando los estados que
+**exigen una conversión real** (Office): *convirtiendo*, *resultados con éxito* y *con errores*, en claro y
+oscuro. Ahora el icono se enlaza a `HasConversionErrors` (converters `ErrorsToResult*`): con errores, un
+**aviso ámbar** (no rojo total: parte del lote sí se convirtió). *La conversión sigue fuera del pipeline de
+capturas a propósito, pero se puede conducir a mano (COM de la app corre en el escritorio interactivo; COM
+desde un PowerShell no-interactivo **cuelga** — los docs de ejemplo se generan como OOXML, sin COM).*
+
+**✨ Pulido** (todo verificado en las dos temas): diálogo legal **ensanchado** (el MIT a 80 columnas ya no se
+parte en "copy"/"deal" sueltos); historial con **duración con unidad** ("2,4 s", nueva clave `UnitSeconds` ×8)
+y columnas equilibradas (ruta con icono y elipsis); fila de acciones **reorganizada** (origen a la izquierda,
+acciones a la derecha; adiós a la zona muerta) y su tarjeta retitulada (`LblSelectFiles`: "Selecciona:" →
+"Archivos y formato"); **botones destructivos en *outline*** (rojo en texto y borde, no relleno sólido, que
+choca con acentos cálidos del sistema); y **menos monotonía de tarjetas** (footer como barra de resumen con
+divisor, cabecera de documentos sin chrome).
+
+**Y un arreglo de higiene de las capturas:** la app respeta el acento de Windows, así que el repo mostraba las
+capturas en el **rojo personal** del equipo del autor. Los scripts de captura ahora fijan un acento **neutro**
+(`OFICONVERT_ACCENT`, que `App.OnLaunched` lee solo para esto); `docs/screenshots/` regenerado en azul por
+defecto. **+4 pruebas** (`HistoryStatusTests`) → **230**.
+
+### 2026-07-14 — Tier H: el instalador, probado de verdad — **v2.5.0**
 
 Era **el único hueco que ninguna prueba cubría**, y este documento lo señalaba desde el principio: *«el
 instalador nunca se ha probado end-to-end; FormatDiskPro encontró ahí un fallo con un diálogo modal»*. Se

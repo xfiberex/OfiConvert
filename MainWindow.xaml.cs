@@ -110,11 +110,17 @@ public sealed partial class MainWindow : Window
             {
                 Content = text,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                MaxHeight = 440
+                MaxHeight = 440,
+                // Los avisos vienen maquetados a ~80 columnas monoespaciadas. Con el ancho por defecto del
+                // ContentDialog (~548 px) cada línea larga se parte una vez y deja un resto suelto ("copy",
+                // "deal"…): un texto legal que parece roto. Se le da sitio para que la línea entera quepa.
+                MinWidth = 700
             },
             CloseButtonText = LocalizationService.Instance["TipClose"],
-            XamlRoot = Content.XamlRoot
+            XamlRoot = Content.XamlRoot,
+            RequestedTheme = RootTheme
         };
+        dialog.Resources["ContentDialogMaxWidth"] = 760.0;
 
         await dialog.ShowAsync();
     }
@@ -139,6 +145,11 @@ public sealed partial class MainWindow : Window
             };
         }
     }
+
+    // Un ContentDialog se enraíza en la capa de POPUPS (hermana de Content), no dentro de Content, así que
+    // NO hereda el RequestedTheme que ApplyTheme fija en el root: se queda en el tema del SISTEMA. Con la app
+    // en Claro sobre un Windows en Oscuro, los diálogos salían negros. Se les pasa el tema del root a mano.
+    private ElementTheme RootTheme => (Content as FrameworkElement)?.RequestedTheme ?? ElementTheme.Default;
 
     private void InitializeTrayIcon()
     {
@@ -255,7 +266,8 @@ public sealed partial class MainWindow : Window
                 PrimaryButtonText = LocalizationService.Instance["BtnYes"],
                 CloseButtonText = LocalizationService.Instance["BtnNo"],
                 DefaultButton = ContentDialogButton.Close,
-                XamlRoot = Content.XamlRoot
+                XamlRoot = Content.XamlRoot,
+                RequestedTheme = RootTheme
             };
 
             var result = await dialog.ShowAsync();
@@ -436,7 +448,8 @@ public sealed partial class MainWindow : Window
                     Title = loc["TitleNoUpdates"],
                     Content = new TextBlock { Text = loc["MsgNoUpdates"], TextWrapping = TextWrapping.Wrap },
                     CloseButtonText = loc["BtnOk"],
-                    XamlRoot = Content.XamlRoot
+                    XamlRoot = Content.XamlRoot,
+                    RequestedTheme = RootTheme
                 };
                 await dialog.ShowAsync();
             }
@@ -460,7 +473,8 @@ public sealed partial class MainWindow : Window
                     PrimaryButtonText = loc["BtnYes"],
                     CloseButtonText = loc["BtnNo"],
                     DefaultButton = ContentDialogButton.Primary,
-                    XamlRoot = Content.XamlRoot
+                    XamlRoot = Content.XamlRoot,
+                    RequestedTheme = RootTheme
                 };
 
                 var result = await dialog.ShowAsync();

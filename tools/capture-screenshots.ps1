@@ -30,13 +30,19 @@
 .PARAMETER ExePath
     Ruta al OfiConvert.exe. Por defecto, el más reciente de bin\ (win-x64).
 
+.PARAMETER Accent
+    Color de acento en hex para las capturas. Por defecto #0078D4 (azul por defecto de Windows). La app
+    respeta el acento del sistema; esto lo NEUTRALIZA solo para el README (App.OnLaunched lee OFICONVERT_ACCENT
+    únicamente para esto), para que las imágenes no salgan con el acento personal de quien las genera.
+
 .EXAMPLE
     .\tools\capture-screenshots.ps1
 #>
 [CmdletBinding()]
 param(
     [string]$OutputDir,
-    [string]$ExePath
+    [string]$ExePath,
+    [string]$Accent = "#0078D4"
 )
 
 $ErrorActionPreference = "Stop"
@@ -247,6 +253,7 @@ $backupQueue    = if (Test-Path $queuePath)    { Get-Content $queuePath -Raw }  
 
 Get-Process OfiConvert -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
+$env:OFICONVERT_ACCENT = $Accent
 try {
     $queue = New-SampleDocs
 
@@ -257,6 +264,7 @@ try {
     Ok "Capturas regeneradas en $OutputDir"
 }
 finally {
+    Remove-Item Env:\OFICONVERT_ACCENT -ErrorAction SilentlyContinue
     Get-Process OfiConvert -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
     if ($null -ne $backupSettings) { Set-Content -Path $settingsPath -Value $backupSettings -Encoding utf8 }

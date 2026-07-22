@@ -22,7 +22,7 @@
     <system:String x:Key="BtnNo">Não</system:String>
 
     <!-- Labels -->
-    <system:String x:Key="LblSelectFiles">Selecionar:</system:String>
+    <system:String x:Key="LblSelectFiles">Arquivos e formato</system:String>
     <system:String x:Key="LblFormat">Formato:</system:String>
     <system:String x:Key="LblOutputFolder">Pasta de destino:</system:String>
     <system:String x:Key="LblDefaultFolder">Mesma localização dos arquivos originais</system:String>
@@ -102,6 +102,7 @@
     <system:String x:Key="LblDestination">Destino</system:String>
     <system:String x:Key="LblResult">Resultado</system:String>
     <system:String x:Key="LblDuration">Duração</system:String>
+    <system:String x:Key="UnitSeconds">s</system:String>
     <system:String x:Key="LblSuccess">Sucesso</system:String>
     <system:String x:Key="LblNoHistory">Nenhum registro de conversão</system:String>
 
