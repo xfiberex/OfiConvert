@@ -1,4 +1,4 @@
-# Contexto del proyecto — OfiConvert
+﻿# Contexto del proyecto — OfiConvert
 
 > **Qué es este archivo.** El contexto **vivo** del proyecto: qué es, cómo está montado, qué se decidió
 > y por qué, y qué pasó en cada versión. Sirve para retomar el trabajo sin releer el código (y sin
@@ -85,6 +85,7 @@ OfiConvert/                    (la app vive en la RAÍZ del repo; no hay src/ �
 │                              legal, updater (servidor HTTP local + release real)
 ├─ tests/OfiConvert.UiTests/   FlaUI/UIA3 (21): conducen el .exe REAL. Sin elevación y sin Office
 ├─ tools/                      capture-screenshots.ps1 (regenera docs/screenshots conduciendo la app)
+│                             capture-ui-states.ps1 (galería de revisión) · capture-dropdown.ps1 (popups opacos)
 ├─ docs/screenshots/           Las capturas del README (regenerables, no se editan a mano)
 ├─ THIRD-PARTY-NOTICES.txt     Avisos de terceros — VERIFICADOS uno a uno; embebido en el .exe (§4 Legal)
 ├─ .claude/ · .agents/ · .mcp.json   Infraestructura agéntica (Tier F): CLAUDE.md, skills, codegraph
@@ -107,7 +108,7 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | Publicado | **v2.6.0** (2.1.0 → 2.6.0 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
 | Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real |
-| Pendiente de release | — (al día) |
+| Pendiente de release | Desplegables opacos (los popups acrílicos se veían borrosos sobre Mica) — 2026-08-24 |
 
 **Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **hoja de ruta cerrada**
 
@@ -171,6 +172,27 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
   imágenes del README no salgan con el acento personal de quien las genera, los scripts de captura ponen
   `OFICONVERT_ACCENT` (azul `#0078D4`) y `App.OnLaunched` lo lee **solo para esto** (gated por env var; en
   producción, no hace nada). Sin esto, el repo mostraba capturas en el rojo del equipo del autor.
+
+- 🔴 **LOS POPUPS DE WINUI SON ACRÍLICOS POR DEFECTO Y SOBRE MICA SE VEN BORROSOS.** `generic.xaml` alias
+  `ComboBoxDropDownBackground` → `AcrylicInAppFillColorDefaultBrush`, así que el desplegable de un
+  `ComboBox` (y los `Flyout`/`MenuFlyout`) transparenta el contenido de la ventana **a través del menú** y,
+  encima, pinta la **textura de ruido** del acrílico. Con el backdrop Mica se apilan dos capas translúcidas:
+  panel moteado y texto sin contraste. Se arregla en `App.xaml`, forzando opacos
+  `ComboBoxDropDownBackground`, `FlyoutPresenterBackground`, `MenuFlyoutPresenterBackground` y los dos
+  `Acrylic*FillColorDefaultBrush`, en `ThemeDictionaries` (Light/Dark/HighContrast). A nivel de App, no
+  control por control: si no, el siguiente `ComboBox` que se añada vuelve a salir borroso.
+- 🔴 **UN `ResourceDictionary.ThemeDictionaries` EN LA RAÍZ DE `Application.Resources` NO SE HONRA** si esa
+  raíz ya tiene `MergedDictionaries`. Compila, no da ni una advertencia, y los overrides **no se aplican**:
+  el popup sigue acrílico exactamente igual que antes. Tiene que ir como un `ResourceDictionary` **dentro
+  de `MergedDictionaries`, después de `XamlControlsResources`**. Ya se pagó: el arreglo del acrílico se dio
+  por bueno una vez sin efecto ninguno, y solo se destapó **ampliando la captura** y viendo que el moteado
+  del acrílico seguía ahí. *Corolario: un override de tema que "no se ve" casi nunca es el color mal
+  elegido; es que la clave no se está resolviendo.*
+- **Cómo se comprueba esto sin ojo clínico:** `.	ools\capture-dropdown.ps1`. Abre los cuatro `ComboBox`
+  y **cuenta los colores** del fondo del popup. Acrílico = decenas de valores vecinos (`#2B`–`#30`, el
+  ruido): 38–68% de "cuota de ruido". Sólido = **un** valor, el que se puso: 0%. Así se distingue "está
+  opaco" de "parece opaco" sin discutir sobre una captura. Ojo con el `.exe` que mide: coge el más reciente
+  de `bin\`, que puede ser un Debug viejo de un `dotnet run` — compila antes.
 
 ### Conversión COM (no romper)
 
@@ -457,6 +479,7 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | Pruebas **con red** (verifica el release real de GitHub) | `$env:OFICONVERT_NETWORK_TESTS = "1"; dotnet test …` |
 | **Regenerar las capturas** del README | `.\tools\capture-screenshots.ps1` (acento neutro por defecto) |
 | **Galería de revisión** de UI (todos los estados ×claro/oscuro) | `.\tools\capture-ui-states.ps1` |
+| **Comprobar que los desplegables son opacos** (no acrílicos) | `.\tools\capture-dropdown.ps1` — mide, no solo fotografía; sale con código 1 si alguno sigue acrílico |
 | Instalador | `.\installer\build-installer.ps1` (`-CertThumbprint <huella>` para firmar) |
 | **Publicar versión** | `.\release.ps1 -Version X.Y.Z` (`-DryRun` para simular) |
 
@@ -529,6 +552,50 @@ Menores, sin tier asignado:
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
+
+---
+
+### 2026-08-24 — Los desplegables se veían borrosos — **sin publicar**
+
+Reportado sobre una captura de **Ajustes**: al abrir el `ComboBox` de *Tema*, el menú salía **desenfocado**
+y se transparentaba el contenido de la tarjeta de debajo. No era un bug del layout: es el **estilo por
+defecto de WinUI**, que pinta los popups con acrílico (`AcrylicBackgroundFillColorDefaultBrush`). Sobre el
+backdrop **Mica** de la ventana, ese acrílico apila dos capas translúcidas y el texto del menú pierde
+contraste contra lo que hay detrás.
+
+Arreglado en **`App.xaml`**, no en `MainWindow.xaml`: `ThemeDictionaries` (Light `#F9F9F9` / Dark `#2C2C2C`
+/ HighContrast a los colores del sistema) que fuerzan opacos `ComboBoxDropDownBackground`,
+`FlyoutPresenterBackground`, `MenuFlyoutPresenterBackground` y los `Acrylic*FillColorDefaultBrush`. Va a
+nivel de App a propósito: cubre los cuatro `ComboBox` (formato, tema, idioma, formato por defecto) y
+cualquier flyout futuro sin repetir el override control por control.
+
+**🐞 Y el primer intento no hizo NADA.** Se colocaron las `ThemeDictionaries` en la **raíz** de
+`Application.Resources` — que ya tenía `MergedDictionaries`. Compila 0/0, no avisa de nada y el override
+**no se resuelve**: el desplegable salía idéntico. Se dio por arreglado y el usuario respondió *"se sigue
+viendo igual"*. Lo que lo destapó no fue leer más XAML sino **mirar la app**: un script de UI Automation
+que abre el `ComboBox` y lo fotografía, y al ampliar el recorte apareció el **moteado** del acrílico. La
+prueba objetiva es contar colores en un recuadro del fondo: antes ~6 valores (`#2B2B2B`–`#303030`, el ruido
+del acrílico); después **1800 de 1800 píxeles exactamente `#2C2C2C`**. El diccionario tiene que ir dentro
+de `MergedDictionaries`, **después** de `XamlControlsResources`.
+
+**Y ahora sí hay con qué comprobarlo: `tools/capture-dropdown.ps1`.** Tercer primo de los scripts de
+captura: abre los cuatro `ComboBox` por UI Automation, en claro y oscuro, y **mide** el fondo del popup en
+vez de dejarlo a ojo. La métrica es la *cuota de ruido*: el % de píxeles a ±3 del color dominante sin ser
+el dominante — el grano del acrílico. Sale con código 1 si alguno sigue acrílico.
+
+Se comprobó **en rojo**, como manda la casa: con el `App.xaml` roto a propósito (las `ThemeDictionaries` de
+vuelta a la raíz) marca **38–68% de ruido** en los ocho casos; con el arreglo, **0%**. Margen de sobra, no
+un umbral apretado. De paso destapó dos trampas propias, ya resueltas dentro del script:
+
+- **El popup no cuelga del `ComboBox` ni expone ningún `List`**: en el árbol de UIA solo aparecen sus
+  `ListItem` sueltos (y por duplicado). El rectángulo del desplegable se reconstruye como la **unión** de
+  los rects de esos elementos.
+- **El primer intento traía un fallback al propio `ComboBox`** cuando no encontraba la lista — y eso daba
+  un **OK falso**: el control cerrado tiene fondo sólido (`#383838` en oscuro), así que medía limpio y
+  cantaba "opaco" sin haber mirado el popup ni una vez. Si no encuentra los elementos, ahora **falla**.
+
+Build **0/0**, **229 pruebas** (199 + 30 UI) en verde. Las pruebas de xUnit no cubren esto: no miran
+píxeles. Para esto está el script.
 
 ---
 

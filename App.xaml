@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Application
     x:Class="OfiConvert.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -7,6 +7,41 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+
+                <!-- Los popups de WinUI (desplegable del ComboBox, MenuFlyout, Flyout) pintan ACRILICO por
+                     defecto: generic.xaml alias `ComboBoxDropDownBackground` a `AcrylicInAppFillColorDefaultBrush`.
+                     Sobre el backdrop Mica de la ventana se apilan dos capas translucidas y el menu se ve
+                     BORROSO: se transparenta la tarjeta de debajo y el acrilico ademas pinta su textura de
+                     RUIDO (el moteado del fondo). Aqui se fuerzan opacos.
+
+                     ESTE DICCIONARIO TIENE QUE IR EN MergedDictionaries, DESPUES de XamlControlsResources.
+                     Un `ResourceDictionary.ThemeDictionaries` puesto en la RAIZ de Application.Resources NO
+                     se honra cuando esa raiz ya tiene MergedDictionaries: compila, no avisa de nada, y el
+                     popup sigue acrilico. Ya paso: se "arreglo" una vez sin efecto, y solo se vio ampliando
+                     una captura y viendo que el ruido del acrilico seguia ahi. -->
+                <ResourceDictionary>
+                    <ResourceDictionary.ThemeDictionaries>
+                        <ResourceDictionary x:Key="Light">
+                            <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#F9F9F9"/>
+                            <SolidColorBrush x:Key="FlyoutPresenterBackground" Color="#F9F9F9"/>
+                            <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="#F9F9F9"/>
+                            <SolidColorBrush x:Key="AcrylicBackgroundFillColorDefaultBrush" Color="#F9F9F9"/>
+                            <SolidColorBrush x:Key="AcrylicInAppFillColorDefaultBrush" Color="#F9F9F9"/>
+                        </ResourceDictionary>
+                        <ResourceDictionary x:Key="Dark">
+                            <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#2C2C2C"/>
+                            <SolidColorBrush x:Key="FlyoutPresenterBackground" Color="#2C2C2C"/>
+                            <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="#2C2C2C"/>
+                            <SolidColorBrush x:Key="AcrylicBackgroundFillColorDefaultBrush" Color="#2C2C2C"/>
+                            <SolidColorBrush x:Key="AcrylicInAppFillColorDefaultBrush" Color="#2C2C2C"/>
+                        </ResourceDictionary>
+                        <ResourceDictionary x:Key="HighContrast">
+                            <StaticResource x:Key="ComboBoxDropDownBackground" ResourceKey="SystemColorWindowColorBrush"/>
+                            <StaticResource x:Key="FlyoutPresenterBackground" ResourceKey="SystemColorWindowColorBrush"/>
+                            <StaticResource x:Key="MenuFlyoutPresenterBackground" ResourceKey="SystemColorWindowColorBrush"/>
+                        </ResourceDictionary>
+                    </ResourceDictionary.ThemeDictionaries>
+                </ResourceDictionary>
             </ResourceDictionary.MergedDictionaries>
             <SolidColorBrush x:Key="SuccessColorBrush" Color="#10B981"/>
             <SolidColorBrush x:Key="WarningColorBrush" Color="#F59E0B"/>
