@@ -6,8 +6,10 @@
 > relevante:** actualizar §3 _Estado actual_ y añadir una entrada al _Registro de cambios_ (fecha
 > absoluta). Commitearlo junto al cambio.
 >
-> Reparto con [`ROADMAP.md`](ROADMAP.md): allí, **qué se va a hacer** (tiers pendientes); aquí,
-> **qué hay hecho, cómo y por qué**.
+> Reparto de los tres documentos vivos, que **no se solapan**: [`ROADMAP.md`](ROADMAP.md) responde a
+> **qué falta** (tiers pendientes); [`CHANGELOG.md`](CHANGELOG.md), a **qué cambió** en cada versión,
+> contado para quien usa el programa; y este, a **qué hay hecho, cómo y POR QUÉ**. Ante la duda entre
+> los dos últimos: el *qué* va al changelog, el *porqué* aquí.
 >
 > **Proyectos hermanos:** [FormatDiskPro](https://github.com/xfiberex/FormatDiskPro) y
 > [WingetUSoft](https://github.com/xfiberex/WingetUSoft) (mismo autor, mismo stack, ambos TERMINADOS).
@@ -19,12 +21,13 @@
 | **Repositorio** | https://github.com/xfiberex/OfiConvert |
 | **Versión publicada** | **2.6.1** (2026-08-29) — los **desplegables opacos** sobre Mica, sobre el **pase de UX/UI** que trajo la 2.6.0 (3 bugs vistos solo mirando la app). Instalador sin firmar, **con `.sha256`** |
 | **En `main`, sin publicar** | — (al día) |
-| **Estado** | Funcional; **hoja de ruta COMPLETADA** — Tiers 0 y A–I ✅ |
+| **Estado** | Funcional; Tiers 0 y A–I ✅. **Hoja de ruta REABIERTA**: [Tier J](ROADMAP.md) (re-auditoría del 2026-08-29) — 38 tareas, **7 Altas**, 0 cerradas |
 | **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · **xUnit** + **FlaUI** · Inno Setup 6 |
 | **Licencia** | **MIT** ([`LICENSE`](LICENSE)) — pero **lo que redistribuye NO es todo MIT**: ver §4 *Legal* |
 | **Pruebas** | **230**: 200 unitarias (199 + 1 de red, omitida salvo `OFICONVERT_NETWORK_TESTS=1`) + **30 de UI** (FlaUI, contra la app real) |
-| **Hoja de ruta** | [`ROADMAP.md`](ROADMAP.md) — **cerrada** |
-| **Última actualización** | 2026-07-21 |
+| **Hoja de ruta** | [`ROADMAP.md`](ROADMAP.md) — **Tier J abierto** (2026-08-29) |
+| **Cambios por versión** | [`CHANGELOG.md`](CHANGELOG.md) — creado el 2026-08-29; **el _qué_ va allí, el _porqué_ aquí** |
+| **Última actualización** | 2026-08-29 |
 
 ---
 
@@ -107,10 +110,11 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | Pruebas de UI | **30 pasan · 0 fallan** (FlaUI, arrancan la app real) |
 | Publicado | **v2.6.1** (2.1.0 → 2.6.1 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
-| Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real |
-| Pendiente de release | Desplegables opacos (los popups acrílicos se veían borrosos sobre Mica) — 2026-08-24 |
+| Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real. ⚠️ **Solo en un equipo CON Office**: ver `TJ-04` |
+| Pendiente de release | — (la 2.6.1 está publicada; nada en `main` sin publicar) |
+| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **38 tareas, 7 Altas, 0 cerradas**. Verificado en verde antes de auditar: build 0/0 y 199 · 1 omitida · 0 fallos |
 
-**Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **hoja de ruta cerrada**
+**Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **A–I cerrados; J abierto**
 
 | Tier | Tema | Estado |
 |---|---|---|
@@ -123,6 +127,8 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | **F** | **Infraestructura agéntica (`.mcp.json`, `CLAUDE.md`, skills, codegraph)** | ✅ |
 | **G** | **UI/UX (3 bugs, comandos que se apagan solos, accesibilidad)** | ✅ |
 | **H** | **Instalador end-to-end (el `/VERYSILENT` que no era silencioso)** | ✅ |
+| **I** | **Pase de UX/UI sobre capturas (3 bugs vistos solo mirando la app)** | ✅ |
+| **J** | **Re-auditoría externa: el motor, el pipeline y los guardianes** | 🔶 **abierto (2026-08-29)** |
 
 ---
 
@@ -208,6 +214,20 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 - **PowerPoint no acepta `Visible = false`** (lanza excepción): se abre con `WithWindow:=False` y se
   ocultan sus ventanas después (`HidePowerPointWindows`). Por eso sus llamadas van en `try/catch`
   individuales.
+  - ⚠️ **`HidePowerPointWindows` NO oculta nada: pone `Visible = -1`, que es msoTrue.** Hoy da igual
+    porque con `WithWindow:=False` la colección viene vacía y el bucle no se ejecuta. Ver `TJ-21`.
+- 🔴 **POWERPOINT ES UNA INSTANCIA COM ÚNICA Y COMPARTIDA. WORD Y EXCEL, NO.** *Medido el 2026-08-29 en
+  esta máquina (Office 16 ClickToRun): dos `Activator.CreateInstance` seguidos sobre
+  `PowerPoint.Application` dejan **un** `POWERPNT.EXE`; sobre `Word.Application` y `Excel.Application`,
+  **dos** procesos cada uno.* Dos consecuencias, y las dos muerden:
+  - Con `MaxParallelConversions > 1`, **N conversiones de `.pptx` conducen el MISMO PowerPoint**, y la
+    primera que termina llama a `Quit()` — matando las presentaciones que las demás están exportando.
+  - Si el usuario tiene PowerPoint abierto, la app **se engancha a su sesión** y la cierra al acabar,
+    con `DisplayAlerts = ppAlertsNone` puesto: **sin preguntar por lo no guardado**.
+
+    Por eso las conversiones de PowerPoint hay que **serializarlas**, y hay que **detectar si la
+    instancia era preexistente** para no llamar a `Quit()` en ese caso. Tarea `TJ-01`. *No es una
+    peculiaridad de esta máquina: PowerPoint solo admite una instancia de automatización por sesión.*
 - Excel→CSV exporta **una hoja** (la activa, o la indicada en `ConversionOptions.SheetNames`);
   PPT→PNG/JPG exporta **todas las diapositivas** a una subcarpeta con el nombre del archivo.
 
@@ -535,6 +555,9 @@ Menores, sin tier asignado:
 3. Marcar el ítem como ✅ en [`ROADMAP.md`](ROADMAP.md) cuando esté **verificado** (build + tests +
    prueba real), no cuando esté escrito.
 4. Commitear este archivo **junto** con el cambio, para que el contexto viaje con el código.
+5. Lo que le pasa **al usuario** va a [`CHANGELOG.md`](CHANGELOG.md), bajo `## [Sin publicar]`, y se
+   escribe **antes** del corte: `release.ps1` sacará de ahí las notas del release (`TJ-07`).
+6. Una decisión revertida **no se borra**: se marca como superada y se explica qué la cambió.
 
 ---
 
@@ -552,6 +575,87 @@ Menores, sin tier asignado:
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
+
+---
+
+### 2026-08-29 — Re-auditoría externa: se abre el **Tier J** y nace `CHANGELOG.md`
+
+Revisión completa del repositorio con el plan **cerrado** y los tiers 0 y A–I dados por buenos. Alcance
+acordado: **12 de las 13 áreas** del prompt de revisión (SEO no aplica: no hay superficie web),
+**profundidad exhaustiva**, **sin exclusiones** (los 133 archivos versionados) y normativa **ninguna**
+—el área legal se acota a licencias y atribuciones—. **No se ha tocado código:** el resultado es el
+[Tier J](ROADMAP.md), con **38 tareas** (7 Altas · 19 Medias · 12 Bajas).
+
+**Verificado antes de auditar, no dado por bueno:** build **0/0** y **199 pasan · 1 omitida · 0 fallan**.
+Coincide con lo que decía este documento.
+
+**Lo que distingue a esta pasada de los tiers G e I:** aquellos revisaron **la interfaz**, sobre
+capturas. Esta ha leído **el motor** —COM, LibreOffice, el pipeline y los propios guardianes—, y lo peor
+no salió de leer más código sino de **dos comprobaciones que nadie había hecho**:
+
+- 🔴 **Activar Office dos veces por COM.** `PowerPoint.Application` devuelve **la misma instancia**
+  (medido: 1 solo `POWERPNT.EXE`); Word y Excel sí crean procesos separados. Eso significa que las
+  conversiones **paralelas** de `.pptx` se matan entre sí —la primera en terminar hace `Quit()`— y que,
+  si el usuario tiene PowerPoint abierto, la app **cierra su sesión sin preguntar por lo no guardado**
+  (`DisplayAlerts = ppAlertsNone`). Es el hallazgo más grave y está anotado como invariante en §4
+  *Conversión COM*. → `TJ-01`
+- 🔴 **Mirar los primeros bytes de los `.ps1`.** `tools/capture-dropdown.ps1` —el más nuevo, el de la
+  propia v2.6.1— es **el único sin BOM UTF-8**, justo el invariante que §4 documenta. Reproducido en
+  PowerShell 5.1 / CP1252: parsea, pero sus mensajes salen como `"No se encontrÃ³ OfiConvert.exe"`, y
+  está a un `—` dentro de una cadena de convertirse en el error del tokenizer que ya pagaron los
+  hermanos. → `TJ-27`
+
+**Dos regresiones conceptuales** de tiers que se dieron por cerrados —el problema volvió por otra
+puerta, así que van como tareas NUEVAS que citan a la anterior, no como reapertura—:
+
+- **`/VERYSILENT` vuelve a no ser silencioso** (Tier H). Esta vez no es el diálogo de modo de
+  instalación sino el `MsgBox` de «no se detectó Office» de `InitializeWizard`: Inno **no suprime los
+  MsgBox en modo silencioso** salvo `/SUPPRESSMSGBOXES`, y el updater no lo pasa. Le ocurre justo al
+  usuario que la app dice soportar: el que tiene **solo LibreOffice**. → `TJ-04`
+- **Los UI tests siguen sin conducir el binario que se publica** (Tier G). El Tier G garantizó que
+  fuera **fresco**; nadie garantizó que fuera **el mismo**: `release.ps1` compila Release y luego corre
+  `dotnet test` **sin `-c Release`**, así que el `ProjectReference` reconstruye en **Debug** y
+  `AppFixture` —que coge el `.exe` de `bin\**\win-x64\` **más reciente**— acaba conduciendo ese.
+  → `TJ-05`
+
+**Y el patrón que conviene tener presente, porque explica casi todo lo demás:** *el guardián cubre el
+sitio donde dolió, no el riesgo.*
+
+| Guardián | Qué vigila | Por dónde se le escapa |
+|---|---|---|
+| `HardcodedUiTextTests` | 2 archivos, y solo asignaciones a propiedades | Los **18 literales en español** de `Services/` y `ViewModels/` (`TJ-06`) |
+| `AccessibilityTests` | `ControlType.Button` | Los 4 `ComboBox` y 2 `NumberBox`, mudos para un lector (`TJ-09`) — cazó los `ToggleSwitch` solo porque UIA los expone **como botones** |
+| `LocalizationUsageTests` | 3 formas de pedir una clave | La cuarta, `T("…")`, estrenada en el mismo arreglo que añadió la tercera (`TJ-18`) |
+| `LegalTextTests` | Que no se **borre** una atribución | `System.Drawing.Common 9.0.0`, que se redistribuye sin estar citado (`TJ-23`) — el propio test avisa de este hueco en su comentario |
+
+**La quinta reincidencia del texto en español a fuego**, y con el mismo agravante del Tier D: **las
+traducciones ya existen y no se usan**. `MsgFileNotFound` = «El archivo no existe.» es *idéntica* al
+literal de `FileValidationService.cs:19`; igual `MsgFileLocked`, `MsgPasswordProtected`,
+`MsgCorruptFile` y `MsgOfficeNotFound`. Son 18 mensajes que el usuario lee en el panel de resultados, en
+la columna *Error* del historial —que el Tier I hizo visible— y en el CSV/TXT exportado. → `TJ-06`
+
+**Otros hallazgos con pérdida de datos**, que no encajan en ninguna categoría anterior: la ruta de
+LibreOffice **destruye el resultado de una conversión previa** (convierte con el nombre del original y
+luego lo mueve, así que rompe la garantía «nunca se sobrescribe» de `Core/OutputPath` y la promesa del
+README) → `TJ-03`; y puede **colgarse para siempre** por deadlock de las tuberías, porque redirige
+`stdout` y `stderr` y no lee ninguno antes de `WaitForExitAsync` → `TJ-02`.
+
+**`CHANGELOG.md`, creado hoy.** Era el tercer documento vivo que faltaba: hasta ahora su papel lo hacía
+el *Índice de versiones* de este archivo, y `release.ps1` publicaba **notas de plantilla genéricas**
+idénticas para toda versión. Se ha reconstruido de la 1.0.0 a la 2.6.1 a partir de los nueve tags y de
+este registro —marcado como reconstrucción aproximada—, y queda pendiente que `release.ps1` **aborte si
+falta la sección de la versión** (`TJ-07`). **Reparto a partir de ahora: el _qué_ al changelog, el
+_porqué_ aquí.**
+
+**Limpio, y conviene decirlo:** `dotnet list package --vulnerable --include-transitive` y `--deprecated`
+no devuelven nada. Los ocho diccionarios tienen las **mismas 137 claves**. `Core/` respeta su frontera
+(sin UI, sin `Process`, sin `HttpClient`, sin COM). La verificación del updater sigue montada como manda
+el Tier C, con la descarga en su propio método.
+
+**Qué quedó a medias:** nada de esto se ha corregido — la revisión era de diagnóstico. Y hay tres cosas
+que **no se han podido comprobar** y que están marcadas como tales en sus tareas: si las miniaturas se
+ven hoy (`TJ-14`), el comportamiento de LibreOffice en paralelo (`TJ-25`, no está instalado en esta
+máquina) y la instalación silenciosa en un equipo **sin** Office (`TJ-04`, que es donde se manifiesta).
 
 ---
 
