@@ -15,8 +15,8 @@
 > **Tier I — Pase de UX/UI sobre capturas ✅** (v2.6.0): fotografiar **todos** los estados en claro y
 > oscuro destapó **tres bugs que el XAML no delataba**. **230 pruebas.**
 >
-> **Sin publicar:** el arreglo de los desplegables borrosos sobre Mica (2026-08-24) está en `main` pero
-> aún no ha salido en ningún release.
+> **v2.6.1** (2026-08-29): el arreglo de los desplegables borrosos sobre Mica. No queda nada en `main`
+> sin publicar.
 
 > **Qué hay aquí:** el trabajo pendiente agrupado por **tiers**, con su porqué y dónde vive cada cosa.
 >
@@ -324,7 +324,7 @@ que leer el XAML no delataba**.
 > en el **rojo personal** del equipo del autor. Los scripts fijan ahora un acento neutro
 > (`OFICONVERT_ACCENT`) y `docs/screenshots/` se regeneró en azul.
 
-### 🐞 Sin publicar — los desplegables borrosos sobre Mica *(2026-08-24)*
+### 🐞 Los desplegables borrosos sobre Mica *(2026-08-24 — publicado en **v2.6.1**)*
 
 WinUI pinta los popups con acrílico; sobre el backdrop **Mica** de la ventana eso apila dos capas
 translúcidas y el texto del menú pierde contraste. Arreglado con `ThemeDictionaries` en **`App.xaml`**

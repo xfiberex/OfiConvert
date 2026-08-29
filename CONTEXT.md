@@ -17,9 +17,9 @@
 | | |
 |---|---|
 | **Repositorio** | https://github.com/xfiberex/OfiConvert |
-| **Versión publicada** | **2.6.0** (2026-07-21) — **pase de UX/UI** (3 bugs vistos solo mirando la app, pulido en claro/oscuro), sobre el **Tier H** que trajo la 2.5.0. Instalador sin firmar, **con `.sha256`** |
+| **Versión publicada** | **2.6.1** (2026-08-29) — los **desplegables opacos** sobre Mica, sobre el **pase de UX/UI** que trajo la 2.6.0 (3 bugs vistos solo mirando la app). Instalador sin firmar, **con `.sha256`** |
 | **En `main`, sin publicar** | — (al día) |
-| **Estado** | Funcional; **hoja de ruta COMPLETADA** — Tiers 0 y A–H ✅ |
+| **Estado** | Funcional; **hoja de ruta COMPLETADA** — Tiers 0 y A–I ✅ |
 | **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · **xUnit** + **FlaUI** · Inno Setup 6 |
 | **Licencia** | **MIT** ([`LICENSE`](LICENSE)) — pero **lo que redistribuye NO es todo MIT**: ver §4 *Legal* |
 | **Pruebas** | **230**: 200 unitarias (199 + 1 de red, omitida salvo `OFICONVERT_NETWORK_TESTS=1`) + **30 de UI** (FlaUI, contra la app real) |
@@ -105,7 +105,7 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
 | Pruebas unitarias | **199 pasan · 1 se omite (la de red) · 0 fallan** |
 | Pruebas de UI | **30 pasan · 0 fallan** (FlaUI, arrancan la app real) |
-| Publicado | **v2.6.0** (2.1.0 → 2.6.0 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
+| Publicado | **v2.6.1** (2.1.0 → 2.6.1 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
 | Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real |
 | Pendiente de release | Desplegables opacos (los popups acrílicos se veían borrosos sobre Mica) — 2026-08-24 |
@@ -555,7 +555,7 @@ Menores, sin tier asignado:
 
 ---
 
-### 2026-08-24 — Los desplegables se veían borrosos — **sin publicar**
+### 2026-08-24 — Los desplegables se veían borrosos — **v2.6.1** (publicada 2026-08-29)
 
 Reportado sobre una captura de **Ajustes**: al abrir el `ComboBox` de *Tema*, el menú salía **desenfocado**
 y se transparentaba el contenido de la tarjeta de debajo. No era un bug del layout: es el **estilo por
