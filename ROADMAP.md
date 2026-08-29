@@ -1,15 +1,22 @@
 # OfiConvert — Hoja de ruta
 
-> ## Estado (2026-07-14)
+> ## Estado (2026-08-29)
 >
-> Los tiers **0 y A–F están cerrados**: el proyecto ya tiene la infraestructura que sus hermanos habían
-> pagado (pipeline de release, actualización verificada, 184 pruebas, cara pública y documentación viva).
+> **El plan está cerrado: los tiers 0 y A–I están todos completados.** El proyecto ya tiene la
+> infraestructura que sus hermanos habían pagado (pipeline de release, actualización verificada, cara
+> pública y documentación viva) y, encima, dos pases completos de UI hechos **mirando la app**.
 >
 > **Tier G — UI/UX ✅** (v2.4.0): tres bugs reales, los comandos se apagan solos y la app deja de ser muda
 > para un lector de pantalla.
 >
 > **Tier H — Instalador end-to-end ✅** (v2.5.0): probarlo de verdad destapó que **`/VERYSILENT` no era
 > silencioso** — bloqueaba con un diálogo modal. Era el último hueco sin cubrir. **226 pruebas.**
+>
+> **Tier I — Pase de UX/UI sobre capturas ✅** (v2.6.0): fotografiar **todos** los estados en claro y
+> oscuro destapó **tres bugs que el XAML no delataba**. **230 pruebas.**
+>
+> **Sin publicar:** el arreglo de los desplegables borrosos sobre Mica (2026-08-24) está en `main` pero
+> aún no ha salido en ningún release.
 
 > **Qué hay aquí:** el trabajo pendiente agrupado por **tiers**, con su porqué y dónde vive cada cosa.
 >
@@ -36,7 +43,8 @@
 | **E** | Cara pública: README de usuario, capturas reproducibles, legal in-app | ✅ Completado (2026-07-14) | 2.4.0 *(sin publicar)* |
 | **F** | Infraestructura agéntica (`.claude`, skills, codegraph) | ✅ Completado (2026-07-14) | — |
 | **G** | UI/UX: 3 bugs reales, comandos que se apagan solos, accesibilidad | ✅ Completado (2026-07-14) | 2.4.0 |
-| **H** | Instalador end-to-end: el `/VERYSILENT` que no era silencioso | ✅ Completado (2026-07-14) | 2.5.0 |
+| **H** | Instalador end-to-end: el `/VERYSILENT` que no era silencioso | ✅ Completado (2026-07-14) | **2.5.0** ✔ publicada |
+| **I** | Pase de UX/UI sobre capturas: 3 bugs vistos solo mirando la app | ✅ Completado (2026-07-21) | **2.6.0** ✔ publicada |
 
 \* Orden recomendado: **A → B → C → D → E** (F puede ir en cualquier momento). Idealmente D habría ido
 antes que C, pero C se trajo sus propios tests, como hicieron los hermanos.
@@ -289,6 +297,44 @@ mira donde de verdad se usa el código no prueba nada.*
 | ✅ | **`HardcodedUiTextTests`**: ningún literal puede asignarse a `Title`/`Message`/`Content`/`…ButtonText` en el código de UI. Es la prueba que faltaba para que esto no vuelva una quinta vez |
 | ✅ | `LocalizationUsageTests` amplía su escáner a `loc["…"]` |
 | ✅ | 15 claves nuevas × 8 idiomas (136 por archivo) y **fuera todos los fallbacks defensivos** |
+
+---
+
+## ✅ Tier I — Pase de UX/UI sobre capturas *(completado 2026-07-21)*
+
+El Tier G revisó la interfaz sobre capturas; este la revisó sobre **todas** las capturas. Primero la
+instrumentación, después el pulido: **`tools/capture-ui-states.ps1`** fotografía los siete estados (vacío,
+con cola, historial poblado, historial vacío, ajustes arriba y abajo, diálogo legal) en **claro y oscuro**
+— 14 imágenes por corrida, sembrando cada estado por JSON. Con la galería delante aparecieron **tres bugs
+que leer el XAML no delataba**.
+
+| # | Ítem | Dónde |
+|---|------|-------|
+| 1 | ✅ **El historial no distinguía un fallo de un éxito.** El `FontIcon` de estado tenía el glifo (tilde) y el color (verde) **en duro**, sin mirar `Success`: una conversión fallida se veía **idéntica** a una correcta y **sin decir el motivo**. Ahora glifo y color salen de `Success`, y las filas fallidas muestran su `ErrorMessage` | `Core/HistoryStatus.cs`, `Converters/BoolToStatus*` |
+| 2 | ✅ **Los `ContentDialog` ignoraban el tema de la app.** Un diálogo se enraíza en la capa de popups, hermana de `Content`, así que **no hereda** el `RequestedTheme` del root: en modo Claro con Windows en Oscuro, el diálogo legal salía negro. Se les pasa el tema a mano, a los cuatro | `MainWindow.xaml.cs` (`RootTheme`) |
+| 3 | ✅ **El panel de resultados encabezaba los errores con un tilde verde.** Mismo patrón que el 1, en otro sitio. Ahora el icono se enlaza a `HasConversionErrors`: con errores, **aviso ámbar** (no rojo: parte del lote sí se convirtió) | `MainWindow.xaml`, `Converters/ErrorsToResult*` |
+
+> **✨ Pulido**, verificado en los dos temas: diálogo legal ensanchado (el MIT a 80 columnas ya no parte
+> palabras sueltas); historial con **duración con unidad** (`UnitSeconds` ×8 idiomas) y columnas
+> equilibradas; fila de acciones reorganizada (origen a la izquierda, acciones a la derecha); **botones
+> destructivos en *outline*** en vez de relleno sólido, que chocaba con los acentos cálidos del sistema; y
+> menos monotonía de tarjetas. **+4 pruebas** (`HistoryStatusTests`) → **230**.
+>
+> **Higiene de las capturas:** la app respeta el acento de Windows, así que el repo enseñaba las capturas
+> en el **rojo personal** del equipo del autor. Los scripts fijan ahora un acento neutro
+> (`OFICONVERT_ACCENT`) y `docs/screenshots/` se regeneró en azul.
+
+### 🐞 Sin publicar — los desplegables borrosos sobre Mica *(2026-08-24)*
+
+WinUI pinta los popups con acrílico; sobre el backdrop **Mica** de la ventana eso apila dos capas
+translúcidas y el texto del menú pierde contraste. Arreglado con `ThemeDictionaries` en **`App.xaml`**
+(no en `MainWindow.xaml`): cubre los cuatro `ComboBox` y cualquier flyout futuro.
+
+> **El primer intento no hizo NADA:** las `ThemeDictionaries` en la raíz de `Application.Resources`
+> compilan 0/0, no avisan y **no se resuelven** — tienen que ir dentro de `MergedDictionaries`, después
+> de `XamlControlsResources`. Lo destapó **mirar la app**, no leer más XAML. De ahí
+> **`tools/capture-dropdown.ps1`**: abre los cuatro `ComboBox` por UI Automation en claro y oscuro y
+> **mide** el ruido del fondo en vez de dejarlo a ojo (roto a propósito: 38–68% de ruido; arreglado: 0%).
 
 ---
 
