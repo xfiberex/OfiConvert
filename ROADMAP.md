@@ -366,7 +366,7 @@ translúcidas y el texto del menú pierde contraste. Arreglado con `ThemeDiction
 > `LocalizationUsageTests` vigila tres formas de pedir una clave y ya hay una cuarta. Los tres pasan en
 > verde sobre problemas de su propia especialidad.
 
-**Índice del tier:** 38 tareas — **7 Altas · 19 Medias · 12 Bajas**. **Cerradas: 3** (TJ-04, TJ-05, TJ-07).
+**Índice del tier:** 38 tareas — **7 Altas · 19 Medias · 12 Bajas**. **Cerradas: 5** (TJ-02, TJ-03, TJ-04, TJ-05, TJ-07) — **5 de las 7 Altas**.
 Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 
 ### J.1 — Severidad ALTA
@@ -388,7 +388,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     3 `.pptx` con paralelismo 4: los 3 se convierten, PowerPoint **sigue abierto** y no pierde nada.
   - **Esfuerzo:** alto · **Depende de:** ninguna
 
-- [ ] **[TJ-02] LibreOffice puede quedarse colgado para siempre (deadlock de las tuberías)** · **Alto**
+- [x] ✅ **[TJ-02] LibreOffice podía quedarse colgado para siempre (deadlock de las tuberías)** · **Alto** *(cerrado 2026-08-31)*
   - **Área:** Rendimiento / Código
   - **Ubicación:** `Services/LibreOfficeConversionService.cs:56-63`, `:82`
   - **Qué hacer:** se redirigen `StandardOutput` **y** `StandardError` y **no se lee ninguno** hasta
@@ -399,8 +399,12 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
   - **Criterio de aceptación:** un documento que haga a LibreOffice escribir >8 KB de avisos termina
     con resultado, no colgado. Regresión con un proceso simulado que escupa 64 KB por stdout.
   - **Esfuerzo:** medio · **Depende de:** ninguna
+  - **Hecho:** la ejecución del proceso se extrajo a `Services/ProcessRunner`, que arranca la lectura de
+    **los dos** flujos antes de `WaitForExitAsync`. `ProcessRunnerTests` reproduce el cuelgue con 64 KB
+    (por stdout, por stderr y por los dos a la vez) sin necesitar LibreOffice: con el orden antiguo las
+    tres pruebas se cuelgan y el plazo de 30 s las pone en rojo — comprobado.
 
-- [ ] **[TJ-03] La ruta de LibreOffice DESTRUYE el resultado de una conversión anterior** · **Alto**
+- [x] ✅ **[TJ-03] La ruta de LibreOffice destruía el resultado de una conversión anterior** · **Alto** *(cerrado 2026-08-31)*
   - **Área:** Seguridad / Rendimiento
   - **Ubicación:** `Services/LibreOfficeConversionService.cs:66-76`
   - **Qué hacer:** `--outdir` recibe la carpeta destino y LibreOffice escribe **con el nombre del
@@ -412,6 +416,12 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
   - **Criterio de aceptación:** con `informe.pdf` ya presente, convertir `informe.docx` por LibreOffice
     deja **los dos** archivos intactos. Test sobre la lógica de destino, extraída a `Core/`.
   - **Esfuerzo:** medio · **Depende de:** ninguna
+  - **Hecho:** `Core/LibreOfficeOutput` — carpeta de trabajo **exclusiva** por conversión (dos documentos
+    homónimos en paralelo tampoco se pisan), elección del archivo producido y movimiento al destino
+    **recomprobando** que sigue libre en el último momento: el `GetSafe` original se calculó antes de
+    convertir, y entre medias pasan segundos, el resto del lote o el propio usuario. Además, terminar en
+    0 sin producir nada ya no se da por bueno: antes se apuntaba en el historial un archivo inexistente.
+    11 pruebas nuevas, una de ellas la regresión literal del criterio de aceptación.
 
 - [x] ✅ **[TJ-04] El instalador bloqueaba el modo silencioso en equipos sin Office** · **Alto** *(cerrado 2026-08-31)*
   - **Área:** DevOps
@@ -822,6 +832,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 | 2026-08-29 | v2.6.1 publicada (desplegables opacos). **Tier J abierto**: 38 tareas, 0 cerradas |
 | 2026-08-31 | **TJ-07**: el `CHANGELOG.md` es la fuente de las notas del release y el corte aborta sin ella (1/38) |
 | 2026-08-31 | **TJ-05** (los UI tests conducían el binario Debug) y **TJ-04** (el aviso del instalador salía en modo silencioso) (3/38) |
+| 2026-08-31 | **TJ-03** (LibreOffice borraba un archivo anterior) y **TJ-02** (deadlock de las tuberías) (5/38, **5 de 7 Altas**) |
 
 ## 🚫 Decisiones cerradas / qué NO portar de los hermanos
 

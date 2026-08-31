@@ -106,13 +106,13 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas unitarias | **206 pasan · 1 se omite (la de red) · 0 fallan** |
+| Pruebas unitarias | **221 pasan · 1 se omite (la de red) · 0 fallan** |
 | Pruebas de UI | **31 pasan · 0 fallan** (FlaUI, arrancan la app real **en la configuración compilada**) |
 | Publicado | **v2.6.1** (2.1.0 → 2.6.1 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
 | Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real. ⚠️ **Solo en un equipo CON Office**: ver `TJ-04` |
 | Pendiente de release | — (la 2.6.1 está publicada; nada en `main` sin publicar) |
-| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **38 tareas, 7 Altas, 3 cerradas (TJ-04, TJ-05, TJ-07)**. Verificado en verde antes de auditar: build 0/0 y 199 · 1 omitida · 0 fallos |
+| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **38 tareas, 7 Altas, 5 cerradas (TJ-02, TJ-03, TJ-04, TJ-05, TJ-07 — 5 de las 7 Altas)**. Verificado en verde antes de auditar: build 0/0 y 199 · 1 omitida · 0 fallos |
 
 **Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **A–I cerrados; J abierto**
 
@@ -199,6 +199,24 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
   ruido): 38–68% de "cuota de ruido". Sólido = **un** valor, el que se puso: 0%. Así se distingue "está
   opaco" de "parece opaco" sin discutir sobre una captura. Ojo con el `.exe` que mide: coge el más reciente
   de `bin\`, que puede ser un Debug viejo de un `dotnet run` — compila antes.
+
+### Conversión por LibreOffice (no romper)
+
+- **A LibreOffice NUNCA se le da la carpeta del usuario como `--outdir`.** No acepta un nombre de
+  salida, solo una carpeta, y dentro escribe con el nombre del original **pisando lo que haya**: con un
+  `informe.pdf` ya presente, lo sobrescribía y el `File.Move` posterior se llevaba el nuevo a
+  `informe (1).pdf`, así que **el archivo anterior desaparecía**. Se convierte en una carpeta temporal
+  **exclusiva de esa conversión** (`Core/LibreOfficeOutput`) y de ahí se mueve al destino, comprobando
+  otra vez que sigue libre. Exclusiva y no compartida: dos documentos homónimos en paralelo producirían
+  ambos `informe.pdf`. (TJ-03, 2026-08-31.)
+- **Todo proceso externo se lanza por `Services/ProcessRunner`**, que empieza a leer `stdout` **y**
+  `stderr` **antes** de esperar al proceso. Redirigidos y sin leer, el búfer de la tubería (~4 KB) se
+  llena, el hijo se bloquea escribiendo y la espera no vuelve nunca: una conversión congelada para
+  siempre, ocupando una plaza del semáforo, sin error y sin registro. **No vale leer solo el flujo que
+  se usa:** el que se queda sin leer es justo el que llena la tubería. (TJ-02, 2026-08-31.)
+- **Código 0 no significa que haya salida.** LibreOffice termina «bien» sin generar nada cuando su
+  filtro no soporta ese formato para ese documento; antes se daba la conversión por buena y el historial
+  apuntaba a un archivo inexistente. Se comprueba el archivo, no el código.
 
 ### Conversión COM (no romper)
 
@@ -593,6 +611,57 @@ Menores, sin tier asignado:
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
+
+---
+
+### 2026-08-31 — TJ-03 y TJ-02: el motor de LibreOffice borraba archivos y podía congelarse
+
+Las dos peores del [Tier J](ROADMAP.md) después de la de PowerPoint, y las dos en el **mismo archivo**,
+`Services/LibreOfficeConversionService.cs`: 96 líneas que nadie había vuelto a mirar desde la v1.0 porque
+LibreOffice es el motor *alternativo* y casi nunca entra. Entra cuando no hay Office — o sea, para el
+usuario que menos margen tiene.
+
+**TJ-03 — se perdían archivos.** `--outdir` recibía la carpeta del usuario, y **LibreOffice no acepta un
+nombre de salida**: escribe con el del original. Con un `informe.pdf` ya presente, LibreOffice lo
+**sobrescribía** y acto seguido el `File.Move` de la app se llevaba el recién nacido a `informe (1).pdf`.
+Resultado: dos archivos donde antes había dos, todo aparentemente correcto, y **el contenido del primero
+perdido para siempre**. Rompía la garantía nº 2 de `OutputPath` y la promesa del README, y no dejaba
+rastro en ningún sitio.
+
+> Lo que lo hizo invisible: `OutputPath.GetSafe` **sí** calculaba el nombre libre, y está probado.
+> Simplemente **nadie se lo pasaba a LibreOffice**, porque no hay forma de pasárselo. Una garantía
+> comprobada en su propia unidad, y burlada en el borde donde se usa.
+
+**TJ-02 — la conversión podía congelarse para siempre.** Se redirigían `stdout` y `stderr` y no se leía
+**ninguno** hasta después de `WaitForExitAsync` (y `stdout`, jamás). Cuando el búfer de la tubería (~4 KB)
+se llena, `soffice` se **bloquea escribiendo** y la espera no vuelve: la conversión se queda ahí, sin
+error, sin registro y **ocupando una plaza del semáforo de paralelismo**. Con unas cuantas así, la app
+deja de convertir sin decir por qué. Un documento con bastantes avisos de fuentes o macros basta.
+
+**Lo hecho:**
+
+- `Core/LibreOfficeOutput` — carpeta de trabajo **exclusiva** por conversión, elección del archivo
+  producido (por nombre esperado; si solo hay uno, ese; con varios y ninguno esperado **no se adivina**)
+  y movimiento al destino **recomprobando que sigue libre**. El `GetSafe` original se calculó *antes* de
+  convertir; entre medias pasan segundos, el resto del lote y el propio usuario.
+- `Services/ProcessRunner` — un único sitio donde se lanza un proceso externo, con la regla escrita:
+  **leer los dos flujos antes de esperar**. Está fuera del servicio para poder probarlo sin LibreOffice.
+- **Terminar en 0 sin producir nada ya no se da por bueno.** Pasaba con formatos que el filtro no
+  soporta para ese documento: la app apuntaba en el historial un archivo que no existía.
+
+**Guardianes** (los dos comprobados en rojo antes de darlos por buenos):
+
+- `ProcessRunnerTests` — 64 KB de salida, dieciséis veces el búfer, por `stdout`, por `stderr` y por los
+  dos a la vez. Con el orden antiguo las tres **se cuelgan** y el plazo de 30 s las pone en rojo. Es la
+  forma de reproducir un deadlock sin depender de qué documento tenga a mano quien lo pruebe.
+- `LibreOfficeOutputTests` — 11 pruebas, entre ellas la regresión literal de TJ-03 (con `informe.pdf`
+  ocupado, los **dos** archivos quedan intactos) y la de dos conversiones homónimas en paralelo.
+
+**Pruebas:** 221 pasan · 1 omitida · 0 fallan; UI 31 · 0. Build 0/0.
+
+⚠️ **No se ha convertido un documento de verdad con LibreOffice** (no está instalado en esta máquina): lo
+verificado es la lógica, que es donde estaban los dos fallos. La conversión real por LibreOffice sigue
+sin cubrir, aquí y en todo el proyecto.
 
 ---
 

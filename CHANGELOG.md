@@ -27,6 +27,21 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ### Corregido
 
+- **Convertir con LibreOffice podía BORRAR un archivo anterior.** Si en la carpeta de destino ya había
+  un `informe.pdf` y se convertía `informe.docx`, LibreOffice escribía encima del que estaba y la app
+  renombraba el nuevo a `informe (1).pdf`: el archivo de antes **desaparecía**, en contra de lo que
+  promete el programa («sin sobrescrituras»). Ahora cada conversión escribe en una carpeta temporal
+  propia y de ahí se mueve al destino, que se vuelve a comprobar en el último momento: los dos archivos
+  quedan intactos. *(Cierra [TJ-03](ROADMAP.md).)*
+- **Una conversión con LibreOffice podía quedarse congelada para siempre.** Los avisos que escribe
+  LibreOffice se acumulaban sin que nadie los leyera; al llenarse el búfer del sistema (unos 4 KB), el
+  programa se bloqueaba a mitad y la conversión se quedaba ahí, sin error y sin terminar, ocupando una
+  de las plazas de conversión simultánea — con unas cuantas así, la app dejaba de convertir. Basta un
+  documento con bastantes avisos de fuentes o macros para llegar a ese tamaño. *(Cierra
+  [TJ-02](ROADMAP.md).)*
+- **Un fallo silencioso de LibreOffice ya se cuenta.** Cuando terminaba «bien» pero sin generar nada
+  —pasa con formatos que su filtro no soporta para ese documento— la app daba la conversión por buena y
+  apuntaba en el historial un archivo que no existía. Ahora se informa del fallo.
 - **La actualización automática podía quedarse colgada en los equipos sin Office.** El instalador
   avisa cuando no encuentra Microsoft Office, y ese aviso salía **también en modo silencioso** — que es
   como lo lanza la propia app al actualizarse, con la ventana ya cerrada. Quien solo tiene
@@ -49,6 +64,10 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
   pruebas de interfaz validaban ese binario, no el Release que empaqueta el instalador. `AppFixture`
   ya no elige "el `.exe` más reciente": exige el de la configuración compilada, deja por escrito cuál
   conduce y `DrivenBinaryTests` falla si no coinciden. *(Cierra [TJ-05](ROADMAP.md).)*
+- **La ejecución de procesos externos se centraliza en `Services/ProcessRunner`**, que lee `stdout` y
+  `stderr` antes de esperar al proceso. `ProcessRunnerTests` reproduce el cuelgue con 64 KB de salida
+  —dieciséis veces el búfer— sin necesitar LibreOffice instalado, y la lógica de destino vive ahora en
+  `Core/LibreOfficeOutput`, con pruebas propias.
 - **Tres guardianes nuevos sobre el script del instalador** (`InstallerScriptTests`): ningún `MsgBox`
   sin la guarda `WizardSilent`, el alcance sigue fijándose por línea de comandos y los modificadores
   del updater se arman en `Core/InstallScope` —probado— y no a mano en el code-behind.

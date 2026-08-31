@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
 using OfiConvert.Core;
 using OfiConvert.Models;
@@ -36,13 +36,19 @@ public class LibreOfficeConversionService : IFileConversionService
             return ConversionResult.Failed("El archivo de origen no existe.");
 
         var sw = Stopwatch.StartNew();
+        string? workFolder = null;
 
         try
         {
-            var outputDir = Path.GetDirectoryName(outputPath) ?? Path.GetTempPath();
             var formatArg = GetLibreOfficeFormatArg(options.OutputFormat);
 
-            if (sourcePath.IndexOf('"') >= 0 || outputDir.IndexOf('"') >= 0)
+            // NUNCA se le da a LibreOffice la carpeta del usuario como --outdir. Escribe con el nombre del
+            // original y PISA lo que encuentre: con un informe.pdf ya presente, lo sobrescribía y el
+            // File.Move de después se llevaba el nuevo a "informe (1).pdf", así que el anterior
+            // desaparecía. Se convierte en una carpeta temporal exclusiva y desde ahí se mueve (TJ-03).
+            workFolder = LibreOfficeOutput.CreateWorkFolder();
+
+            if (sourcePath.IndexOf('"') >= 0 || workFolder.IndexOf('"') >= 0)
                 return ConversionResult.Failed("La ruta contiene caracteres no válidos.");
 
             Log.Information("LibreOffice: Convirtiendo {Source} a {Format}", sourcePath, formatArg);
@@ -50,38 +56,38 @@ public class LibreOfficeConversionService : IFileConversionService
             var psi = new ProcessStartInfo
             {
                 FileName = loPath,
-                Arguments = $"--headless --norestore --convert-to {formatArg} --outdir \"{outputDir}\" \"{sourcePath}\"",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true
+                Arguments = $"--headless --norestore --convert-to {formatArg} --outdir \"{workFolder}\" \"{sourcePath}\""
             };
 
-            using var process = new Process { StartInfo = psi };
-            process.Start();
-
-            await process.WaitForExitAsync(cancellationToken);
+            // ProcessRunner lee los dos flujos ANTES de esperar al proceso. Con stdout y stderr
+            // redirigidos y sin leer, el búfer de la tubería (~4 KB) se llena, soffice se BLOQUEA
+            // escribiendo y la espera no vuelve nunca: la conversión se congelaba para siempre ocupando
+            // una plaza del semáforo. Basta un documento que arrastre unos avisos de fuentes. (TJ-02.)
+            var run = await ProcessRunner.RunAsync(psi, cancellationToken);
             sw.Stop();
 
-            if (process.ExitCode == 0)
+            if (run.ExitCode != 0)
             {
-                var expectedExt = OutputFormatHelper.GetFileExtension(options.OutputFormat);
-                var expectedName = Path.ChangeExtension(Path.GetFileName(sourcePath), expectedExt);
-                var expectedPath = Path.Combine(outputDir, expectedName);
-
-                if (File.Exists(expectedPath) && !string.Equals(expectedPath, outputPath, StringComparison.OrdinalIgnoreCase))
-                {
-                    if (File.Exists(outputPath)) File.Delete(outputPath);
-                    File.Move(expectedPath, outputPath);
-                }
-
-                Log.Information("LibreOffice: Conversión exitosa en {Duration}ms", sw.ElapsedMilliseconds);
-                return ConversionResult.Successful(outputPath, sw.Elapsed);
+                Log.Error("LibreOffice: Error de conversión - {Error}", run.StandardError);
+                return ConversionResult.Failed($"LibreOffice error (código {run.ExitCode}): {run.StandardError}");
             }
 
-            var error = await process.StandardError.ReadToEndAsync(cancellationToken);
-            Log.Error("LibreOffice: Error de conversión - {Error}", error);
-            return ConversionResult.Failed($"LibreOffice error (código {process.ExitCode}): {error}");
+            var expectedName = LibreOfficeOutput.ExpectedFileName(
+                sourcePath, OutputFormatHelper.GetFileExtension(options.OutputFormat));
+            var produced = LibreOfficeOutput.PickProduced(Directory.GetFiles(workFolder), expectedName);
+
+            if (produced is null)
+            {
+                // Código 0 y sin resultado: pasa con formatos que el filtro no soporta para ese documento.
+                Log.Error("LibreOffice: terminó en 0 sin producir {Expected}. stdout: {Out} stderr: {Err}",
+                    expectedName, run.StandardOutput, run.StandardError);
+                return ConversionResult.Failed("LibreOffice terminó sin generar el archivo de salida.");
+            }
+
+            var finalPath = LibreOfficeOutput.MoveToFinal(produced, outputPath);
+
+            Log.Information("LibreOffice: Conversión exitosa en {Duration}ms", sw.ElapsedMilliseconds);
+            return ConversionResult.Successful(finalPath, sw.Elapsed);
         }
         catch (OperationCanceledException)
         {
@@ -92,6 +98,17 @@ public class LibreOfficeConversionService : IFileConversionService
             sw.Stop();
             Log.Error(ex, "LibreOffice: Error inesperado");
             return ConversionResult.Failed($"Error LibreOffice: {ex.Message}");
+        }
+        finally
+        {
+            // La carpeta de trabajo es de esta conversión y de nadie más: se va con ella, pase lo que pase.
+            // Si no se puede borrar (antivirus, soffice aún soltando el archivo), no es motivo para fallar
+            // una conversión que salió bien: queda en %TEMP%, que es de donde Windows la barre.
+            if (workFolder is not null)
+            {
+                try { Directory.Delete(workFolder, recursive: true); }
+                catch (Exception ex) { Log.Warning(ex, "LibreOffice: no se pudo borrar {Folder}", workFolder); }
+            }
         }
     }
 
