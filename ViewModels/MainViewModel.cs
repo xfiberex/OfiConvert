@@ -456,9 +456,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     {
                         fileItem.State = FileConversionState.Error;
                         fileItem.StateMessage = GetLocalizedString("StateError");
-                        fileItem.ValidationMessage = validationResult.ErrorMessage ?? "";
-                        lock (errors) errors.Add($"{fileItem.Name}: {validationResult.ErrorMessage}");
-                        AddHistoryEntry(fileItem, null, validationResult.ErrorMessage);
+                        var validationError = GetLocalizedString(validationResult.Error);
+                        fileItem.ValidationMessage = validationError;
+                        lock (errors) errors.Add($"{fileItem.Name}: {validationError}");
+                        AddHistoryEntry(fileItem, null, validationError);
                         IncrementProgress();
                         return;
                     }
@@ -479,7 +480,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     {
                         fileItem.State = FileConversionState.Error;
                         fileItem.StateMessage = GetLocalizedString("StateError");
-                        lock (errors) errors.Add($"{fileItem.Name}: {result.ErrorMessage}");
+                        lock (errors) errors.Add($"{fileItem.Name}: {GetLocalizedString(result.Error)}");
                     }
 
                     AddHistoryEntry(fileItem, result, null);
@@ -522,7 +523,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             Log.Error(ex, "Error general durante la conversión");
-            _dialogService.ShowError($"Error general:\n\n{ex.Message}", GetLocalizedString("MsgError"));
+            _dialogService.ShowError(
+                string.Format(GetLocalizedString("MsgGeneralError"), ex.Message),
+                GetLocalizedString("MsgError"));
         }
         finally
         {
@@ -540,7 +543,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         FileItem file, string outputPath, bool officeAvailable, CancellationToken ct)
     {
         int maxRetries = AutoRetryEnabled ? MaxRetryCount : 0;
-        ConversionResult result = ConversionResult.Failed("No intentado");
+        ConversionResult result = ConversionResult.Failed("MsgNotAttempted");
 
         IFileConversionService service = officeAvailable
             ? _officeService
@@ -691,7 +694,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
             OutputPath = result?.OutputPath ?? "",
             Format = file.Options.OutputFormat,
             Success = result?.Success ?? false,
-            ErrorMessage = result?.ErrorMessage ?? validationError,
+            // El historial guarda el texto YA traducido: es lo que se exporta a CSV/TXT y lo que se lee
+            // meses después, cuando ya nadie recuerda qué significaba la clave.
+            ErrorMessage = result is not null ? GetLocalizedString(result.Error) : validationError,
             DurationSeconds = result?.Duration.TotalSeconds ?? 0,
             FileSizeBytes = file.SizeInBytes
         };
@@ -937,6 +942,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         return LocalizationService.Instance[key];
     }
+
+    /// <summary>Traduce un mensaje de servicio (clave + argumentos) al idioma de la app.</summary>
+    /// <remarks>Ver <see cref="LocalizationService.Translate"/>: el borde vive allí, y allí se prueba.</remarks>
+    private static string GetLocalizedString(UserMessage? message) => LocalizationService.Translate(message);
 
     public bool CanClose()
     {

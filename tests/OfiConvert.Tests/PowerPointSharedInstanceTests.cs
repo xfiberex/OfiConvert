@@ -94,7 +94,7 @@ public sealed class PowerPointSharedInstanceTests : IDisposable
             var results = await Task.WhenAll(tasks);
 
             // 4. Las TRES salieron. Antes, la primera en terminar mataba a las otras dos.
-            Assert.All(results, r => Assert.True(r.Success, $"Conversión fallida: {r.ErrorMessage}"));
+            Assert.All(results, r => Assert.True(r.Success, $"Conversión fallida: {r.Error?.Key}"));
             Assert.All(results, r => Assert.True(File.Exists(r.OutputPath), $"No se generó {r.OutputPath}"));
 
             // 5. Y el PowerPoint del usuario sigue vivo, con su presentación sin guardar dentro.
@@ -134,7 +134,7 @@ public sealed class PowerPointSharedInstanceTests : IDisposable
             Path.Combine(_folder, Path.GetFileNameWithoutExtension(src) + "-solo.pdf"),
             new ConversionOptions { OutputFormat = OutputFormat.PDF })));
 
-        Assert.All(results, r => Assert.True(r.Success, $"Conversión fallida: {r.ErrorMessage}"));
+        Assert.All(results, r => Assert.True(r.Success, $"Conversión fallida: {r.Error?.Key}"));
         Assert.All(results, r => Assert.True(File.Exists(r.OutputPath), $"No se generó {r.OutputPath}"));
 
         // Y la instancia que abrió la app se cierra: era suya, nadie más la estaba usando.

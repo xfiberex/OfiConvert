@@ -1,4 +1,4 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:system="clr-namespace:System;assembly=System.Runtime">
 
@@ -134,6 +134,21 @@ Möchten Sie die Konvertierung abbrechen und beenden?</system:String>
     <system:String x:Key="MsgCorruptFile">Die Datei scheint beschädigt zu sein.</system:String>
     <system:String x:Key="MsgFileLocked">Die Datei wird von einem anderen Prozess verwendet.</system:String>
     <system:String x:Key="MsgFileNotFound">Die Datei existiert nicht.</system:String>
+    <system:String x:Key="MsgFileEmpty">Die Datei ist leer.</system:String>
+    <system:String x:Key="MsgFileTooSmall">Die Datei ist zu klein, um gültig zu sein.</system:String>
+    <system:String x:Key="MsgValidationError">Fehler bei der Prüfung der Datei: {0}</system:String>
+    <system:String x:Key="MsgInvalidPathCharacters">Der Pfad enthält ungültige Zeichen.</system:String>
+    <system:String x:Key="MsgLibreOfficeNotInstalled">LibreOffice ist nicht installiert.</system:String>
+    <system:String x:Key="MsgLibreOfficeError">LibreOffice-Fehler (Code {0}): {1}</system:String>
+    <system:String x:Key="MsgLibreOfficeNoOutput">LibreOffice wurde beendet, ohne die Ausgabedatei zu erzeugen.</system:String>
+    <system:String x:Key="MsgLibreOfficeUnexpected">Unerwarteter LibreOffice-Fehler: {0}</system:String>
+    <system:String x:Key="MsgOfficeError">Microsoft Office-Fehler: {0}</system:String>
+    <system:String x:Key="MsgUnsupportedExtension">Nicht unterstützte Erweiterung: {0}</system:String>
+    <system:String x:Key="MsgConversionCancelled">Konvertierung abgebrochen.</system:String>
+    <system:String x:Key="MsgNotAttempted">Die Konvertierung wurde nicht versucht.</system:String>
+    <system:String x:Key="MsgGeneralError">Allgemeiner Fehler:
+
+{0}</system:String>
     <system:String x:Key="MsgLibreOfficeFallback">LibreOffice wird als Alternative verwendet...</system:String>
     <system:String x:Key="MsgNoConverterAvailable">Kein Konvertierungsmodul verfügbar. Installieren Sie Microsoft Office oder LibreOffice.</system:String>
     <system:String x:Key="MsgWarning">Warnung</system:String>

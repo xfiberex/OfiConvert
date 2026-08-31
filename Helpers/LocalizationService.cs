@@ -1,5 +1,7 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Xml.Linq;
+
+using OfiConvert.Core;
 
 namespace OfiConvert.Helpers;
 
@@ -121,4 +123,28 @@ public sealed class LocalizationService : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
 
     public string Get(string key) => this[key];
+
+    /// <summary>
+    /// Traduce un <see cref="UserMessage"/> —clave + argumentos— al idioma cargado.
+    /// </summary>
+    /// <remarks>
+    /// <b>El borde entre los servicios y la interfaz.</b> Los servicios corren en hilos de fondo y no
+    /// saben en qué idioma está la app, así que devuelven claves; aquí se convierten en texto. Antes cada
+    /// servicio escribía su frase en español y la app la mostraba tal cual en los ocho idiomas — en el
+    /// panel de resultados, en la columna <i>Error</i> del historial y en el CSV/TXT exportado (TJ-06).
+    ///
+    /// Si la clave no existe se devuelve la clave: un texto raro se ve y se arregla; una cadena vacía
+    /// esconde el error. Si la plantilla traducida no cuadra con los argumentos, se devuelve la plantilla
+    /// sin formatear: una traducción a la que le falte un hueco no puede tumbar una conversión.
+    /// </remarks>
+    public static string Translate(UserMessage? message)
+    {
+        if (message is null) return string.Empty;
+
+        var template = Instance[message.Key];
+        if (string.IsNullOrEmpty(template) || message.Args.Length == 0) return template;
+
+        try { return string.Format(template, message.Args); }
+        catch (FormatException) { return template; }
+    }
 }

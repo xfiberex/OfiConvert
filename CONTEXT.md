@@ -106,13 +106,13 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas unitarias | **224 pasan · 4 se omiten (1 de red + 3 que conducen Office) · 0 fallan**; con `OFICONVERT_OFFICE_TESTS=1`, **227 pasan** |
+| Pruebas unitarias | **231 pasan · 4 se omiten (1 de red + 3 que conducen Office) · 0 fallan**; con `OFICONVERT_OFFICE_TESTS=1`, **234 pasan** |
 | Pruebas de UI | **31 pasan · 0 fallan** (FlaUI, arrancan la app real **en la configuración compilada**) |
 | Publicado | **v2.6.1** (2.1.0 → 2.6.1 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
 | Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real. ⚠️ **Solo en un equipo CON Office**: ver `TJ-04` |
 | Pendiente de release | — (la 2.6.1 está publicada; nada en `main` sin publicar) |
-| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **38 tareas, 7 Altas, 6 cerradas (TJ-01 a TJ-05 y TJ-07 — 6 de las 7 Altas; queda TJ-06)**. Verificado en verde antes de auditar: build 0/0 y 199 · 1 omitida · 0 fallos |
+| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **38 tareas, 8 cerradas (TJ-01 a TJ-07 y TJ-17) — las 7 Altas, completas**. Verificado en verde antes de auditar: build 0/0 y 199 · 1 omitida · 0 fallos |
 
 **Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **A–I cerrados; J abierto**
 
@@ -473,6 +473,20 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 
 ### Localización
 
+- **Un servicio NUNCA devuelve texto para el usuario: devuelve una clave** (`Core/UserMessage`, clave +
+  argumentos). La traducción ocurre en **un solo sitio**, `LocalizationService.Translate`, que es el
+  borde con la UI. Motivo: los servicios corren en hilos de fondo y no saben —ni deben saber— en qué
+  idioma está la app; devolviendo `string` no hay forma de acertar, y así se colaron **18 mensajes** en
+  español que salían igual en los ocho idiomas, con varias de sus traducciones ya escritas y sin usar
+  (TJ-06). El historial guarda el texto **ya traducido**: es lo que se exporta a CSV/TXT y lo que se lee
+  meses después.
+- **Cada forma nueva de pedir una clave se añade al escáner EN EL MISMO CAMBIO que la crea.**
+  `LocalizationUsageTests` ha ido por detrás del código tres veces (`loc["…"]`, `T("…")` y ahora
+  `UserMessage`/`Failed`), y cada retraso costó claves sin vigilar. Van siete formas.
+- **`HardcodedUiTextTests` descubre los archivos, no los lista** (TJ-17), y vigila **dos** patrones: el
+  literal asignado a la UI y el literal pasado **como argumento** a `ShowError`/`Failed`/`UserMessage`.
+  Como argumento solo se admite una clave: una frase con espacios es el delito.
+
 - **8 idiomas** (ES/EN/PT/FR/DE/IT/ZH/JA) en `Lang/*.xaml`, parseados **en runtime** con `XDocument`
   (no son ResourceDictionary compilados) y refrescados por binding al indexer
   (`{Binding [Clave], Source={StaticResource Loc}}`). Si falta el archivo del idioma, cae a `es-ES`.
@@ -627,6 +641,48 @@ Menores, sin tier asignado:
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
+
+---
+
+### 2026-08-31 — TJ-06 y TJ-17: la quinta vez del texto en español, y el guardián que miraba dos archivos
+
+Con esto se cierran **las siete tareas Altas** del [Tier J](ROADMAP.md).
+
+**TJ-06 — 18 mensajes en español, en los ocho idiomas.** `FileValidationService`,
+`LibreOfficeConversionService`, `OfficeFileConversionService` y el propio `MainViewModel` devolvían frases
+escritas a mano, y esas frases llegaban al panel de resultados, a la columna *Error* del historial y al
+CSV/TXT exportado. Lo peor no es el número: **cinco de ellas ya estaban traducidas a los ocho idiomas y
+no las usaba nadie**. «El archivo no existe.» era, letra por letra, el valor de `MsgFileNotFound`.
+
+**La causa no es el descuido: es la forma.** Un servicio que devuelve `string` no tiene manera de
+devolver algo traducible, porque corre en un hilo de fondo y no sabe en qué idioma está la interfaz. Por
+eso el arreglo no es «cambiar 18 literales» —eso lo deshace el próximo `return`— sino **cambiar el tipo**:
+
+- `Core/UserMessage` (clave + argumentos) es lo que viaja desde los servicios;
+- `ConversionResult.Error` y `FileValidationResult.Error` dejan de ser `string`, así que el compilador
+  ya no deja devolver una frase por descuido;
+- la traducción ocurre en **un único borde**, `LocalizationService.Translate`, donde sí se sabe el idioma;
+- 13 claves nuevas × 8 idiomas.
+
+**TJ-17 — y el guardián que debía haberlo impedido.** `HardcodedUiTextTests` existía desde el Tier D…
+mirando **dos archivos de veintitantos**, escritos a mano, y **ninguno** de los 18 literales vivía en
+ellos. Además su patrón solo casaba *asignaciones* (`Title = "…"`), así que no habría visto
+`Failed("El archivo de origen no existe")` ni con el archivo en la lista. Ahora los archivos se
+**descubren** y hay un segundo patrón para los literales que viajan **como argumento**, donde solo se
+admite una clave. Comprobado en rojo reintroduciendo dos de los 18.
+
+> **El patrón que se repite en este tier:** el guardián existía y pasaba en verde sobre problemas de su
+> propia especialidad. `HardcodedUiTextTests` miraba dos archivos; `AccessibilityTests` filtra por
+> `ControlType.Button` (TJ-09); `LocalizationUsageTests` conocía tres formas de pedir una clave y ya
+> había una cuarta (TJ-18). Un test verde dice «no encontré nada», no «no hay nada».
+
+De ahí una regla nueva, ya aplicada aquí: **cada forma nueva de pedir una clave se añade al escáner en el
+mismo cambio que la crea.** `UserMessage("…")` y `Failed("…")` entraron en `LocalizationUsageTests` en
+este mismo commit, junto con la `T("…")` que TJ-18 llevaba pendiente. Van siete formas.
+
+**Pruebas:** 231 pasan · 4 omitidas · 0 fallan; UI 31 · 0. Build 0/0. `UserMessageTranslationTests` fija
+el criterio de TJ-06 donde se puede comprobar sin abrir la app: con el idioma en japonés, lo que devuelven
+los servicios llega en japonés, con sus argumentos dentro y sin clave cruda a la vista.
 
 ---
 

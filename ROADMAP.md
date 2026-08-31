@@ -366,7 +366,7 @@ translúcidas y el texto del menú pierde contraste. Arreglado con `ThemeDiction
 > `LocalizationUsageTests` vigila tres formas de pedir una clave y ya hay una cuarta. Los tres pasan en
 > verde sobre problemas de su propia especialidad.
 
-**Índice del tier:** 38 tareas — **7 Altas · 19 Medias · 12 Bajas**. **Cerradas: 6** (TJ-01 a TJ-05 y TJ-07) — **6 de las 7 Altas**; solo queda TJ-06.
+**Índice del tier:** 38 tareas — **7 Altas · 19 Medias · 12 Bajas**. **Cerradas: 8** (TJ-01 a TJ-07 y TJ-17) — **las 7 Altas, completas**.
 Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 
 ### J.1 — Severidad ALTA
@@ -487,7 +487,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     `DrivenBinaryTests` falla si el binario no es el de la configuración compilada. Comprobado en rojo
     reponiendo la búsqueda por fecha con un `bin\Debug` más nuevo: el test caza exactamente ese caso.
 
-- [ ] **[TJ-06] QUINTA reincidencia del texto en español a fuego — y las traducciones YA existen** · **Alto**
+- [x] ✅ **[TJ-06] QUINTA reincidencia del texto en español a fuego** · **Alto** *(cerrado 2026-08-31)*
   - **Área:** Localización / Ortografía
   - **Ubicación:** `Services/FileValidationService.cs:19,23,31,42,49,52,55,60`;
     `Services/LibreOfficeConversionService.cs:33,36,46,84,88,94`;
@@ -503,6 +503,11 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
   - **Criterio de aceptación:** con la app en japonés, un archivo protegido con contraseña y un fallo
     de LibreOffice se anuncian en japonés en el panel, en el historial y en el TXT exportado.
   - **Esfuerzo:** medio · **Depende de:** TJ-17 (para que no vuelva a colarse)
+  - **Hecho:** `Core/UserMessage` (clave + argumentos) viaja desde los servicios; `ConversionResult.Error`
+    y `FileValidationResult.Error` dejan de ser `string`; la traducción ocurre en **un solo borde**,
+    `LocalizationService.Translate`, y el historial guarda ya el texto traducido (es lo que se exporta).
+    13 claves nuevas × 8 idiomas. `UserMessageTranslationTests` fija el criterio: con la app en japonés,
+    los mensajes de servicio llegan en japonés y no como clave cruda.
 
 - [x] ✅ **[TJ-07] `CHANGELOG.md` y notas de release de verdad** · **Alto** *(cerrado 2026-08-31)*
   - **Área:** Documentación / DevOps
@@ -617,7 +622,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     a 100 %, 150 % y 200 %.
   - **Esfuerzo:** medio · **Depende de:** ninguna
 
-- [ ] **[TJ-17] `HardcodedUiTextTests` solo mira dos archivos de veintitantos** · Medio
+- [x] ✅ **[TJ-17] `HardcodedUiTextTests` solo miraba dos archivos de veintitantos** · Medio *(cerrado 2026-08-31)*
   - **Área:** QA · **Ubicación:** `tests/OfiConvert.Tests/HardcodedUiTextTests.cs:28-32`
   - **Qué hacer:** su lista es `MainWindow.xaml.cs` y `DialogService.cs`. Todo el texto de TJ-06 vive
     fuera de ella y, además, el patrón solo casa **asignaciones a propiedades** (`Title = "…"`), así
@@ -628,6 +633,12 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
   - **Criterio de aceptación:** el test se pone **en rojo** al reintroducir cualquiera de los 18
     literales de TJ-06 (comprobarlo reintroduciendo uno a propósito).
   - **Esfuerzo:** medio · **Depende de:** ninguna
+  - **Hecho:** los archivos ya no se listan, se **descubren** (todos los `.cs` de la app, menos los textos
+    legales y el propio `LocalizationService`), y hay un segundo patrón para los literales que viajan
+    **como argumento** hacia `ShowError`/`ShowInformation`/`Failed`/`UserMessage`/`FileValidationResult`:
+    ahí solo se admite una **clave**, y una frase con espacios delata al culpable. Comprobado en rojo
+    reintroduciendo dos de los 18 literales de TJ-06. La prueba también falla si deja de encontrar
+    archivos: un escáner que no mira nada pasa en verde.
 
 - [ ] **[TJ-18] El escáner de claves va otra vez por detrás del código** · Medio
   - **Área:** QA · **Ubicación:** `tests/OfiConvert.Tests/LocalizationUsageTests.cs:28-30`
@@ -639,6 +650,10 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     y no usadas (hay 39; ver TJ-29).
   - **Criterio de aceptación:** borrar `MsgError` de `es-ES.xaml` pone el test en rojo.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
+  - **Avance (2026-08-31):** el escáner ya cubre **siete** formas — se le añadieron `T("…")` (la que
+    pedía esta tarea) y las dos que nacieron con TJ-06, `new UserMessage("…")` y `Failed("…")`, en el
+    mismo cambio que las creó. Queda **solo el chequeo inverso** (claves declaradas y no usadas), que
+    depende de limpiar las 39 de TJ-29.
 
 - [ ] **[TJ-19] `IProgress<ConversionProgress>` atraviesa toda la API y nadie lo reporta** · Medio
   - **Área:** Arquitectura · **Ubicación:** `Services/IFileConversionService.cs:10,17`;
@@ -854,6 +869,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 | 2026-08-31 | **TJ-05** (los UI tests conducían el binario Debug) y **TJ-04** (el aviso del instalador salía en modo silencioso) (3/38) |
 | 2026-08-31 | **TJ-03** (LibreOffice borraba un archivo anterior) y **TJ-02** (deadlock de las tuberías) (5/38, **5 de 7 Altas**) |
 | 2026-08-31 | **TJ-01**: PowerPoint serializado y la sesión del usuario intocable, verificado contra el Office real (6/38, **6 de 7 Altas**) |
+| 2026-08-31 | **TJ-06** (18 mensajes en español a fuego → claves traducidas) y **TJ-17** (el guardián miraba 2 archivos de 20) — **las 7 Altas cerradas** (8/38) |
 
 ## 🚫 Decisiones cerradas / qué NO portar de los hermanos
 

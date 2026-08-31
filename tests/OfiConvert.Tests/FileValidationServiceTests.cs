@@ -1,4 +1,4 @@
-using System.IO.Compression;
+﻿using System.IO.Compression;
 using OfiConvert.Services;
 using Xunit;
 
@@ -83,7 +83,7 @@ public sealed class FileValidationServiceTests : IDisposable
         var result = _service.Validate(Write("vacio.docx", []));
 
         Assert.False(result.IsValid);
-        Assert.Contains("vacío", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("MsgFileEmpty", result.Error?.Key);
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public sealed class FileValidationServiceTests : IDisposable
         var result = _service.Validate(Write("diminuto.docx", [0x50, 0x4B, 0x03, 0x04]));
 
         Assert.False(result.IsValid);
-        Assert.Contains("pequeño", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("MsgFileTooSmall", result.Error?.Key);
     }
 
     [Fact]
@@ -106,7 +106,7 @@ public sealed class FileValidationServiceTests : IDisposable
         var result = _service.Validate(path);
 
         Assert.False(result.IsValid);
-        Assert.Contains("bloqueado", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("MsgFileLocked", result.Error?.Key);
     }
 
     [Fact]
@@ -115,7 +115,7 @@ public sealed class FileValidationServiceTests : IDisposable
         var result = _service.Validate(WriteOpenXml("informe.docx", withContentTypes: true));
 
         Assert.True(result.IsValid);
-        Assert.Null(result.ErrorMessage);
+        Assert.Null(result.Error);
     }
 
     /// <summary>Un ZIP sin <c>[Content_Types].xml</c>: paquete cifrado, no archivo roto.</summary>
@@ -139,7 +139,7 @@ public sealed class FileValidationServiceTests : IDisposable
 
         Assert.False(result.IsValid);
         Assert.True(result.IsPasswordProtected);
-        Assert.Contains("contraseña", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("MsgPasswordProtected", result.Error?.Key);
     }
 
     [Fact]
@@ -149,7 +149,7 @@ public sealed class FileValidationServiceTests : IDisposable
 
         Assert.False(result.IsValid);
         Assert.False(result.IsPasswordProtected);
-        Assert.Contains("corrupto", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("MsgCorruptFile", result.Error?.Key);
     }
 
     [Fact]

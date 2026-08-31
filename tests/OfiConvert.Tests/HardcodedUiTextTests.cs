@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Xunit;
 
 namespace OfiConvert.Tests;
@@ -7,15 +7,19 @@ namespace OfiConvert.Tests;
 /// Caza el texto de interfaz escrito <b>a fuego</b> en el código, en vez de traducido.
 /// </summary>
 /// <remarks>
-/// Este proyecto ha cometido el MISMO fallo tres veces, y las tres se descubrieron por casualidad:
+/// Este proyecto ha cometido el MISMO fallo cinco veces, y las cinco se descubrieron por casualidad:
 /// <list type="number">
 ///   <item>El <b>diálogo de cierre</b> («Confirmar cierre», «Sí», «No») — lo cazó <c>LocalizationUsageTests</c>.</item>
 ///   <item>La <b>barra de actualización</b> («Descargando… 42%», «Instalar ahora») — se vio probando el
 ///         instalador de punta a punta.</item>
 ///   <item>Los <b>diálogos de <c>DialogService</c></b> («Aceptar», «Error», «Información») — se vio al
 ///         arreglar el anterior.</item>
+///   <item>Los <b>18 mensajes de los servicios</b> («El archivo no existe.», los errores de LibreOffice) —
+///         los cazó la re-auditoría del Tier J (TJ-06), con las traducciones ya escritas y sin usar.</item>
+///   <item>…y <b>esta misma prueba</b>, que solo miraba dos archivos de veintitantos (TJ-17): ninguno de
+///         esos 18 literales vivía en los archivos que vigilaba.</item>
 /// </list>
-/// Los tres salían <b>en español en los ocho idiomas</b>. Y ninguno rompía nada: la app compilaba, los
+/// Todos salían <b>en español en los ocho idiomas</b>. Y ninguno rompía nada: la app compilaba, los
 /// tests pasaban y la traducción existía… sin usarse.
 ///
 /// <c>LocalizationUsageTests</c> no puede cazar esto: comprueba que las claves <b>usadas</b> existan, no
@@ -24,12 +28,23 @@ namespace OfiConvert.Tests;
 /// </remarks>
 public sealed class HardcodedUiTextTests
 {
-    /// <summary>Archivos que pintan interfaz: aquí ningún texto puede nacer en duro.</summary>
-    private static readonly string[] UiFiles =
-    [
-        "MainWindow.xaml.cs",
-        Path.Combine("Services", "DialogService.cs"),
-    ];
+    /// <summary>
+    /// Archivos que pueden acabar hablándole al usuario: aquí ningún texto puede nacer en duro.
+    /// </summary>
+    /// <remarks>
+    /// Hasta el Tier J esta lista tenía <b>dos</b> nombres escritos a mano (TJ-17), y los 18 literales de
+    /// TJ-06 vivían todos fuera de ella, en <c>Services/</c> y <c>ViewModels/</c>. Una prueba que solo
+    /// mira donde ya se miró no protege de nada. Ahora los archivos se <b>descubren</b>, para que uno
+    /// nuevo entre solo el día que se cree.
+    /// </remarks>
+    private static IEnumerable<string> UiFiles =>
+        TestPaths.AppSourceFiles("*.cs")
+            .Select(f => Path.GetRelativePath(TestPaths.RepoRoot, f))
+            // Los textos legales embebidos son licencias íntegras, que deben ir en su idioma original, y
+            // LocalizationService necesariamente nombra idiomas.
+            .Where(f => !f.EndsWith("LegalText.cs", StringComparison.OrdinalIgnoreCase))
+            .Where(f => !f.EndsWith("LocalizationService.cs", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Asignaciones de texto a la UI. La cadena puede ser normal (<c>"Aceptar"</c>) o interpolada, y una
@@ -39,6 +54,23 @@ public sealed class HardcodedUiTextTests
     private static readonly Regex Assignment = new(
         """\b(?:Title|Message|Content|Text|Header|PrimaryButtonText|SecondaryButtonText|CloseButtonText)\s*=\s*(?:\$"((?:[^"{}]|\{[^{}]*\})*)"|"([^"]*)")""",
         RegexOptions.Compiled);
+
+    /// <summary>
+    /// Literales que viajan como <b>argumento</b> hacia algo que acaba en pantalla.
+    /// </summary>
+    /// <remarks>
+    /// El patrón de asignación no ve <c>ShowError("Error general: …")</c> ni
+    /// <c>ConversionResult.Failed("El archivo de origen no existe")</c> — que es exactamente por donde se
+    /// colaron los 18 mensajes de TJ-06, en archivos que además nadie vigilaba. Aquí lo único admitido es
+    /// una <b>clave</b> (<c>MsgFileNotFound</c>): una frase, con sus espacios y su punto final, delata que
+    /// alguien volvió a escribir texto para el usuario dentro del código.
+    /// </remarks>
+    private static readonly Regex Argument = new(
+        """\b(?:ShowError|ShowInformation|ShowWarning|ShowConfirmation|Failed|UserMessage|FileValidationResult)\s*\(\s*(?:\$"((?:[^"{}]|\{[^{}]*\})*)"|"([^"]*)")""",
+        RegexOptions.Compiled);
+
+    /// <summary>Una clave de <c>Lang/*.xaml</c>: una palabra, sin espacios ni puntuación de frase.</summary>
+    private static readonly Regex TranslationKey = new("^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.Compiled);
 
     /// <summary>Secuencias de escape: <c>⬆</c> (el glifo de la flecha), <c>\n</c>…</summary>
     private static readonly Regex Escapes = new(@"\\u[0-9a-fA-F]{4}|\\.", RegexOptions.Compiled);
@@ -78,21 +110,34 @@ public sealed class HardcodedUiTextTests
     public void NoUiTextIsHardcodedInsteadOfTranslated()
     {
         var offenders = new List<string>();
+        int revisados = 0;
 
         foreach (var relative in UiFiles)
         {
             var path = Path.Combine(TestPaths.RepoRoot, relative);
-            Assert.True(File.Exists(path), $"No se encontró {relative}: la lista de archivos de UI se ha quedado obsoleta.");
-
             var code = File.ReadAllText(path);
+            revisados++;
+
             foreach (Match match in Assignment.Matches(code))
             {
                 var literal = match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value;
 
                 if (!IsAllowed(literal))
-                    offenders.Add($"{relative}: \"{literal}\"");
+                    offenders.Add($"{relative}: [ASIGNADO A LA UI] {literal}");
+            }
+
+            foreach (Match match in Argument.Matches(code))
+            {
+                var literal = match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value;
+
+                // Como argumento solo se admite una CLAVE; lo demás es una frase escrita a mano.
+                if (!IsAllowed(literal) && !TranslationKey.IsMatch(LiteralPart(literal).Trim()))
+                    offenders.Add($"{relative}: [MENSAJE AL USUARIO, pasa una clave] {literal}");
             }
         }
+
+        // Una prueba que no encuentra archivos pasa en verde sin haber mirado nada.
+        Assert.True(revisados > 10, $"Solo se revisaron {revisados} archivos: el descubrimiento está roto.");
 
         Assert.True(
             offenders.Count == 0,

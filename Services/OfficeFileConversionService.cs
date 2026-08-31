@@ -56,12 +56,12 @@ public class OfficeFileConversionService : IFileConversionService
         CancellationToken cancellationToken = default)
     {
         if (!File.Exists(sourcePath))
-            return ConversionResult.Failed("El archivo de origen no existe");
+            return ConversionResult.Failed("MsgFileNotFound");
 
         var extension = Path.GetExtension(sourcePath).ToLowerInvariant();
 
         if (!IsValidOfficeFile(extension))
-            return ConversionResult.Failed($"Extensi\u00f3n no soportada: {extension}");
+            return ConversionResult.Failed(new UserMessage("MsgUnsupportedExtension", extension));
 
         var sw = Stopwatch.StartNew();
 
@@ -111,13 +111,13 @@ public class OfficeFileConversionService : IFileConversionService
         }
         catch (OperationCanceledException)
         {
-            return ConversionResult.Failed("Operaci\u00f3n cancelada");
+            return ConversionResult.Failed("MsgConversionCancelled");
         }
         catch (Exception ex)
         {
             sw.Stop();
             Log.Error(ex, "Office: Error en conversión de {Source}", sourcePath);
-            return ConversionResult.Failed(ex.Message);
+            return ConversionResult.Failed(new UserMessage("MsgOfficeError", ex.Message));
         }
     }
 

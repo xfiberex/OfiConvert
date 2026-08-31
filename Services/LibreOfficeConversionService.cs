@@ -30,10 +30,10 @@ public class LibreOfficeConversionService : IFileConversionService
     {
         var loPath = GetLibreOfficePath();
         if (loPath is null)
-            return ConversionResult.Failed("LibreOffice no está instalado.");
+            return ConversionResult.Failed("MsgLibreOfficeNotInstalled");
 
         if (!File.Exists(sourcePath))
-            return ConversionResult.Failed("El archivo de origen no existe.");
+            return ConversionResult.Failed("MsgFileNotFound");
 
         var sw = Stopwatch.StartNew();
         string? workFolder = null;
@@ -49,7 +49,7 @@ public class LibreOfficeConversionService : IFileConversionService
             workFolder = LibreOfficeOutput.CreateWorkFolder();
 
             if (sourcePath.IndexOf('"') >= 0 || workFolder.IndexOf('"') >= 0)
-                return ConversionResult.Failed("La ruta contiene caracteres no válidos.");
+                return ConversionResult.Failed("MsgInvalidPathCharacters");
 
             Log.Information("LibreOffice: Convirtiendo {Source} a {Format}", sourcePath, formatArg);
 
@@ -69,7 +69,7 @@ public class LibreOfficeConversionService : IFileConversionService
             if (run.ExitCode != 0)
             {
                 Log.Error("LibreOffice: Error de conversión - {Error}", run.StandardError);
-                return ConversionResult.Failed($"LibreOffice error (código {run.ExitCode}): {run.StandardError}");
+                return ConversionResult.Failed(new UserMessage("MsgLibreOfficeError", run.ExitCode, run.StandardError));
             }
 
             var expectedName = LibreOfficeOutput.ExpectedFileName(
@@ -81,7 +81,7 @@ public class LibreOfficeConversionService : IFileConversionService
                 // Código 0 y sin resultado: pasa con formatos que el filtro no soporta para ese documento.
                 Log.Error("LibreOffice: terminó en 0 sin producir {Expected}. stdout: {Out} stderr: {Err}",
                     expectedName, run.StandardOutput, run.StandardError);
-                return ConversionResult.Failed("LibreOffice terminó sin generar el archivo de salida.");
+                return ConversionResult.Failed("MsgLibreOfficeNoOutput");
             }
 
             var finalPath = LibreOfficeOutput.MoveToFinal(produced, outputPath);
@@ -91,13 +91,13 @@ public class LibreOfficeConversionService : IFileConversionService
         }
         catch (OperationCanceledException)
         {
-            return ConversionResult.Failed("Operación cancelada");
+            return ConversionResult.Failed("MsgConversionCancelled");
         }
         catch (Exception ex)
         {
             sw.Stop();
             Log.Error(ex, "LibreOffice: Error inesperado");
-            return ConversionResult.Failed($"Error LibreOffice: {ex.Message}");
+            return ConversionResult.Failed(new UserMessage("MsgLibreOfficeUnexpected", ex.Message));
         }
         finally
         {

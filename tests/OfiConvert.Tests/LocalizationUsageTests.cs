@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Xunit;
 
@@ -21,12 +21,19 @@ public sealed class LocalizationUsageTests
     /// <summary>Claves que se construyen en runtime (no son literales) y que este test no puede resolver.</summary>
     private static readonly HashSet<string> DynamicKeysAllowed = new(StringComparer.Ordinal);
 
-    // Las tres formas de pedir una clave. La tercera —`loc["Clave"]`, con `loc` una variable local— FALTABA,
-    // y por eso a este test se le escapó `MsgCheckingUpdate`: una clave que NO existía, usada en el botón
-    // de buscar actualizaciones, tapada por un fallback defensivo. Un escáner que no mira donde se usa el
-    // código no prueba nada.
+    // Las SIETE formas de pedir una clave. Cada una entró por detrás de este escáner:
+    //
+    //   * `loc["Clave"]` FALTABA, y por eso se le escapó `MsgCheckingUpdate`: una clave que NO existía,
+    //     usada en el botón de buscar actualizaciones, tapada por un fallback defensivo.
+    //   * `T("Clave")` —el envoltorio que estrenó DialogService— faltaba también, y con él seis claves
+    //     que no miraba nadie: existían por suerte, no por cobertura (TJ-18).
+    //   * `new UserMessage("Clave")` y `Failed("Clave")` son de TJ-06, donde los servicios pasaron a
+    //     devolver claves en vez de texto en español. Se añaden AQUÍ, en el mismo cambio que las crea:
+    //     dejarlo para después es exactamente cómo nacieron los dos agujeros anteriores.
+    //
+    // Un escáner que no mira donde se usa el código no prueba nada.
     private static readonly Regex CodeUsage = new(
-        """(?:GetLocalizedString\(\s*"([^"]+)"|LocalizationService\.Instance\[\s*"([^"]+)"\]|\bloc\[\s*"([^"]+)"\])""",
+        """(?:GetLocalizedString\(\s*"([^"]+)"|LocalizationService\.Instance\[\s*"([^"]+)"\]|\bloc\[\s*"([^"]+)"\]|\bT\(\s*"([^"]+)"|\bnew UserMessage\(\s*"([^"]+)"|\bUserMessage\.Of\(\s*"([^"]+)"|\bFailed\(\s*"([^"]+)")""",
         RegexOptions.Compiled);
 
     // {Binding [Clave], Source={StaticResource Loc}}

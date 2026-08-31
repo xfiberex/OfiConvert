@@ -27,6 +27,11 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ### Corregido
 
+- **Los mensajes de error ya salen en tu idioma.** Dieciocho avisos —«el archivo está protegido con
+  contraseña», «el archivo está bloqueado por otro proceso», los fallos de LibreOffice y de Office—
+  aparecían **en español en los ocho idiomas**: en el panel de resultados, en la columna *Error* del
+  historial y en el CSV/TXT exportado. Varios de ellos ya estaban traducidos desde hace versiones, sin
+  que nadie los usara. *(Cierra [TJ-06](ROADMAP.md).)*
 - **Convertir presentaciones ya no cierra el PowerPoint que tengas abierto.** Si estabas trabajando en
   una presentación **sin guardar**, convertir cualquier `.ppt`/`.pptx` se enganchaba a esa misma sesión
   de PowerPoint y al terminar **la cerraba, sin preguntar**: se perdía lo que no estuviera guardado.
@@ -73,6 +78,13 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
   pruebas de interfaz validaban ese binario, no el Release que empaqueta el instalador. `AppFixture`
   ya no elige "el `.exe` más reciente": exige el de la configuración compilada, deja por escrito cuál
   conduce y `DrivenBinaryTests` falla si no coinciden. *(Cierra [TJ-05](ROADMAP.md).)*
+- **Los servicios devuelven claves de traducción, no frases** (`Core/UserMessage`), y la traducción
+  ocurre en un único borde (`LocalizationService.Translate`). Un servicio que corre en un hilo de fondo
+  no sabe —ni debe saber— en qué idioma está la interfaz: devolviendo texto, no había forma de acertar.
+- **El guardián de textos en duro pasa de dos archivos a todos** (TJ-17): se descubren solos, y además
+  mira los literales que viajan **como argumento** (`ShowError("…")`, `Failed("…")`), que es por donde
+  se colaron los 18. Comprobado en rojo reintroduciendo dos de ellos. El escáner de claves aprende
+  también las formas nuevas, en el mismo cambio que las crea.
 - **Pruebas nuevas contra el Office real** (`PowerPointSharedInstanceTests`), omitidas por defecto y
   activables con `OFICONVERT_OFFICE_TESTS=1`: comprueban la premisa (dos activaciones de PowerPoint
   dejan **un** proceso; Word deja dos) y el escenario completo de TJ-01. El corte de versión no depende
