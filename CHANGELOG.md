@@ -27,6 +27,15 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ### Corregido
 
+- **Convertir presentaciones ya no cierra el PowerPoint que tengas abierto.** Si estabas trabajando en
+  una presentación **sin guardar**, convertir cualquier `.ppt`/`.pptx` se enganchaba a esa misma sesión
+  de PowerPoint y al terminar **la cerraba, sin preguntar**: se perdía lo que no estuviera guardado.
+  Ahora la app solo cierra el PowerPoint que ha abierto ella, y el que ya estaba abierto lo deja como
+  lo encontró. *(Cierra [TJ-01](ROADMAP.md).)*
+- **Las presentaciones se convierten de una en una.** PowerPoint no admite dos sesiones a la vez —
+  Windows abre una sola, por mucho que se le pidan más—, así que convertir varias presentaciones en
+  paralelo las hacía competir por la misma. Word y Excel siguen convirtiéndose en paralelo, que ahí sí
+  hay una sesión por documento.
 - **Convertir con LibreOffice podía BORRAR un archivo anterior.** Si en la carpeta de destino ya había
   un `informe.pdf` y se convertía `informe.docx`, LibreOffice escribía encima del que estaba y la app
   renombraba el nuevo a `informe (1).pdf`: el archivo de antes **desaparecía**, en contra de lo que
@@ -64,6 +73,10 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
   pruebas de interfaz validaban ese binario, no el Release que empaqueta el instalador. `AppFixture`
   ya no elige "el `.exe` más reciente": exige el de la configuración compilada, deja por escrito cuál
   conduce y `DrivenBinaryTests` falla si no coinciden. *(Cierra [TJ-05](ROADMAP.md).)*
+- **Pruebas nuevas contra el Office real** (`PowerPointSharedInstanceTests`), omitidas por defecto y
+  activables con `OFICONVERT_OFFICE_TESTS=1`: comprueban la premisa (dos activaciones de PowerPoint
+  dejan **un** proceso; Word deja dos) y el escenario completo de TJ-01. El corte de versión no depende
+  de ellas.
 - **La ejecución de procesos externos se centraliza en `Services/ProcessRunner`**, que lee `stdout` y
   `stderr` antes de esperar al proceso. `ProcessRunnerTests` reproduce el cuelgue con 64 KB de salida
   —dieciséis veces el búfer— sin necesitar LibreOffice instalado, y la lógica de destino vive ahora en

@@ -366,12 +366,12 @@ translúcidas y el texto del menú pierde contraste. Arreglado con `ThemeDiction
 > `LocalizationUsageTests` vigila tres formas de pedir una clave y ya hay una cuarta. Los tres pasan en
 > verde sobre problemas de su propia especialidad.
 
-**Índice del tier:** 38 tareas — **7 Altas · 19 Medias · 12 Bajas**. **Cerradas: 5** (TJ-02, TJ-03, TJ-04, TJ-05, TJ-07) — **5 de las 7 Altas**.
+**Índice del tier:** 38 tareas — **7 Altas · 19 Medias · 12 Bajas**. **Cerradas: 6** (TJ-01 a TJ-05 y TJ-07) — **6 de las 7 Altas**; solo queda TJ-06.
 Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 
 ### J.1 — Severidad ALTA
 
-- [ ] **[TJ-01] PowerPoint es una instancia COM ÚNICA y compartida** · **Alto**
+- [x] ✅ **[TJ-01] PowerPoint es una instancia COM ÚNICA y compartida** · **Alto** *(cerrado 2026-08-31)*
   - **Área:** Rendimiento / Código
   - **Ubicación:** `Services/OfficeFileConversionService.cs:463-503`, `:509-527`, `:550-570`
   - **Qué hacer:** `Type.GetTypeFromProgID("PowerPoint.Application")` + `Activator.CreateInstance`
@@ -387,6 +387,26 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
   - **Criterio de aceptación:** con PowerPoint abierto y un documento sin guardar, convertir un lote de
     3 `.pptx` con paralelismo 4: los 3 se convierten, PowerPoint **sigue abierto** y no pierde nada.
   - **Esfuerzo:** alto · **Depende de:** ninguna
+  - **Hecho:** `Services/SerialGate` serializa las conversiones de PowerPoint (Word y Excel siguen en
+    paralelo: ahí cada activación sí crea proceso), y `PowerPointSession` decide **de quién es** la
+    instancia mirando `POWERPNT.EXE` **antes** de activar: solo cierra la que ha abierto ella, y a la
+    prestada le devuelve `DisplayAlerts` y `AutomationSecurity` como estaban. Ante cualquier duda se
+    asume que es del usuario.
+  - **Lo que enseñó escribir la prueba:** soltar la instancia prestada con `FinalReleaseComObject`
+    **cerraba igualmente las presentaciones del usuario** —el RCW de una aplicación COM es compartido en
+    el proceso, así que «Final» suelta las referencias de todos y PowerPoint se queda sin clientes de
+    automatización—. El proceso seguía vivo y el trabajo se perdía igual. Se suelta **una** referencia
+    con `ReleaseComObject`. Sin la prueba contra el Office real, este fallo se publica.
+  - **Verificado:** `PowerPointSharedInstanceTests` (omitidas salvo `OFICONVERT_OFFICE_TESTS=1`) — la
+    premisa medida aquí (2 activaciones → **1** `POWERPNT.EXE`; Word → 2) y el criterio entero: con
+    PowerPoint abierto y una presentación sin guardar, las 3 conversiones salen, PowerPoint sigue abierto
+    y su presentación intacta. Con el código antiguo, esa prueba **falla**.
+  - ⚠️ **Lo que NO se reprodujo:** el «la primera en terminar mata a las demás». Ni con tres
+    presentaciones de 40 diapositivas en paralelo y sin puerta: `Quit()` sobre una instancia con otros
+    clientes de automatización enganchados no la termina. La serialización se mantiene porque conducir
+    en paralelo una instancia que Windows no puede duplicar es incorrecto de todas formas —y
+    `SerialGateTests` cubre que la puerta hace su trabajo—, pero el escenario concreto queda **sin
+    reproducir**, no confirmado.
 
 - [x] ✅ **[TJ-02] LibreOffice podía quedarse colgado para siempre (deadlock de las tuberías)** · **Alto** *(cerrado 2026-08-31)*
   - **Área:** Rendimiento / Código
@@ -833,6 +853,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 | 2026-08-31 | **TJ-07**: el `CHANGELOG.md` es la fuente de las notas del release y el corte aborta sin ella (1/38) |
 | 2026-08-31 | **TJ-05** (los UI tests conducían el binario Debug) y **TJ-04** (el aviso del instalador salía en modo silencioso) (3/38) |
 | 2026-08-31 | **TJ-03** (LibreOffice borraba un archivo anterior) y **TJ-02** (deadlock de las tuberías) (5/38, **5 de 7 Altas**) |
+| 2026-08-31 | **TJ-01**: PowerPoint serializado y la sesión del usuario intocable, verificado contra el Office real (6/38, **6 de 7 Altas**) |
 
 ## 🚫 Decisiones cerradas / qué NO portar de los hermanos
 

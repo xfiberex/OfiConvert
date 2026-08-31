@@ -69,7 +69,13 @@ public class OfficeFileConversionService : IFileConversionService
         {
             Log.Information("Office: Convirtiendo {Source} a {Format}", sourcePath, options.OutputFormat);
 
-            await Task.Run(() =>
+            // PowerPoint es una instancia COM ÚNICA: activarlo devuelve el que ya corre, no uno nuevo. Dos
+            // conversiones de .pptx en paralelo conducían LA MISMA aplicación y la primera en terminar
+            // llamaba a Quit(), matando a la otra a media conversión. Word y Excel sí crean un proceso por
+            // activación, así que esos siguen yendo en paralelo. (TJ-01.)
+            var esPowerPoint = extension is ".ppt" or ".pptx";
+
+            Task Convertir() => Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -93,6 +99,11 @@ public class OfficeFileConversionService : IFileConversionService
                     throw new NotSupportedException($"Formato no soportado: {extension}");
 
             }, cancellationToken);
+
+            if (esPowerPoint)
+                await SerialGate.PowerPoint.RunAsync(Convertir, cancellationToken);
+            else
+                await Convertir();
 
             sw.Stop();
             Log.Information("Office: Conversión exitosa en {Duration}ms", sw.ElapsedMilliseconds);
@@ -213,46 +224,17 @@ public class OfficeFileConversionService : IFileConversionService
 
     private static void ConvertPowerPointToPdf(string sourcePath, string pdfPath)
     {
-        object? pptApp = null;
+        // La sesión decide si la instancia es NUESTRA o del usuario, y solo cierra la nuestra (TJ-01).
+        using var session = PowerPointSession.Open();
         object? presentation = null;
 
         try
         {
-            pptApp = CreateOfficeApp("PowerPoint.Application", app =>
-            {
-                var appType = app.GetType();
-
-                try
-                {
-                    appType.InvokeMember("Visible",
-                        System.Reflection.BindingFlags.SetProperty,
-                        null, app, [-1]); // msoTrue
-                }
-                catch { }
-
-                try
-                {
-                    appType.InvokeMember("DisplayAlerts",
-                        System.Reflection.BindingFlags.SetProperty,
-                        null, app, [2]); // ppAlertsNone = 2
-                }
-                catch { }
-
-                // Deshabilitar macros
-                try
-                {
-                    appType.InvokeMember("AutomationSecurity",
-                        System.Reflection.BindingFlags.SetProperty,
-                        null, app, [3]);
-                }
-                catch { }
-            });
-
-            var pptType = pptApp.GetType();
+            var pptType = session.App.GetType();
 
             var presentations = pptType.InvokeMember("Presentations",
                 System.Reflection.BindingFlags.GetProperty,
-                null, pptApp, null)
+                null, session.App, null)
                 ?? throw new InvalidOperationException("No se pudo acceder a la colecci\u00f3n de presentaciones");
 
             // Open(FileName, ReadOnly:=True, Untitled, WithWindow:=False)
@@ -299,8 +281,9 @@ public class OfficeFileConversionService : IFileConversionService
         }
         finally
         {
+            // Se cierra LA PRESENTACIÓN, siempre: es la que hemos abierto nosotros. De la aplicación se
+            // encarga la sesión al soltarse, que es quien sabe si era nuestra o prestada.
             CleanupComObject(presentation, closeMethod: "Close");
-            CleanupOfficeApp(pptApp);
         }
     }
 
@@ -455,23 +438,15 @@ public class OfficeFileConversionService : IFileConversionService
 
     private static void ConvertPowerPointToImages(string sourcePath, string outputPath, ConversionOptions options)
     {
-        object? pptApp = null;
+        using var session = PowerPointSession.Open();
         object? presentation = null;
 
         try
         {
-            pptApp = CreateOfficeApp("PowerPoint.Application", app =>
-            {
-                var appType = app.GetType();
-                try { appType.InvokeMember("Visible", System.Reflection.BindingFlags.SetProperty, null, app, [-1]); } catch { }
-                try { appType.InvokeMember("DisplayAlerts", System.Reflection.BindingFlags.SetProperty, null, app, [2]); } catch { }
-                try { appType.InvokeMember("AutomationSecurity", System.Reflection.BindingFlags.SetProperty, null, app, [3]); } catch { }
-            });
-
-            var pptType = pptApp.GetType();
+            var pptType = session.App.GetType();
             var presentations = pptType.InvokeMember("Presentations",
                 System.Reflection.BindingFlags.GetProperty,
-                null, pptApp, null)
+                null, session.App, null)
                 ?? throw new InvalidOperationException("No se pudo acceder a las presentaciones");
 
             object[] openParams = [sourcePath, -1, 0, 0];
@@ -497,14 +472,127 @@ public class OfficeFileConversionService : IFileConversionService
         }
         finally
         {
+            // Se cierra LA PRESENTACIÓN, siempre: es la que hemos abierto nosotros. De la aplicación se
+            // encarga la sesión al soltarse, que es quien sabe si era nuestra o prestada.
             CleanupComObject(presentation, closeMethod: "Close");
-            CleanupOfficeApp(pptApp);
         }
     }
 
     #endregion
 
     #region Helper Methods
+
+    /// <summary>
+    /// La instancia de PowerPoint que usa una conversión, y <b>de quién es</b>.
+    /// </summary>
+    /// <remarks>
+    /// PowerPoint no se puede instanciar dos veces: activarlo devuelve <b>el que ya está corriendo</b>, que
+    /// puede ser el del usuario, con su presentación a medias sin guardar. La app le ponía
+    /// <c>DisplayAlerts = ppAlertsNone</c> y al terminar llamaba a <c>Quit()</c>: le cerraba su PowerPoint
+    /// <b>sin preguntar por lo no guardado</b>. (TJ-01, 2026-08-31.)
+    ///
+    /// De ahí las dos reglas de esta clase: <b>solo se cierra lo que se ha abierto</b>, y lo que se usa
+    /// prestado <b>se devuelve como estaba</b>. Ante cualquier duda —no se puede mirar la lista de
+    /// procesos, no se puede leer un ajuste— se asume que la instancia es del usuario: cerrar de más le
+    /// cuesta su trabajo; no cerrar solo deja un proceso abierto.
+    /// </remarks>
+    private sealed class PowerPointSession : IDisposable
+    {
+        private const string ProcessName = "POWERPNT";
+
+        public object App { get; }
+
+        private readonly bool _preexisting;
+        private readonly object? _previousAlerts;
+        private readonly object? _previousSecurity;
+
+        private PowerPointSession(object app, bool preexisting, object? previousAlerts, object? previousSecurity)
+        {
+            App = app;
+            _preexisting = preexisting;
+            _previousAlerts = previousAlerts;
+            _previousSecurity = previousSecurity;
+        }
+
+        public static PowerPointSession Open()
+        {
+            // Se mira ANTES de activar: después ya no hay forma de saber quién trajo el proceso.
+            bool preexisting = IsRunning();
+
+            var app = CreateOfficeApp("PowerPoint.Application", null);
+            var type = app.GetType();
+
+            // Lo anterior solo importa si la instancia es prestada: la nuestra muere con nosotros.
+            object? previousAlerts = preexisting ? TryGet(type, app, "DisplayAlerts") : null;
+            object? previousSecurity = preexisting ? TryGet(type, app, "AutomationSecurity") : null;
+
+            // PowerPoint no admite trabajar oculto en todas las versiones: Visible se queda en msoTrue.
+            TrySet(type, app, "Visible", -1);
+            TrySet(type, app, "DisplayAlerts", 2);          // ppAlertsNone
+            TrySet(type, app, "AutomationSecurity", 3);     // msoAutomationSecurityForceDisable
+
+            Log.Information("PowerPoint: instancia {Origen}",
+                preexisting ? "PREEXISTENTE del usuario (no se cerrará)" : "creada por la app");
+
+            return new PowerPointSession(app, preexisting, previousAlerts, previousSecurity);
+        }
+
+        public void Dispose()
+        {
+            if (!_preexisting)
+            {
+                CleanupOfficeApp(App);   // nuestra: Quit() y a soltar
+                return;
+            }
+
+            var type = App.GetType();
+            if (_previousAlerts is not null) TrySet(type, App, "DisplayAlerts", _previousAlerts);
+            if (_previousSecurity is not null) TrySet(type, App, "AutomationSecurity", _previousSecurity);
+
+            try
+            {
+                // ReleaseComObject y NO FinalReleaseComObject: el RCW de una aplicación COM es COMPARTIDO
+                // dentro del proceso, así que "Final" no suelta NUESTRA referencia, sino TODAS —incluidas
+                // las de quien más la tenga—. Sobre una instancia prestada eso deja a PowerPoint sin
+                // clientes de automatización y CIERRA LAS PRESENTACIONES que se abrieron por esa vía: el
+                // proceso sigue vivo y aun así el usuario pierde lo que tenía. Medido con la prueba
+                // PowerPointSharedInstanceTests, que fallaba exactamente ahí. Se devuelve UNA referencia,
+                // que es la que se pidió.
+                Marshal.ReleaseComObject(App);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning("PowerPoint: error al soltar la instancia prestada: {Message}", ex.Message);
+            }
+        }
+
+        /// <summary>¿Hay ya un PowerPoint corriendo? Ante la duda, sí: cerrar de más es lo caro.</summary>
+        private static bool IsRunning()
+        {
+            Process[] processes;
+            try { processes = Process.GetProcessesByName(ProcessName); }
+            catch (Exception ex)
+            {
+                Log.Warning("PowerPoint: no se pudo mirar la lista de procesos ({Message}); se asume que la instancia es del usuario.", ex.Message);
+                return true;
+            }
+
+            try { return processes.Length > 0; }
+            finally { foreach (var p in processes) p.Dispose(); }
+        }
+
+        private static object? TryGet(Type type, object app, string property)
+        {
+            try { return type.InvokeMember(property, System.Reflection.BindingFlags.GetProperty, null, app, null); }
+            catch { return null; }
+        }
+
+        private static void TrySet(Type type, object app, string property, object value)
+        {
+            try { type.InvokeMember(property, System.Reflection.BindingFlags.SetProperty, null, app, [value]); }
+            catch { }
+        }
+    }
 
     private static object CreateOfficeApp(string progId, Action<object>? configure)
     {

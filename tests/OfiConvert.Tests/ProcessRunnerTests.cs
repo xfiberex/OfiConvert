@@ -40,23 +40,23 @@ public sealed class ProcessRunnerTests : IDisposable
 
     /// <summary>Se esperaría eternamente si se leyera después de esperar: 64 KB por stdout.</summary>
     [Fact]
-    public void SalidaEnorme_PorStdout_NoCuelga()
+    public async Task SalidaEnorme_PorStdout_NoCuelga()
     {
-        var task = ProcessRunner.RunAsync(Cmd($"type \"{BigFile()}\""));
+        var run = await SinColgarse(ProcessRunner.RunAsync(Cmd($"type \"{BigFile()}\"")),
+            "el búfer de stdout se llenó y nadie estaba leyendo");
 
-        Assert.True(task.Wait(Plazo), "ProcessRunner se colgó: el búfer de stdout se llenó y nadie estaba leyendo.");
-        Assert.Equal(0, task.Result.ExitCode);
-        Assert.True(task.Result.StandardOutput.Length > 64 * 1024);
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.StandardOutput.Length > 64 * 1024);
     }
 
     /// <summary>Y por stderr, que es por donde soffice escribe sus avisos.</summary>
     [Fact]
-    public void SalidaEnorme_PorStderr_NoCuelga()
+    public async Task SalidaEnorme_PorStderr_NoCuelga()
     {
-        var task = ProcessRunner.RunAsync(Cmd($"type \"{BigFile()}\" 1>&2"));
+        var run = await SinColgarse(ProcessRunner.RunAsync(Cmd($"type \"{BigFile()}\" 1>&2")),
+            "el búfer de stderr se llenó y nadie estaba leyendo");
 
-        Assert.True(task.Wait(Plazo), "ProcessRunner se colgó: el búfer de stderr se llenó y nadie estaba leyendo.");
-        Assert.True(task.Result.StandardError.Length > 64 * 1024);
+        Assert.True(run.StandardError.Length > 64 * 1024);
     }
 
     /// <summary>
@@ -64,24 +64,41 @@ public sealed class ProcessRunnerTests : IDisposable
     /// el que llena la tubería y bloquea al hijo.
     /// </summary>
     [Fact]
-    public void SalidaEnorme_PorLosDosFlujos_NoCuelga()
+    public async Task SalidaEnorme_PorLosDosFlujos_NoCuelga()
     {
         string big = BigFile();
-        var task = ProcessRunner.RunAsync(Cmd($"type \"{big}\" & type \"{big}\" 1>&2"));
+        var run = await SinColgarse(ProcessRunner.RunAsync(Cmd($"type \"{big}\" & type \"{big}\" 1>&2")),
+            "los dos flujos se llenaron a la vez");
 
-        Assert.True(task.Wait(Plazo), "ProcessRunner se colgó con los dos flujos llenos.");
-        Assert.True(task.Result.StandardOutput.Length > 64 * 1024);
-        Assert.True(task.Result.StandardError.Length > 64 * 1024);
+        Assert.True(run.StandardOutput.Length > 64 * 1024);
+        Assert.True(run.StandardError.Length > 64 * 1024);
     }
 
     [Fact]
-    public void CodigoDeSalidaYFlujos_LleganCompletos()
+    public async Task CodigoDeSalidaYFlujos_LleganCompletos()
     {
-        var task = ProcessRunner.RunAsync(Cmd("echo hola & echo ay 1>&2 & exit /b 3"));
+        var run = await SinColgarse(ProcessRunner.RunAsync(Cmd("echo hola & echo ay 1>&2 & exit /b 3")),
+            "ni siquiera con una salida diminuta");
 
-        Assert.True(task.Wait(Plazo));
-        Assert.Equal(3, task.Result.ExitCode);
-        Assert.Contains("hola", task.Result.StandardOutput);
-        Assert.Contains("ay", task.Result.StandardError);
+        Assert.Equal(3, run.ExitCode);
+        Assert.Contains("hola", run.StandardOutput);
+        Assert.Contains("ay", run.StandardError);
+    }
+
+    /// <summary>
+    /// Espera con plazo: si <see cref="ProcessRunner"/> vuelve a leer después de esperar, esto es lo que
+    /// convierte un test colgado —que no dice nada y se queda ahí— en un fallo con su explicación.
+    /// </summary>
+    private static async Task<ProcessOutput> SinColgarse(Task<ProcessOutput> run, string porque)
+    {
+        try
+        {
+            return await run.WaitAsync(Plazo);
+        }
+        catch (TimeoutException)
+        {
+            Assert.Fail($"ProcessRunner se colgó: {porque}.");
+            throw;   // inalcanzable; Assert.Fail siempre lanza
+        }
     }
 }

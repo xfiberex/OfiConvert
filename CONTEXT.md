@@ -106,13 +106,13 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas unitarias | **221 pasan · 1 se omite (la de red) · 0 fallan** |
+| Pruebas unitarias | **224 pasan · 4 se omiten (1 de red + 3 que conducen Office) · 0 fallan**; con `OFICONVERT_OFFICE_TESTS=1`, **227 pasan** |
 | Pruebas de UI | **31 pasan · 0 fallan** (FlaUI, arrancan la app real **en la configuración compilada**) |
 | Publicado | **v2.6.1** (2.1.0 → 2.6.1 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
 | Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real. ⚠️ **Solo en un equipo CON Office**: ver `TJ-04` |
 | Pendiente de release | — (la 2.6.1 está publicada; nada en `main` sin publicar) |
-| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **38 tareas, 7 Altas, 5 cerradas (TJ-02, TJ-03, TJ-04, TJ-05, TJ-07 — 5 de las 7 Altas)**. Verificado en verde antes de auditar: build 0/0 y 199 · 1 omitida · 0 fallos |
+| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **38 tareas, 7 Altas, 6 cerradas (TJ-01 a TJ-05 y TJ-07 — 6 de las 7 Altas; queda TJ-06)**. Verificado en verde antes de auditar: build 0/0 y 199 · 1 omitida · 0 fallos |
 
 **Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **A–I cerrados; J abierto**
 
@@ -217,6 +217,22 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 - **Código 0 no significa que haya salida.** LibreOffice termina «bien» sin generar nada cuando su
   filtro no soporta ese formato para ese documento; antes se daba la conversión por buena y el historial
   apuntaba a un archivo inexistente. Se comprueba el archivo, no el código.
+
+### Conversión COM (no romper)
+
+- **PowerPoint es una instancia COM ÚNICA.** `Type.GetTypeFromProgID("PowerPoint.Application")` +
+  `Activator.CreateInstance` **no crea un proceso**: devuelve el que ya corre. Medido aquí (Office 16
+  ClickToRun): dos activaciones → **1** `POWERPNT.EXE`; Word y Excel → **2**. De ahí dos reglas:
+  1. Las conversiones de PowerPoint van **serializadas** (`Services/SerialGate`). Word y Excel no.
+  2. **Solo se cierra la instancia que ha abierto la app** (`PowerPointSession`, que mira `POWERPNT.EXE`
+     *antes* de activar). Si es del usuario, se le devuelven `DisplayAlerts` y `AutomationSecurity` como
+     estaban y **no se llama a `Quit()`**: la app le cerraba su PowerPoint con `ppAlertsNone` puesto, o
+     sea, **sin preguntar por lo no guardado**. Ante cualquier duda, se asume que es del usuario.
+- **Sobre una instancia PRESTADA, `Marshal.ReleaseComObject` — nunca `FinalReleaseComObject`.** El RCW de
+  una aplicación COM es **compartido dentro del proceso**: «Final» no suelta *nuestra* referencia sino
+  **todas**, PowerPoint se queda sin clientes de automatización y **cierra las presentaciones abiertas
+  por esa vía**. El proceso sigue vivo y el usuario pierde su trabajo igual. Lo cazó
+  `PowerPointSharedInstanceTests`, no la revisión del código.
 
 ### Conversión COM (no romper)
 
@@ -611,6 +627,58 @@ Menores, sin tier asignado:
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
+
+---
+
+### 2026-08-31 — TJ-01: PowerPoint es uno solo, y puede ser el del usuario
+
+El peor hallazgo del [Tier J](ROADMAP.md), y el único que se cerró **conduciendo Office de verdad**.
+
+**La premisa, medida otra vez aquí antes de tocar nada:** dos activaciones de `PowerPoint.Application`
+dejan **un** `POWERPNT.EXE`; Word y Excel dejan **dos**. PowerPoint no se puede instanciar dos veces: lo
+que devuelve `Activator.CreateInstance` es **el PowerPoint que ya está corriendo** — que puede ser el del
+usuario, con su presentación a medias.
+
+Sobre esa instancia, la app ponía `DisplayAlerts = ppAlertsNone` y al terminar llamaba a `Quit()`. Es
+decir: **le cerraba su PowerPoint sin preguntar por lo no guardado**. Y con `MaxParallelConversions > 1`,
+N conversiones de `.pptx` conducían la misma aplicación.
+
+**Lo hecho:**
+
+- `Services/SerialGate` — las conversiones de PowerPoint pasan de una en una. Word y Excel siguen en
+  paralelo: ahí cada activación sí crea su proceso, y el paralelismo es real.
+- `PowerPointSession` — mira `POWERPNT.EXE` **antes** de activar y de ahí sale todo lo demás: solo cierra
+  lo que ha abierto, y a la instancia prestada le devuelve `DisplayAlerts` y `AutomationSecurity` como
+  estaban. Ante cualquier duda (no se puede listar procesos, no se puede leer un ajuste) **se asume que
+  es del usuario**: cerrar de más cuesta su trabajo; no cerrar solo deja un proceso abierto.
+
+**Lo que enseñó escribir la prueba —y que ninguna lectura del código iba a dar—:** la primera versión del
+arreglo **seguía cerrándole las presentaciones al usuario**. La sesión soltaba la instancia prestada con
+`Marshal.FinalReleaseComObject`, y el RCW de una aplicación COM es **compartido en el proceso**: «Final»
+suelta las referencias de **todos**, PowerPoint se queda sin clientes de automatización y descarta lo que
+se abrió por esa vía. El proceso seguía vivo —así que un test que solo mirara «¿sigue abierto?» habría
+pasado— y el trabajo se perdía igual. La prueba miraba **el número de presentaciones**, y por eso salió.
+Se suelta **una** referencia, con `ReleaseComObject`.
+
+**Pruebas nuevas contra el Office real** (`PowerPointSharedInstanceTests`, gated por
+`OFICONVERT_OFFICE_TESTS=1`, con el patrón de `NetworkFactAttribute` — **omitir no es fallar**, y el corte
+no puede depender de que haya Office):
+
+- la premisa (2 activaciones → 1 proceso; Word → 2), medida y no supuesta;
+- **el criterio de aceptación entero**: con PowerPoint abierto y una presentación sin guardar, convertir
+  3 `.pptx` a la vez → las 3 salen, PowerPoint sigue abierto y su presentación intacta. Con el código
+  antiguo, **falla**;
+- el mismo lote sin sesión del usuario: las 3 salen y la instancia propia **sí** se cierra.
+
+⚠️ **Lo que NO se reprodujo:** el «la primera en terminar mata a las demás». Ni con tres presentaciones de
+40 diapositivas en paralelo y sin la puerta: `Quit()` sobre una instancia con otros clientes de
+automatización enganchados no la termina. La serialización se queda —conducir en paralelo una instancia
+que Windows no puede duplicar es incorrecto de por sí, y `SerialGateTests` cubre que la puerta funciona—
+pero ese escenario concreto está **sin reproducir**, no confirmado. Queda dicho aquí para que nadie lo lea
+como verificado.
+
+**Pruebas:** 224 pasan · 4 omitidas · 0 fallan (227 pasan con `OFICONVERT_OFFICE_TESTS=1`); UI 31 · 0.
+Build 0/0.
 
 ---
 
