@@ -62,6 +62,8 @@ LibreOffice puede cubrirlo.
 
 > El instalador **no está firmado**, así que SmartScreen mostrará "editor desconocido" la primera vez.
 
+Qué cambia en cada versión: [`CHANGELOG.md`](CHANGELOG.md).
+
 ---
 
 ## Características
@@ -165,8 +167,12 @@ Publica, compila el instalador y genera su `.sha256` en `installer/Output/`. La 
 .\release.ps1 -Version 2.1.0           # corte real
 ```
 
-Valida → compila y pasa las pruebas → sube las tres etiquetas de versión del `.csproj` → compila el
-instalador → commit + tag `vX.Y.Z` → push → crea el GitHub Release con el instalador **y su `.sha256`**.
+Valida → **saca las notas de [`CHANGELOG.md`](CHANGELOG.md)** → compila y pasa las pruebas → sube las
+tres etiquetas de versión del `.csproj` → compila el instalador → commit + tag `vX.Y.Z` → push → crea el
+GitHub Release con el instalador **y su `.sha256`**.
+
+> Las notas del release **son la sección `## [X.Y.Z]` del `CHANGELOG.md`**: si no está escrita, el corte
+> aborta antes de compilar nada. Se redacta **antes** de cortar (o se pasa `-NotesFile`).
 
 > `release.ps1` solo hace `git add -u` (archivos ya rastreados): los **archivos nuevos** hay que
 > `git add`earlos **antes**, o el release saldría sin ellos.
@@ -195,8 +201,13 @@ OfiConvert/
 └── MainWindow.xaml(.cs)
 ```
 
-Documentación para desarrollo: [`CONTEXT.md`](CONTEXT.md) (arquitectura, decisiones y por qué) y
-[`ROADMAP.md`](ROADMAP.md) (qué falta).
+Documentación viva, sin solaparse:
+
+| Archivo | Responde a |
+|---|---|
+| [`CHANGELOG.md`](CHANGELOG.md) | **Qué cambió** en cada versión |
+| [`CONTEXT.md`](CONTEXT.md) | **Por qué** se decidió así, y qué se aprendió (arquitectura) |
+| [`ROADMAP.md`](ROADMAP.md) | **Qué falta** por hacer |
 
 ---
 

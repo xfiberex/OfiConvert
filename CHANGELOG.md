@@ -25,7 +25,16 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Sin publicar]
 
-Nada todavía. El [Tier J](ROADMAP.md) está abierto con 38 tareas y ninguna cerrada.
+### Interno
+
+- **Las notas de un release ya cuentan qué cambió.** Hasta ahora `release.ps1` publicaba en GitHub el
+  mismo texto de plantilla en todas las versiones («Instalador self-contained para Windows x64…»), así
+  que quien abría un release no podía saber qué traía. Ahora las notas **son la sección `## [X.Y.Z]` de
+  este archivo**, y el corte **aborta antes de compilar nada** si esa sección no está escrita — lo que
+  obliga a redactarla antes de cortar. `-NotesFile` sigue mandando sobre todo esto.
+  *(Cierra [TJ-07](ROADMAP.md); ver [`CONTEXT.md`](CONTEXT.md).)*
+- **Dos pruebas nuevas** (`ChangelogTests`) que fallan en `dotnet test` —y no a mitad del corte— si la
+  versión del `.csproj` no está contada en el changelog, o si una versión publicada se quedó sin fecha.
 
 ---
 

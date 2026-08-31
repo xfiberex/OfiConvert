@@ -106,13 +106,13 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas unitarias | **199 pasan · 1 se omite (la de red) · 0 fallan** |
+| Pruebas unitarias | **201 pasan · 1 se omite (la de red) · 0 fallan** |
 | Pruebas de UI | **30 pasan · 0 fallan** (FlaUI, arrancan la app real) |
 | Publicado | **v2.6.1** (2.1.0 → 2.6.1 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
 | Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real. ⚠️ **Solo en un equipo CON Office**: ver `TJ-04` |
 | Pendiente de release | — (la 2.6.1 está publicada; nada en `main` sin publicar) |
-| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **38 tareas, 7 Altas, 0 cerradas**. Verificado en verde antes de auditar: build 0/0 y 199 · 1 omitida · 0 fallos |
+| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **38 tareas, 7 Altas, 1 cerrada (TJ-07)**. Verificado en verde antes de auditar: build 0/0 y 199 · 1 omitida · 0 fallos |
 
 **Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **A–I cerrados; J abierto**
 
@@ -292,6 +292,13 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
   van con `admin`. Avisa si no detecta Office, pero deja instalar (LibreOffice puede cubrir).
   `CloseApplications=yes`; el flujo silencioso del updater pasa `/VERYSILENT /NORESTART /autoinstall=1`
   y el `[Run]` con `Check: IsAutoUpdate` relanza la app.
+- **Las notas del release salen de `CHANGELOG.md`, no de una plantilla** (TJ-07, 2026-08-31).
+  `release.ps1` extrae la sección `## [X.Y.Z]` con `Get-ChangelogSection` y **aborta si no está**, antes
+  de compilar nada — así el error cuesta segundos y no cinco minutos de build. Consecuencia práctica:
+  **la sección se escribe ANTES del corte**, que es cuando se sabe qué cambió; después, ya no lo sabe
+  nadie (las nueve primeras versiones se publicaron con el mismo texto genérico, y reconstruir su
+  changelog a posteriori solo dio una aproximación). `-NotesFile` sigue mandando sobre todo esto.
+  `ChangelogTests` lleva el mismo contrato a `dotnet test`, para que el fallo no espere al corte.
 - **La versión tiene UNA fuente: el `.csproj`** — y hay que subir **las TRES etiquetas** (`<Version>`,
   `<AssemblyVersion>`, `<FileVersion>`), cosa que `release.ps1` hace de golpe. **El updater compara el
   tag del release contra `Assembly.GetName().Version`, que sale de `<AssemblyVersion>`:** si esa se
@@ -575,6 +582,37 @@ Menores, sin tier asignado:
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
+
+---
+
+### 2026-08-31 — TJ-07: el changelog manda sobre las notas del release
+
+Primera tarea cerrada del [Tier J](ROADMAP.md). `CHANGELOG.md` nació el 2026-08-29, pero nadie lo leía:
+`release.ps1` seguía generando la **misma plantilla genérica** para toda versión, así que las nueve
+publicadas cuentan lo mismo («Instalador self-contained para Windows x64…») y ninguna dice qué cambió.
+
+Ahora las notas **son** la sección `## [X.Y.Z]` del changelog, más un pie fijo con la instalación y el
+`.sha256`. Si la sección falta, el corte **muere ahí mismo**.
+
+Tres decisiones que no son obvias leyendo el diff:
+
+- **La comprobación va DELANTE del build y las pruebas**, no donde estaban las notas. Puesta en su sitio
+  natural —justo antes del `gh release create`— el corte habría compilado, publicado el instalador y
+  corrido 200 pruebas para morir al final por una sección de Markdown. Ahora falla en segundos.
+- **`Get-ChangelogSection` lee con `ReadAllText`, no con `Get-Content -Raw`.** Es la misma trampa de
+  PS 5.1 que ya está documentada para el `.csproj` (§4, *Trampas de PowerShell 5.1*): con la página de
+  códigos ANSI, cada acento del changelog llegaría roto a las notas del GitHub Release, que es
+  precisamente la superficie más pública del proyecto.
+- **El corte no es el único guardián.** `tests/OfiConvert.Tests/ChangelogTests.cs` comprueba en
+  `dotnet test` que la versión declarada en el `.csproj` está contada y que ninguna versión publicada se
+  quedó sin fecha absoluta. Ambas se rompieron a propósito antes de darlas por buenas (`<Version>` a
+  9.9.9 y una fecha borrada): salen en rojo con el mensaje que deben.
+
+**Efecto sobre el flujo de trabajo:** cortar una versión ahora empieza por escribir su sección en
+`CHANGELOG.md`. No es burocracia: es el único momento en que se sabe qué cambió.
+
+**Pruebas:** 201 pasan · 1 omitida · 0 fallan. `.elease.ps1 -Version 9.9.9 -DryRun` aborta con
+«Falta la sección 9.9.9 en CHANGELOG.md», sin tocar git.
 
 ---
 

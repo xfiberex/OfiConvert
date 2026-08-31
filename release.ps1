@@ -6,6 +6,7 @@
     Flujo completo en un paso:
       1. Valida la versión, el árbol de trabajo y que el tag no exista ya.
       2. Compila y ejecuta las pruebas (si las hay; ver -SkipTests).
+      2b. Saca las notas del release de la seccion "## [X.Y.Z]" de CHANGELOG.md (aborta si falta).
       3. Sube <Version>, <AssemblyVersion> y <FileVersion> en el .csproj.
       4. Compila el instalador (publish self-contained + Inno Setup) y su .sha256.
       5. Commit del bump + tag anotado vX.Y.Z.
@@ -26,7 +27,8 @@
     Versión a publicar (X.Y.Z). Si se omite, usa la del .csproj.
 
 .PARAMETER NotesFile
-    Archivo Markdown con las notas del release. Si se omite, se genera una plantilla.
+    Archivo Markdown con las notas del release. Si se omite, se extrae la seccion "## [X.Y.Z]" de
+    CHANGELOG.md y se ABORTA si no esta escrita.
 
 .PARAMETER SkipTests
     Omite la compilación y las pruebas. Desde el Tier D hay 170 (unitarias + UI): usarlo es renunciar a
@@ -93,6 +95,46 @@ function Invoke-Git {
     finally { $ErrorActionPreference = $eap }
 }
 
+<#
+.SYNOPSIS
+    Devuelve el cuerpo de la sección "## [X.Y.Z]" de un CHANGELOG estilo Keep a Changelog, o $null.
+
+.DESCRIPTION
+    La sección va desde su encabezado hasta el siguiente "## " o el separador "---" de nivel raíz, sin
+    incluir ninguno de los dos. Devuelve $null si la sección no existe o está vacía: una sección con solo
+    el título no es una nota de release, y el corte debe abortar igual que si faltara.
+
+    Se lee con ReadAllText, NO con Get-Content -Raw: en PS 5.1 este último usa la página de códigos ANSI
+    y los acentos del changelog llegarían rotos a las notas del GitHub Release (misma trampa que el
+    .csproj; ver la nota de codificación más abajo).
+#>
+function Get-ChangelogSection {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$Version
+    )
+
+    $lines = [System.IO.File]::ReadAllText($Path) -split "\r?\n"
+    $escaped = [regex]::Escape($Version)
+    $body = New-Object System.Collections.Generic.List[string]
+    $inside = $false
+
+    foreach ($line in $lines) {
+        if (-not $inside) {
+            # "## [2.7.0] - 2026-09-01", con o sin fecha, y con el guion que sea.
+            if ($line -match "^##\s+\[$escaped\]") { $inside = $true }
+            continue
+        }
+        if ($line -match '^##\s' -or $line -match '^---\s*$') { break }
+        $body.Add($line)
+    }
+
+    if (-not $inside) { return $null }
+    $text = ($body -join "`n").Trim()
+    if (-not $text) { return $null }
+    return $text
+}
+
 # ── Rutas ──────────────────────────────────────────────────────────────────
 $root        = $PSScriptRoot
 $csproj      = Join-Path $root "OfiConvert.csproj"
@@ -100,6 +142,7 @@ $solution    = Join-Path $root "OfiConvert.slnx"
 $buildScript = Join-Path $root "installer\build-installer.ps1"
 $outputDir   = Join-Path $root "installer\Output"
 $testsDir    = Join-Path $root "tests"
+$changelog   = Join-Path $root "CHANGELOG.md"
 
 if (-not (Test-Path $csproj))      { Die "No se encontró el proyecto: $csproj" }
 if (-not (Test-Path $buildScript)) { Die "No se encontró el script del instalador: $buildScript" }
@@ -152,6 +195,37 @@ try {
         $untracked | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
     }
 
+    # ── Notas del release ────────────────────────────────────────────────────
+    # Salen del CHANGELOG.md, no de una plantilla: hasta el Tier J todas las versiones se publicaron con
+    # el MISMO texto genérico ("Instalador self-contained para Windows x64...") y las notas de un release
+    # no contaban qué había cambiado. Ahora el corte ABORTA si la versión no tiene su sección escrita, lo
+    # que obliga a redactarla ANTES del corte (que es cuando se sabe qué cambió).
+    $notesPath = $NotesFile
+    $tempNotes = $null
+    if (-not $notesPath) {
+        if (-not (Test-Path $changelog)) { Die "No se encontró CHANGELOG.md: $changelog" }
+        $body = Get-ChangelogSection -Path $changelog -Version $Version
+        if (-not $body) {
+            Die "Falta la sección $Version en CHANGELOG.md. Escribe '## [$Version] - AAAA-MM-DD' con lo que cambió (o pasa -NotesFile) y reintenta."
+        }
+        $tempNotes = Join-Path $env:TEMP "oficonvert_release_$Version.md"
+        @(
+            $body,
+            "",
+            "---",
+            "",
+            "Instalador self-contained para Windows x64 (no requiere instalar .NET). Descarga",
+            "``OfiConvert_Setup_$Version.exe`` y ejecútalo: se instala para el usuario actual, sin permisos",
+            "de administrador. Requiere **Microsoft Office** de escritorio o **LibreOffice** para convertir.",
+            "",
+            "El asset ``OfiConvert_Setup_$Version.exe.sha256`` es el hash SHA-256 del instalador. **No es",
+            "opcional:** la app verifica con él cada actualización antes de ejecutarla."
+        ) | Out-File -FilePath $tempNotes -Encoding utf8
+        $notesPath = $tempNotes
+        Ok "Notas tomadas de CHANGELOG.md (sección $Version)."
+    }
+    if (-not (Test-Path $notesPath)) { Die "No se encontró el archivo de notas: $notesPath" }
+
     # ── Compilación y pruebas ────────────────────────────────────────────────
     if ($SkipTests) {
         Warn "Compilación y pruebas omitidas (-SkipTests)."
@@ -180,28 +254,6 @@ try {
             Warn "NO se encontró ningún proyecto de pruebas bajo tests\: este release saldría sin ninguna prueba automatizada. Solo se ha comprobado que compila."
         }
     }
-
-    # ── Notas del release ────────────────────────────────────────────────────
-    $notesPath = $NotesFile
-    $tempNotes = $null
-    if (-not $notesPath) {
-        $tempNotes = Join-Path $env:TEMP "oficonvert_release_$Version.md"
-        @(
-            "## OfiConvert v$Version",
-            "",
-            "Instalador self-contained para Windows x64 (no requiere instalar .NET).",
-            "",
-            "Descarga ``OfiConvert_Setup_$Version.exe`` y ejecútalo. Se instala para el usuario actual,",
-            "sin pedir permisos de administrador.",
-            "",
-            "Requiere **Microsoft Office** de escritorio o **LibreOffice** para convertir.",
-            "",
-            "El asset ``OfiConvert_Setup_$Version.exe.sha256`` es el hash SHA-256 del instalador: sirve para",
-            "comprobar que la descarga es íntegra."
-        ) | Out-File -FilePath $tempNotes -Encoding utf8
-        $notesPath = $tempNotes
-    }
-    if (-not (Test-Path $notesPath)) { Die "No se encontró el archivo de notas: $notesPath" }
 
     # ── 1. Bump de versión ───────────────────────────────────────────────────
     # En dry run también se bumpea: el instalador que se compila a continuación debe llevar la versión

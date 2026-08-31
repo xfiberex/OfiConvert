@@ -366,7 +366,7 @@ translúcidas y el texto del menú pierde contraste. Arreglado con `ThemeDiction
 > `LocalizationUsageTests` vigila tres formas de pedir una clave y ya hay una cuarta. Los tres pasan en
 > verde sobre problemas de su propia especialidad.
 
-**Índice del tier:** 38 tareas — **7 Altas · 19 Medias · 12 Bajas**.
+**Índice del tier:** 38 tareas — **7 Altas · 19 Medias · 12 Bajas**. **Cerradas: 1** (TJ-07).
 Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 
 ### J.1 — Severidad ALTA
@@ -461,7 +461,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     de LibreOffice se anuncian en japonés en el panel, en el historial y en el TXT exportado.
   - **Esfuerzo:** medio · **Depende de:** TJ-17 (para que no vuelva a colarse)
 
-- [ ] **[TJ-07] No existe `CHANGELOG.md` y el release publica notas de plantilla** · **Alto**
+- [x] ✅ **[TJ-07] `CHANGELOG.md` y notas de release de verdad** · **Alto** *(cerrado 2026-08-31)*
   - **Área:** Documentación / DevOps
   - **Ubicación:** raíz del repo; `release.ps1:187-203`
   - **Qué hacer:** el índice de versiones vive dentro de `CONTEXT.md`, que así hace de changelog y de
@@ -473,6 +473,12 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
   - **Criterio de aceptación:** `.\release.ps1 -Version 9.9.9 -DryRun` aborta con «falta la sección
     9.9.9 en CHANGELOG.md»; con la sección puesta, las notas del release son las suyas.
   - **Esfuerzo:** medio · **Depende de:** ninguna
+  - **Hecho:** `CHANGELOG.md` (2026-08-29) + `Get-ChangelogSection` en `release.ps1`, que extrae la
+    sección y **aborta antes de compilar nada** si falta — el chequeo se puso DELANTE del build para no
+    descubrirlo cinco minutos después. Las notas del GitHub Release son esa sección más un pie fijo con
+    la instalación y el `.sha256`; `-NotesFile` sigue mandando. Dos pruebas nuevas
+    (`tests/OfiConvert.Tests/ChangelogTests.cs`) llevan el mismo contrato a `dotnet test`: la versión del
+    `.csproj` tiene que estar contada, y ninguna versión publicada puede quedarse sin fecha.
 
 ### J.2 — Severidad MEDIA
 
@@ -801,6 +807,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 | 2026-07-14 | Tier D (pruebas), Tier E (cara pública), Tier F (agéntica), Tier G (UI/UX), Tier H (instalador) |
 | 2026-07-21 | Tier I (pase de UX/UI sobre capturas) — v2.6.0 |
 | 2026-08-29 | v2.6.1 publicada (desplegables opacos). **Tier J abierto**: 38 tareas, 0 cerradas |
+| 2026-08-31 | **TJ-07**: el `CHANGELOG.md` es la fuente de las notas del release y el corte aborta sin ella (1/38) |
 
 ## 🚫 Decisiones cerradas / qué NO portar de los hermanos
 
