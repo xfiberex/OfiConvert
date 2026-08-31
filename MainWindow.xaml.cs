@@ -341,7 +341,7 @@ public sealed partial class MainWindow : Window
 
             var installer = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(installerPath)
             {
-                Arguments = $"/VERYSILENT /NORESTART {scope} /autoinstall=1",
+                Arguments = InstallScope.SilentInstallArguments(scope),
                 UseShellExecute = true
             });
 

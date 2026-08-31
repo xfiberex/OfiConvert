@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 
 namespace OfiConvert.Core;
 
@@ -65,4 +65,27 @@ public static class InstallScope
     /// <summary>Modificador para la instalación en la que corre la app ahora mismo.</summary>
     public static string InnoSwitchForCurrentInstall() =>
         InnoSwitch(AppContext.BaseDirectory, MachineRoots());
+
+    /// <summary>
+    /// Línea de comandos completa con la que la auto-actualización lanza el instalador.
+    /// </summary>
+    /// <param name="scopeSwitch"><c>/ALLUSERS</c> o <c>/CURRENTUSER</c> (ver <see cref="InnoSwitch"/>).</param>
+    /// <remarks>
+    /// Está aquí, y no incrustada en el code-behind, porque cada modificador de esta cadena existe por un
+    /// cuelgue ya sufrido y hay que poder probarla:
+    /// <list type="bullet">
+    ///   <item><c>/VERYSILENT /NORESTART</c> — instalación desatendida, sin reiniciar el equipo.</item>
+    ///   <item><b><c>/SUPPRESSMSGBOXES</c></b> — <c>/VERYSILENT</c> <b>no</b> silencia los <c>MsgBox</c>
+    ///   del script de Inno. El <c>.iss</c> planta uno cuando no detecta Office, así que el usuario que
+    ///   solo tiene <b>LibreOffice</b> —al que la app dice dar soporte— se quedaba con un diálogo que no
+    ///   pidió, o con la actualización colgada, y la app ya cerrada (TJ-04, 2026-08-31).</item>
+    ///   <item><c>/ALLUSERS</c> o <c>/CURRENTUSER</c> — sin esto, Inno muestra «Seleccione el modo de
+    ///   instalación» incluso en silencioso (ver el <c>remarks</c> de esta clase).</item>
+    ///   <item><c>/autoinstall=1</c> — se lo lee el <c>[Run]</c> del <c>.iss</c> para relanzar la app.</item>
+    /// </list>
+    /// El <c>.iss</c> también guarda su propio lado (el aviso va dentro de <c>if not WizardSilent()</c>):
+    /// cinturón y tirantes, porque el instalador también se lanza a mano y desde otros sitios.
+    /// </remarks>
+    public static string SilentInstallArguments(string scopeSwitch) =>
+        $"/VERYSILENT /NORESTART /SUPPRESSMSGBOXES {scopeSwitch} /autoinstall=1";
 }

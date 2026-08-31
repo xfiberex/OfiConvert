@@ -1,4 +1,4 @@
-using OfiConvert.Core;
+﻿using OfiConvert.Core;
 using Xunit;
 
 namespace OfiConvert.Tests.Core;
@@ -62,5 +62,28 @@ public sealed class InstallScopeTests
         Assert.True(
             actual is "/ALLUSERS" or "/CURRENTUSER",
             $"Modificador inesperado: '{actual}'. Sin uno de los dos, vuelve el diálogo que bloquea la instalación silenciosa.");
+    }
+
+    /// <summary>
+    /// La línea de comandos de la auto-actualización lleva <c>/SUPPRESSMSGBOXES</c>.
+    /// </summary>
+    /// <remarks>
+    /// <c>/VERYSILENT</c> silencia el asistente, <b>no</b> los <c>MsgBox</c> del script de Inno — y el
+    /// <c>.iss</c> planta uno cuando no detecta Office. Sin este modificador, al usuario que solo tiene
+    /// LibreOffice —soportado a propósito— la actualización le dejaba un diálogo esperando un clic con la
+    /// app ya cerrada, o directamente colgada (TJ-04).
+    /// </remarks>
+    [Theory]
+    [InlineData("/ALLUSERS")]
+    [InlineData("/CURRENTUSER")]
+    public void SilentInstallArguments_SuppressesMessageBoxes(string scope)
+    {
+        string args = InstallScope.SilentInstallArguments(scope);
+
+        Assert.Contains("/SUPPRESSMSGBOXES", args);
+        Assert.Contains("/VERYSILENT", args);
+        Assert.Contains("/NORESTART", args);
+        Assert.Contains(scope, args);            // el alcance elegido por el usuario, intacto
+        Assert.Contains("/autoinstall=1", args); // lo lee el [Run] del .iss para relanzar la app
     }
 }

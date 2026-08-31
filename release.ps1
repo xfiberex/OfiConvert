@@ -246,7 +246,10 @@ try {
         if ($testProjects.Count -gt 0) {
             foreach ($proj in $testProjects) {
                 Info "Ejecutando pruebas: $($proj.Name)"
-                & dotnet test $proj.FullName --nologo
+                # -c Release NO es decorativo: sin él, MSBuild reconstruye la app en Debug por el
+                # ProjectReference y los UI tests conducen ESE binario, no el Release que empaqueta el
+                # instalador (TJ-05). DrivenBinaryTests lo verifica desde dentro.
+                & dotnet test $proj.FullName -c Release --nologo
                 if ($LASTEXITCODE -ne 0) { Die "Las pruebas de $($proj.Name) fallaron. Release abortado." }
             }
             Ok "Pruebas correctas."

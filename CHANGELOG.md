@@ -25,6 +25,15 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Sin publicar]
 
+### Corregido
+
+- **La actualización automática podía quedarse colgada en los equipos sin Office.** El instalador
+  avisa cuando no encuentra Microsoft Office, y ese aviso salía **también en modo silencioso** — que es
+  como lo lanza la propia app al actualizarse, con la ventana ya cerrada. Quien solo tiene
+  **LibreOffice** (una instalación que OfiConvert soporta a propósito) veía desaparecer el programa y
+  quedarse un diálogo que no había pedido, o la actualización parada esperando un clic. Ahora el aviso
+  se calla en las instalaciones silenciosas. *(Cierra [TJ-04](ROADMAP.md).)*
+
 ### Interno
 
 - **Las notas de un release ya cuentan qué cambió.** Hasta ahora `release.ps1` publicaba en GitHub el
@@ -35,6 +44,14 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
   *(Cierra [TJ-07](ROADMAP.md); ver [`CONTEXT.md`](CONTEXT.md).)*
 - **Dos pruebas nuevas** (`ChangelogTests`) que fallan en `dotnet test` —y no a mitad del corte— si la
   versión del `.csproj` no está contada en el changelog, o si una versión publicada se quedó sin fecha.
+- **Las pruebas de UI ya conducen el binario que se publica.** El corte compilaba en Release y luego
+  corría `dotnet test` sin `-c Release`, así que MSBuild reconstruía la app en **Debug** y las 30
+  pruebas de interfaz validaban ese binario, no el Release que empaqueta el instalador. `AppFixture`
+  ya no elige "el `.exe` más reciente": exige el de la configuración compilada, deja por escrito cuál
+  conduce y `DrivenBinaryTests` falla si no coinciden. *(Cierra [TJ-05](ROADMAP.md).)*
+- **Tres guardianes nuevos sobre el script del instalador** (`InstallerScriptTests`): ningún `MsgBox`
+  sin la guarda `WizardSilent`, el alcance sigue fijándose por línea de comandos y los modificadores
+  del updater se arman en `Core/InstallScope` —probado— y no a mano en el code-behind.
 
 ---
 

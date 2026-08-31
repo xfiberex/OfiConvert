@@ -1,4 +1,4 @@
-using FlaUI.Core;
+﻿using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.UIA3;
 
@@ -23,6 +23,12 @@ public sealed class AppFixture : IDisposable
     public UIA3Automation Automation { get; }
     public Window MainWindow { get; }
 
+    /// <summary>Ruta del <c>OfiConvert.exe</c> que se está conduciendo. Se deja por escrito a propósito.</summary>
+    public string ExePath { get; }
+
+    /// <summary>Configuración exigida a ese binario (<c>Debug</c>/<c>Release</c>), o <c>null</c> si se forzó con <c>OFICONVERT_EXE</c>.</summary>
+    public string? Configuration { get; }
+
     private readonly SettingsBackup _settingsBackup;
 
     public AppFixture()
@@ -32,7 +38,14 @@ public sealed class AppFixture : IDisposable
         // terminar. Sin sembrar ese estado, las pruebas dependerían de con qué se encuentren.
         _settingsBackup = SettingsBackup.CaptureAndReset();
 
-        App = Application.Launch(ResolveExePath());
+        Configuration = ExpectedConfiguration();
+        ExePath = ResolveExePath(Configuration);
+
+        // Qué binario se conduce NO puede ser una incógnita: durante meses estos tests corrieron sobre el
+        // .exe de Debug mientras el corte creía estar validando el Release que empaqueta el instalador.
+        Console.WriteLine($"[AppFixture] Conduciendo: {ExePath}");
+
+        App = Application.Launch(ExePath);
         Automation = new UIA3Automation();
 
         MainWindow = App.GetMainWindow(Automation, TimeSpan.FromSeconds(30))
@@ -48,10 +61,44 @@ public sealed class AppFixture : IDisposable
     }
 
     /// <summary>
-    /// Busca el <c>OfiConvert.exe</c> compilado. <c>OFICONVERT_EXE</c> lo fuerza (útil para apuntar a un
-    /// publish o a una instalación real).
+    /// Configuración que estos tests deben conducir: la que se pidió al compilarlos.
     /// </summary>
-    private static string ResolveExePath()
+    /// <remarks>
+    /// Sale de la ruta del propio ensamblado de pruebas (<c>tests\...\bin\{Config}\...</c>), que es la
+    /// única fuente fiable: la app entra en el build por <c>ProjectReference</c>, así que
+    /// <c>dotnet test -c Release</c> deja app y pruebas en Release, y sin <c>-c</c> las deja en Debug.
+    /// <c>OFICONVERT_CONFIGURATION</c> lo fuerza.
+    /// </remarks>
+    private static string ExpectedConfiguration()
+    {
+        var forced = Environment.GetEnvironmentVariable("OFICONVERT_CONFIGURATION");
+        if (!string.IsNullOrWhiteSpace(forced)) return forced.Trim();
+
+        var parts = AppContext.BaseDirectory.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        for (int i = 0; i < parts.Length - 1; i++)
+        {
+            if (parts[i].Equals("bin", StringComparison.OrdinalIgnoreCase))
+                return parts[i + 1];
+        }
+
+        throw new InvalidOperationException(
+            $"No se pudo deducir la configuración desde {AppContext.BaseDirectory}. " +
+            "Usa OFICONVERT_CONFIGURATION=Release (o OFICONVERT_EXE) para decir qué binario conducir.");
+    }
+
+    /// <summary>
+    /// Busca el <c>OfiConvert.exe</c> de la configuración pedida. <c>OFICONVERT_EXE</c> lo fuerza (útil
+    /// para apuntar a un publish o a una instalación real).
+    /// </summary>
+    /// <remarks>
+    /// <b>Nunca se busca fuera de <c>bin\{configuración}\</c>.</b> La versión anterior cogía "el
+    /// <c>OfiConvert.exe</c> de <c>bin\**\win-x64\</c> más reciente", sin mirar la configuración: con un
+    /// <c>bin\Debug</c> más nuevo en la carpeta —lo normal en la máquina del desarrollador—, estas
+    /// pruebas conducían el binario Debug mientras el corte de versión creía estar validando el Release
+    /// que se empaqueta. Es la misma familia que el bug del Tier G (conducir un <c>.exe</c> viejo):
+    /// aquel garantizó que fuera FRESCO; este, que sea EL QUE SE PUBLICA.
+    /// </remarks>
+    private static string ResolveExePath(string? configuration)
     {
         var overridePath = Environment.GetEnvironmentVariable("OFICONVERT_EXE");
         if (!string.IsNullOrWhiteSpace(overridePath))
@@ -61,23 +108,26 @@ public sealed class AppFixture : IDisposable
             return overridePath;
         }
 
-        var binFolder = Path.Combine(RepoRoot(), "bin");
+        var binFolder = Path.Combine(RepoRoot(), "bin", configuration!);
         if (!Directory.Exists(binFolder))
             throw new DirectoryNotFoundException(
-                $"No existe {binFolder}. Compila la app antes de correr los UI tests: dotnet build OfiConvert.slnx -c Release");
+                $"No existe {binFolder}. Compila la app en esa configuración antes de correr los UI tests: " +
+                $"dotnet build OfiConvert.slnx -c {configuration}");
 
         // Solo los builds con RID (win-x64): son los que llevan el .pri y los idiomas al lado del .exe,
-        // o sea, los que arrancan de verdad. De esos, el más reciente.
+        // o sea, los que arrancan de verdad. Se excluye publish\, que es una copia del mismo build y solo
+        // añade ambigüedad. De los que queden, el más reciente.
         var candidate = Directory
             .EnumerateFiles(binFolder, "OfiConvert.exe", SearchOption.AllDirectories)
             .Where(p => p.Contains($"{Path.DirectorySeparatorChar}win-x64{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}publish{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(File.GetLastWriteTimeUtc)
             .FirstOrDefault();
 
         return candidate
             ?? throw new FileNotFoundException(
-                "No se encontró OfiConvert.exe compilado para win-x64. Compila la app antes de correr los UI tests: " +
-                "dotnet build OfiConvert.slnx -c Release");
+                $"No se encontró OfiConvert.exe para win-x64 bajo {binFolder}. Compila la app en esa " +
+                $"configuración antes de correr los UI tests: dotnet build OfiConvert.slnx -c {configuration}");
     }
 
     /// <summary>Sube hasta la carpeta que contiene <c>OfiConvert.slnx</c>.</summary>

@@ -366,7 +366,7 @@ translúcidas y el texto del menú pierde contraste. Arreglado con `ThemeDiction
 > `LocalizationUsageTests` vigila tres formas de pedir una clave y ya hay una cuarta. Los tres pasan en
 > verde sobre problemas de su propia especialidad.
 
-**Índice del tier:** 38 tareas — **7 Altas · 19 Medias · 12 Bajas**. **Cerradas: 1** (TJ-07).
+**Índice del tier:** 38 tareas — **7 Altas · 19 Medias · 12 Bajas**. **Cerradas: 3** (TJ-04, TJ-05, TJ-07).
 Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 
 ### J.1 — Severidad ALTA
@@ -413,7 +413,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     deja **los dos** archivos intactos. Test sobre la lógica de destino, extraída a `Core/`.
   - **Esfuerzo:** medio · **Depende de:** ninguna
 
-- [ ] **[TJ-04] El instalador vuelve a bloquear el modo silencioso — ahora en equipos sin Office** · **Alto**
+- [x] ✅ **[TJ-04] El instalador bloqueaba el modo silencioso en equipos sin Office** · **Alto** *(cerrado 2026-08-31)*
   - **Área:** DevOps
   - **Ubicación:** `installer/OfiConvert.iss:111-121`; `MainWindow.xaml.cs:344`
   - **Qué hacer:** `InitializeWizard` planta un `MsgBox` cuando no detecta Word. Inno **no suprime los
@@ -428,8 +428,16 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     /autoinstall=1` termina **sin intervención humana** y en tiempo comparable a una con Office.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
   - **Regresión conceptual de:** Tier H (el `/VERYSILENT` que no era silencioso)
+  - **Hecho:** el aviso va dentro de `if (not WizardSilent) and (not IsOfficeInstalled)`, y el updater
+    manda además `/SUPPRESSMSGBOXES` (cinturón y tirantes: el instalador también se lanza a mano). La
+    línea de comandos se construye ahora en `Core.InstallScope.SilentInstallArguments`, donde se puede
+    probar, en vez de a mano en el code-behind — que es justo cómo se perdió el modificador.
+    `InstallerScriptTests` vigila el `.iss` como código: ningún `MsgBox` sin guarda, `commandline` en
+    `PrivilegesRequiredOverridesAllowed` y ningún `/VERYSILENT` escrito a mano fuera de `Core/`.
+    El `.iss` se recompiló con ISCC (compila limpio). ⚠️ **Falta la comprobación de punta a punta en una
+    máquina SIN Office**, que es la única que puede firmar el criterio de aceptación entero.
 
-- [ ] **[TJ-05] `release.ps1` valida un binario que NO es el que publica** · **Alto**
+- [x] ✅ **[TJ-05] `release.ps1` validaba un binario que NO era el que publica** · **Alto** *(cerrado 2026-08-31)*
   - **Área:** QA / DevOps
   - **Ubicación:** `release.ps1:175`; `tests/OfiConvert.UiTests/AppFixture.cs:71-75`
   - **Qué hacer:** la línea 160 compila **Release**; la 175 corre `dotnet test $proj` **sin `-c
@@ -443,6 +451,11 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     configuración pedida. Un `bin\Debug` más reciente ya no cambia lo que se prueba.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
   - **Regresión conceptual de:** Tier G (`ReferenceOutputAssembly="false"`)
+  - **Hecho:** `release.ps1` corre `dotnet test -c Release`, y `AppFixture` dejó de elegir por fecha:
+    deduce la configuración de su propia ruta (`bin\{Config}\`, forzable con `OFICONVERT_CONFIGURATION`),
+    busca **solo** dentro de `bin\{Config}\` —excluyendo `publish\`— y **registra qué `.exe` conduce**.
+    `DrivenBinaryTests` falla si el binario no es el de la configuración compilada. Comprobado en rojo
+    reponiendo la búsqueda por fecha con un `bin\Debug` más nuevo: el test caza exactamente ese caso.
 
 - [ ] **[TJ-06] QUINTA reincidencia del texto en español a fuego — y las traducciones YA existen** · **Alto**
   - **Área:** Localización / Ortografía
@@ -808,6 +821,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 | 2026-07-21 | Tier I (pase de UX/UI sobre capturas) — v2.6.0 |
 | 2026-08-29 | v2.6.1 publicada (desplegables opacos). **Tier J abierto**: 38 tareas, 0 cerradas |
 | 2026-08-31 | **TJ-07**: el `CHANGELOG.md` es la fuente de las notas del release y el corte aborta sin ella (1/38) |
+| 2026-08-31 | **TJ-05** (los UI tests conducían el binario Debug) y **TJ-04** (el aviso del instalador salía en modo silencioso) (3/38) |
 
 ## 🚫 Decisiones cerradas / qué NO portar de los hermanos
 

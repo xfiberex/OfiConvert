@@ -106,13 +106,13 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas unitarias | **201 pasan · 1 se omite (la de red) · 0 fallan** |
-| Pruebas de UI | **30 pasan · 0 fallan** (FlaUI, arrancan la app real) |
+| Pruebas unitarias | **206 pasan · 1 se omite (la de red) · 0 fallan** |
+| Pruebas de UI | **31 pasan · 0 fallan** (FlaUI, arrancan la app real **en la configuración compilada**) |
 | Publicado | **v2.6.1** (2.1.0 → 2.6.1 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
 | Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real. ⚠️ **Solo en un equipo CON Office**: ver `TJ-04` |
 | Pendiente de release | — (la 2.6.1 está publicada; nada en `main` sin publicar) |
-| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **38 tareas, 7 Altas, 1 cerrada (TJ-07)**. Verificado en verde antes de auditar: build 0/0 y 199 · 1 omitida · 0 fallos |
+| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **38 tareas, 7 Altas, 3 cerradas (TJ-04, TJ-05, TJ-07)**. Verificado en verde antes de auditar: build 0/0 y 199 · 1 omitida · 0 fallos |
 
 **Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **A–I cerrados; J abierto**
 
@@ -292,6 +292,17 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
   van con `admin`. Avisa si no detecta Office, pero deja instalar (LibreOffice puede cubrir).
   `CloseApplications=yes`; el flujo silencioso del updater pasa `/VERYSILENT /NORESTART /autoinstall=1`
   y el `[Run]` con `Check: IsAutoUpdate` relanza la app.
+- **El corte prueba EL BINARIO QUE PUBLICA** (TJ-05, 2026-08-31). `release.ps1` corre
+  `dotnet test -c Release`: sin el `-c`, MSBuild reconstruye la app en **Debug** por el
+  `ProjectReference` y los UI tests conducen ese `.exe`, no el Release que empaqueta el instalador.
+  `AppFixture` ya no elige «el `.exe` más reciente» —heurística que en la máquina del desarrollador
+  apunta a Debug la mitad de las veces—: exige el de `bin\{configuración}\`, lo deja por escrito y
+  `DrivenBinaryTests` falla si no cuadra. Es la misma familia que el bug del Tier G (conducir un `.exe`
+  viejo): aquel pedía que fuera **fresco**; este, que sea **el que se publica**.
+- **Los modificadores del instalador silencioso se arman en `Core/InstallScope`, no a mano** (TJ-04,
+  2026-08-31): `/VERYSILENT /NORESTART /SUPPRESSMSGBOXES {alcance} /autoinstall=1`. **`/VERYSILENT` no
+  silencia los `MsgBox` del script de Inno** — y el `.iss` planta uno cuando no detecta Office. Doble
+  guarda: el aviso vive dentro de `if (not WizardSilent)` y el updater manda `/SUPPRESSMSGBOXES`.
 - **Las notas del release salen de `CHANGELOG.md`, no de una plantilla** (TJ-07, 2026-08-31).
   `release.ps1` extrae la sección `## [X.Y.Z]` con `Get-ChangelogSection` y **aborta si no está**, antes
   de compilar nada — así el error cuesta segundos y no cinco minutos de build. Consecuencia práctica:
@@ -585,6 +596,56 @@ Menores, sin tier asignado:
 
 ---
 
+### 2026-08-31 — TJ-05 y TJ-04: probar lo que se publica, e instalar sin nadie delante
+
+Dos tareas Altas del [Tier J](ROADMAP.md), las dos del mismo tipo: **fallos del andamio**, invisibles
+mientras todo sale verde.
+
+**TJ-05 — los UI tests conducían el binario equivocado.** `release.ps1` compilaba en Release y acto
+seguido corría `dotnet test` **sin `-c Release`**; MSBuild reconstruía la app en Debug por el
+`ProjectReference`, y `AppFixture` —que cogía *el `OfiConvert.exe` de `bin\**\win-x64\` más reciente*—
+acababa conduciendo ese Debug recién hecho. Las 30 pruebas de interfaz llevaban meses validando un
+binario que **no es el que empaqueta el instalador**, y nada lo decía porque el criterio era la fecha,
+no la configuración. Ahora `AppFixture` deduce la configuración de su propia ruta, busca **solo** dentro
+de `bin\{Config}\` (sin `publish\`), **registra qué `.exe` conduce** y `DrivenBinaryTests` falla si no
+es el que toca.
+
+> Es la **misma familia** que el bug del Tier G, donde los UI tests conducían un `.exe` viejo. Allí se
+> arregló que el binario fuera **fresco**; nadie comprobó que fuera **el correcto**. Cuando un arreglo se
+> formula como «que esté al día» en vez de «que sea el que se publica», la segunda mitad se queda fuera.
+
+**TJ-04 — el aviso del instalador salía en modo silencioso.** `InitializeWizard` planta un `MsgBox` si no
+detecta Word, e **Inno llama a `InitializeWizard` también en `/VERYSILENT`**: el modificador silencia el
+asistente, no los `MsgBox`. La auto-actualización lanza el instalador con la app **ya cerrada**, así que
+el usuario que solo tiene LibreOffice —soportado a propósito— veía su programa esfumarse y quedarse un
+diálogo huérfano, o la actualización parada. Es **literalmente el fallo del Tier H** (`/VERYSILENT` que
+no era silencioso) en un segundo sitio del mismo archivo.
+
+Arreglo con dos capas, porque el instalador también se lanza a mano: el aviso vive dentro de
+`if (not WizardSilent)`, y la línea de comandos del updater —ahora en
+`Core.InstallScope.SilentInstallArguments`, no incrustada en el code-behind— manda `/SUPPRESSMSGBOXES`.
+Sacarla a `Core/` no es cosmética: **así es como se perdió el modificador**, escribiéndola a mano en un
+sitio que ninguna prueba miraba.
+
+**Guardianes nuevos** (todos comprobados en rojo antes de darlos por buenos):
+
+- `DrivenBinaryTests` — el `.exe` conducido es el de la configuración compilada. Rojo reponiendo la
+  búsqueda por fecha con un `bin\Debug` más nuevo, que es exactamente el escenario del corte.
+- `InstallerScriptTests` — el `.iss` vigilado como código: ningún `MsgBox` sin guarda `WizardSilent`
+  (**vaciando antes los comentarios**: el primer intento pasaba en verde porque el propio comentario que
+  explica la guarda menciona `WizardSilent`), `commandline` en `PrivilegesRequiredOverridesAllowed`, y
+  ningún `/VERYSILENT` escrito a mano fuera de `Core/`.
+- `InstallScopeTests` — la línea de comandos del updater lleva sus cinco modificadores.
+
+**Pruebas:** 206 pasan · 1 omitida · 0 fallan; UI 31 · 0. Build 0/0. El `.iss` recompilado con ISCC
+(instalador de 58,2 MB, generado y descartado).
+
+⚠️ **Lo que sigue sin comprobarse:** el criterio de aceptación entero de TJ-04 exige una máquina **sin
+Office**, y esta tiene Office. Queda verificado por construcción (guarda + modificador + el script
+compila), no de punta a punta — el mismo hueco que ya anota §3 sobre el instalador.
+
+---
+
 ### 2026-08-31 — TJ-07: el changelog manda sobre las notas del release
 
 Primera tarea cerrada del [Tier J](ROADMAP.md). `CHANGELOG.md` nació el 2026-08-29, pero nadie lo leía:
@@ -611,7 +672,8 @@ Tres decisiones que no son obvias leyendo el diff:
 **Efecto sobre el flujo de trabajo:** cortar una versión ahora empieza por escribir su sección en
 `CHANGELOG.md`. No es burocracia: es el único momento en que se sabe qué cambió.
 
-**Pruebas:** 201 pasan · 1 omitida · 0 fallan. `.elease.ps1 -Version 9.9.9 -DryRun` aborta con
+**Pruebas:** 201 pasan · 1 omitida · 0 fallan. `.
+elease.ps1 -Version 9.9.9 -DryRun` aborta con
 «Falta la sección 9.9.9 en CHANGELOG.md», sin tocar git.
 
 ---

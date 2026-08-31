@@ -1,4 +1,4 @@
-; OfiConvert - InnoSetup Installer Script
+﻿; OfiConvert - InnoSetup Installer Script
 ; Requiere Inno Setup 6.x o superior
 ;
 ; NO se compila a mano: lo hace installer\build-installer.ps1, que pasa la versión leída del .csproj
@@ -110,7 +110,13 @@ end;
 
 procedure InitializeWizard;
 begin
-  if not IsOfficeInstalled then
+  { WizardSilent() NO es opcional: Inno llama a InitializeWizard tambien en /SILENT y /VERYSILENT, y un
+    MsgBox se muestra IGUAL salvo que se pase /SUPPRESSMSGBOXES. La auto-actualizacion lanza el instalador
+    con la app ya cerrada, asi que sin esta guarda el usuario SIN Office —justo el que la app dice
+    soportar con LibreOffice— veia su programa desaparecer y quedarse un dialogo esperando un clic, o la
+    actualizacion colgada. Es el mismo fallo del Tier H ("/VERYSILENT que no era silencioso") en otro
+    sitio. El updater manda ademas /SUPPRESSMSGBOXES (Core/InstallScope.SilentInstallArguments). }
+  if (not WizardSilent) and (not IsOfficeInstalled) then
   begin
     MsgBox('ADVERTENCIA: No se detect' + #243 + ' Microsoft Office instalado en este equipo.' + #13#10 + #13#10 +
            'OfiConvert requiere Microsoft Office (Word, Excel y/o PowerPoint) ' +
