@@ -23,7 +23,10 @@
     Ruta a un .pfx para firmar (alternativa a -CertThumbprint).
 
 .PARAMETER CertPassword
-    Contraseña del .pfx (si la tiene).
+    Contraseña del .pfx, como SecureString. Tambien se puede dejar en la variable de entorno
+    OFICONVERT_CERT_PASSWORD, que es lo comodo para automatizar sin teclearla.
+
+    NUNCA como [string]: se quedaria en ConsoleHost_history.txt y viajaria en claro entre scripts.
 
 .PARAMETER TimestampUrl
     Servidor de sellado de tiempo RFC3161 (por defecto, el de DigiCert).
@@ -40,11 +43,17 @@ param(
     [string]$Runtime       = "win-x64",
     [string]$CertThumbprint,
     [string]$CertFile,
-    [string]$CertPassword,
+    # SecureString y NO [string]: ver la nota de TJ-24 sobre Invoke-Sign.
+    [SecureString]$CertPassword,
     [string]$TimestampUrl  = "http://timestamp.digicert.com"
 )
 
 $ErrorActionPreference = "Stop"
+
+# Igual que en release.ps1: la contrasena puede llegar por entorno en vez de por la linea de comandos.
+if (-not $CertPassword -and $env:OFICONVERT_CERT_PASSWORD) {
+    $CertPassword = ConvertTo-SecureString $env:OFICONVERT_CERT_PASSWORD -AsPlainText -Force
+}
 
 # --- Firma de código (opcional) --------------------------------------------
 $signEnabled = [bool]($CertThumbprint -or $CertFile)
@@ -78,16 +87,66 @@ function Find-SignTool {
     return $null
 }
 
+<#
+.SYNOPSIS
+    Firma los archivos indicados, SIN que la contrasena llegue nunca a una linea de comandos.
+.NOTES
+    TJ-24. Antes se hacia asi:
+
+        signtool sign /f cert.pfx /p <CONTRASENA> ...
+
+    La linea de comandos de un proceso la puede leer CUALQUIER proceso del equipo mientras dura
+    (Get-CimInstance Win32_Process), sin permisos especiales. Y como el parametro era [string], la
+    contrasena ademas se tecleaba en la consola -- quedandose en ConsoleHost_history.txt, en claro y
+    para siempre -- y se reenviaba entre release.ps1 y este script igual de desnuda.
+
+    Ahora, con un .pfx: se IMPORTA al almacen de certificados del usuario usando el SecureString (que
+    Import-PfxCertificate acepta directamente, sin convertirlo a texto), se firma por HUELLA -- que no
+    es secreta -- y se BORRA el certificado del almacen al terminar, pase lo que pase.
+
+    Con -CertThumbprint no hay nada que hacer: nunca hubo contrasena.
+#>
 function Invoke-Sign([string[]]$files) {
     if (-not $signEnabled) { return }
+
     $base = @("sign", "/fd", "SHA256", "/tr", $TimestampUrl, "/td", "SHA256")
-    if ($CertThumbprint)  { $base += @("/sha1", $CertThumbprint) }
-    elseif ($CertFile)    { $base += @("/f", $CertFile); if ($CertPassword) { $base += @("/p", $CertPassword) } }
-    foreach ($f in $files) {
-        if (-not (Test-Path $f)) { continue }
-        Write-Host "==> Firmando: $f" -ForegroundColor Cyan
-        & $signtool @base $f
-        if ($LASTEXITCODE -ne 0) { throw "signtool falló al firmar $f (código $LASTEXITCODE)" }
+    $importado = $null
+
+    try {
+        if ($CertThumbprint) {
+            $base += @("/sha1", $CertThumbprint)
+        }
+        elseif ($CertFile) {
+            if (-not (Test-Path $CertFile)) { throw "No existe el certificado: $CertFile" }
+
+            $importArgs = @{
+                FilePath          = $CertFile
+                CertStoreLocation = "Cert:\CurrentUser\My"
+            }
+            if ($CertPassword) { $importArgs.Password = $CertPassword }
+
+            $importado = Import-PfxCertificate @importArgs
+            if (-not $importado) { throw "No se pudo importar $CertFile al almacen de certificados." }
+
+            # La huella no es secreta: identifica al certificado, no lo desbloquea.
+            $base += @("/sha1", $importado.Thumbprint)
+        }
+
+        foreach ($f in $files) {
+            if (-not (Test-Path $f)) { continue }
+            Write-Host "==> Firmando: $f" -ForegroundColor Cyan
+            & $signtool @base $f
+            if ($LASTEXITCODE -ne 0) { throw "signtool falló al firmar $f (código $LASTEXITCODE)" }
+        }
+    }
+    finally {
+        # Se borra SIEMPRE. Dejar la clave privada en el almacen del usuario porque la firma fallo a
+        # medias seria cambiar una fuga por otra.
+        if ($importado) {
+            $ruta = "Cert:\CurrentUser\My\$($importado.Thumbprint)"
+            try { Remove-Item $ruta -DeleteKey -Force -ErrorAction Stop }
+            catch { Write-Host "[!] No se pudo retirar el certificado importado ($ruta). Borralo a mano." -ForegroundColor Yellow }
+        }
     }
 }
 

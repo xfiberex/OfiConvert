@@ -55,16 +55,77 @@ param(
     # Firma de código (opcional): se reenvían a build-installer.ps1.
     [string]$CertThumbprint,
     [string]$CertFile,
-    [string]$CertPassword,
+    # SecureString y NO [string]: como cadena se queda en ConsoleHost_history.txt en claro y para
+    # siempre, y viaja desnuda hasta build-installer.ps1. Si no se pasa, se toma de la variable de
+    # entorno OFICONVERT_CERT_PASSWORD. (TJ-24.)
+    [SecureString]$CertPassword,
     [string]$TimestampUrl
 )
 
 $ErrorActionPreference = "Stop"
 
+# La contrasena del certificado puede venir del entorno, que es lo comodo para automatizar sin
+# teclearla. Se convierte a SecureString AQUI y no se guarda la cadena en ninguna variable propia.
+if (-not $CertPassword -and $env:OFICONVERT_CERT_PASSWORD) {
+    $CertPassword = ConvertTo-SecureString $env:OFICONVERT_CERT_PASSWORD -AsPlainText -Force
+}
+
 function Info($m) { Write-Host "==> $m" -ForegroundColor Cyan }
 function Ok($m)   { Write-Host "[OK] $m" -ForegroundColor Green }
 function Warn($m) { Write-Host "[!] $m" -ForegroundColor Yellow }
 function Die($m)  { Write-Host "[X] $m" -ForegroundColor Red; exit 1 }
+
+# Pruebas que se omiten A PROPOSITO, con su puerta de entorno. Cualquier otra omision se avisa: el
+# escenario que se quiere evitar es una prueba que deja de ejecutarse sin que nadie lo note, y el
+# codigo de salida de "dotnet test" no distingue omitida de correcta. (TJ-08.)
+$ExpectedSkipPattern = 'PublishedReleaseTests|PowerPointSharedInstanceTests|OfficeAppLifetimeTests'
+
+<#
+.SYNOPSIS
+    Lee el resumen de un .trx: cuantas pasan, cuantas se omiten, cuantas fallan y como se llaman las
+    omitidas.
+.NOTES
+    El .trx trae un <ResultSummary><Counters .../></ResultSummary>, pero sus atributos no siempre estan
+    todos, asi que los contadores se recalculan desde los <UnitTestResult outcome="...">, que si estan
+    siempre. Los nombres de las omitidas importan tanto como el numero: "1 omitida" no dice nada,
+    "PublishedReleaseTests omitida" si.
+#>
+function Read-TestSummary {
+    param([Parameter(Mandatory)][string]$TrxPath)
+
+    if (-not (Test-Path $TrxPath)) { return $null }
+
+    try {
+        [xml]$trx = Get-Content $TrxPath -Encoding UTF8
+    } catch {
+        return $null
+    }
+
+    $ns = New-Object System.Xml.XmlNamespaceManager($trx.NameTable)
+    $ns.AddNamespace('t', 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010')
+
+    $resultados = $trx.SelectNodes('//t:UnitTestResult', $ns)
+    if (-not $resultados) { return $null }
+
+    $omitidas = @()
+    $pasan = 0; $fallan = 0
+    foreach ($r in $resultados) {
+        switch ($r.outcome) {
+            'Passed'      { $pasan++ }
+            'Failed'      { $fallan++ }
+            'NotExecuted' { $omitidas += $r.testName }
+            default       { }
+        }
+    }
+
+    return [pscustomobject]@{
+        Passed       = $pasan
+        Failed       = $fallan
+        Skipped      = $omitidas.Count
+        Total        = $resultados.Count
+        SkippedNames = $omitidas
+    }
+}
 
 <#
 .SYNOPSIS
@@ -249,8 +310,34 @@ try {
                 # -c Release NO es decorativo: sin él, MSBuild reconstruye la app en Debug por el
                 # ProjectReference y los UI tests conducen ESE binario, no el Release que empaqueta el
                 # instalador (TJ-05). DrivenBinaryTests lo verifica desde dentro.
-                & dotnet test $proj.FullName -c Release --nologo
+                #
+                # Y se lee el .trx en vez de mirar solo $LASTEXITCODE: una prueba OMITIDA no es una
+                # prueba que pasa, pero el codigo de salida es 0 en los dos casos. El corte salia en
+                # verde con pruebas omitidas sin decirlo -- y las que se omiten son justo las que
+                # necesitan red u Office, o sea las que mas caro salen si dejan de ejecutarse
+                # inadvertidamente. (TJ-08.)
+                $trxDir  = Join-Path $env:TEMP "ofc-trx"
+                $trxName = "$($proj.BaseName).trx"
+                $trxPath = Join-Path $trxDir $trxName
+                if (Test-Path $trxPath) { Remove-Item $trxPath -Force }
+
+                & dotnet test $proj.FullName -c Release --nologo --logger "trx;LogFileName=$trxName" --results-directory $trxDir
                 if ($LASTEXITCODE -ne 0) { Die "Las pruebas de $($proj.Name) fallaron. Release abortado." }
+
+                $resumen = Read-TestSummary -TrxPath $trxPath
+                if ($null -eq $resumen) {
+                    Warn "No se pudo leer el resumen de $($proj.Name): se confia solo en el codigo de salida."
+                } else {
+                    Info ("  {0}: {1} pasan / {2} omitidas / {3} fallan (total {4})" -f `
+                        $proj.BaseName, $resumen.Passed, $resumen.Skipped, $resumen.Failed, $resumen.Total)
+
+                    $inesperadas = @($resumen.SkippedNames | Where-Object { $_ -notmatch $ExpectedSkipPattern })
+                    if ($inesperadas.Count -gt 0) {
+                        Warn "  Pruebas OMITIDAS que no estaban previstas ($($inesperadas.Count)):"
+                        foreach ($n in $inesperadas) { Warn "    - $n" }
+                        Warn "  Una prueba omitida NO es una prueba que pasa. Si es a proposito, anadela a ExpectedSkipPattern."
+                    }
+                }
             }
             Ok "Pruebas correctas."
         } else {
