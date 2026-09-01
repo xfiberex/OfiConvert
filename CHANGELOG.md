@@ -27,6 +27,11 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ### Corregido
 
+- **El instalador ya no te dice que la app no funcionará si usas LibreOffice.** Cuando no encontraba
+  Microsoft Office avisaba de que OfiConvert «no funcionará hasta que instale Microsoft Office» — y eso
+  es falso: LibreOffice sirve igual, y el propio programa lo anuncia. Ahora comprueba **los dos**
+  motores y solo avisa si no hay ninguno; además el aviso está traducido a los **seis** idiomas del
+  instalador, en vez de salir siempre en español. *(Cierra [TJ-12](ROADMAP.md).)*
 - **Los mensajes de error ya salen en tu idioma.** Dieciocho avisos —«el archivo está protegido con
   contraseña», «el archivo está bloqueado por otro proceso», los fallos de LibreOffice y de Office—
   aparecían **en español en los ocho idiomas**: en el panel de resultados, en la columna *Error* del
@@ -64,6 +69,13 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
   se calla en las instalaciones silenciosas. *(Cierra [TJ-04](ROADMAP.md).)*
 
 ### Interno
+
+- Afinado del propio Tier J, hecho al validar en un segundo equipo: (a) las tres pruebas que conducen
+  Office eran **inestables** —fallaban una de cada dos veces por su propia limpieza, no por el
+  producto—; ahora esperan a que PowerPoint se cierre de verdad en vez de darlo por hecho. (b) El
+  cazador de texto sin traducir tenía un hueco en su expresión regular: `StateMessage = "Pendiente"`
+  no casaba, y ahí seguía el literal. (c) Dos guardianes nuevos sobre el instalador. Los tres
+  arreglos, comprobados en rojo.
 
 - **Las notas de un release ya cuentan qué cambió.** Hasta ahora `release.ps1` publicaba en GitHub el
   mismo texto de plantilla en todas las versiones («Instalador self-contained para Windows x64…»), así

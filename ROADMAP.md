@@ -53,7 +53,7 @@
 | **G** | UI/UX: 3 bugs reales, comandos que se apagan solos, accesibilidad | ✅ Completado (2026-07-14) | 2.4.0 |
 | **H** | Instalador end-to-end: el `/VERYSILENT` que no era silencioso | ✅ Completado (2026-07-14) | **2.5.0** ✔ publicada |
 | **I** | Pase de UX/UI sobre capturas: 3 bugs vistos solo mirando la app | ✅ Completado (2026-07-21) | **2.6.0** ✔ publicada |
-| **J** | **Re-auditoría externa: el motor, el pipeline y los guardianes** | 🔶 **Abierto (2026-08-29)** — 38 tareas (**7 Altas**) | — |
+| **J** | **Re-auditoría externa: el motor, el pipeline y los guardianes** | 🔶 **Abierto (2026-08-29)** — **9/38 cerradas**, las **7 Altas** completas | — |
 
 \* Orden recomendado: **A → B → C → D → E** (F puede ir en cualquier momento). Idealmente D habría ido
 antes que C, pero C se trajo sus propios tests, como hicieron los hermanos.
@@ -366,7 +366,7 @@ translúcidas y el texto del menú pierde contraste. Arreglado con `ThemeDiction
 > `LocalizationUsageTests` vigila tres formas de pedir una clave y ya hay una cuarta. Los tres pasan en
 > verde sobre problemas de su propia especialidad.
 
-**Índice del tier:** 38 tareas — **7 Altas · 19 Medias · 12 Bajas**. **Cerradas: 8** (TJ-01 a TJ-07 y TJ-17) — **las 7 Altas, completas**.
+**Índice del tier:** 38 tareas — **7 Altas · 19 Medias · 12 Bajas**. **Cerradas: 9** (TJ-01 a TJ-07, TJ-12 y TJ-17) — **las 7 Altas, completas**.
 Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 
 ### J.1 — Severidad ALTA
@@ -573,12 +573,22 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
   - **Criterio de aceptación:** un lote con dos orígenes homónimos y paralelismo 2 produce dos salidas.
   - **Esfuerzo:** medio · **Depende de:** ninguna
 
-- [ ] **[TJ-12] El instalador contradice al producto sobre LibreOffice** · Medio
+- [x] ✅ **[TJ-12] El instalador contradice al producto sobre LibreOffice** · Medio *(cerrado 2026-08-31)*
   - **Área:** Redacción / DevOps · **Ubicación:** `installer/OfiConvert.iss:115-119`
   - **Qué hacer:** el aviso dice que la app «**no funcionará** hasta que instale Microsoft Office»,
     cuando LibreOffice es un motor soportado y así lo dicen el README y `CONTEXT.md`. Reescribirlo
     nombrando las dos opciones. Se resuelve junto con TJ-04, que toca el mismo bloque.
   - **Criterio de aceptación:** el texto menciona LibreOffice como alternativa válida.
+  - **✅ Cerrado 2026-08-31.** El aviso mira ahora **los dos** motores (`IsLibreOfficeInstalled`:
+    App Paths de `soffice.exe` en HKLM 64/32 bits y, si no, las rutas por defecto en `{commonpf}` y
+    `{commonpf32}`) y su texto vive en la sección de mensajes personalizados, en los **seis** idiomas del
+    instalador — antes salía en español en todos.
+    **Verificado sobre el instalador compilado**, con los dos detectores forzados por línea de comandos:
+    `0/0 → AVISA`, `0/1 → CALLA`, `1/0 → CALLA`, `1/1 → CALLA`. La fila `0/1` (solo LibreOffice) es
+    justamente la que antes mentía. Los seis textos se volcaron a archivo desde el instalador y se
+    comprobaron uno a uno, con sus acentos.
+    Guardianes nuevos en `InstallerScriptTests`, ambos comprobados en rojo:
+    `ElAviso_DeSinMotor_MiraTambienLibreOffice` y `ElTextoDelAviso_EstaEnLosSeisIdiomas`.
   - **Esfuerzo:** bajo · **Depende de:** TJ-04
 
 - [ ] **[TJ-13] Dos archivos demasiado grandes = dos diálogos a la vez** · Medio
@@ -870,6 +880,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 | 2026-08-31 | **TJ-03** (LibreOffice borraba un archivo anterior) y **TJ-02** (deadlock de las tuberías) (5/38, **5 de 7 Altas**) |
 | 2026-08-31 | **TJ-01**: PowerPoint serializado y la sesión del usuario intocable, verificado contra el Office real (6/38, **6 de 7 Altas**) |
 | 2026-08-31 | **TJ-06** (18 mensajes en español a fuego → claves traducidas) y **TJ-17** (el guardián miraba 2 archivos de 20) — **las 7 Altas cerradas** (8/38) |
+| 2026-08-31 | **TJ-12**: el instalador deja de decirle a quien usa LibreOffice que la app no funcionará, y el aviso se traduce a los 6 idiomas (9/38). Afinado del propio Tier J: las pruebas con Office dejan de ser inestables, y `HardcodedUiTextTests` caza un vigésimo literal que su `` no veía |
 
 ## 🚫 Decisiones cerradas / qué NO portar de los hermanos
 

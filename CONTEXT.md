@@ -24,7 +24,7 @@
 | **Estado** | Funcional; Tiers 0 y A–I ✅. **Hoja de ruta REABIERTA**: [Tier J](ROADMAP.md) (re-auditoría del 2026-08-29) — 38 tareas, **7 Altas**, 0 cerradas |
 | **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · **xUnit** + **FlaUI** · Inno Setup 6 |
 | **Licencia** | **MIT** ([`LICENSE`](LICENSE)) — pero **lo que redistribuye NO es todo MIT**: ver §4 *Legal* |
-| **Pruebas** | **230**: 200 unitarias (199 + 1 de red, omitida salvo `OFICONVERT_NETWORK_TESTS=1`) + **30 de UI** (FlaUI, contra la app real) |
+| **Pruebas** | **268**: 237 unitarias (233 pasan + 4 omitidas: 1 de red con `OFICONVERT_NETWORK_TESTS=1` y 3 que conducen Office con `OFICONVERT_OFFICE_TESTS=1`) + **31 de UI** (FlaUI, contra la app real) |
 | **Hoja de ruta** | [`ROADMAP.md`](ROADMAP.md) — **Tier J abierto** (2026-08-29) |
 | **Cambios por versión** | [`CHANGELOG.md`](CHANGELOG.md) — creado el 2026-08-29; **el _qué_ va allí, el _porqué_ aquí** |
 | **Última actualización** | 2026-08-29 |
@@ -106,7 +106,7 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas unitarias | **231 pasan · 4 se omiten (1 de red + 3 que conducen Office) · 0 fallan**; con `OFICONVERT_OFFICE_TESTS=1`, **234 pasan** |
+| Pruebas unitarias | **233 pasan · 4 se omiten (1 de red + 3 que conducen Office) · 0 fallan**; con `OFICONVERT_OFFICE_TESTS=1`, **236 pasan** |
 | Pruebas de UI | **31 pasan · 0 fallan** (FlaUI, arrancan la app real **en la configuración compilada**) |
 | Publicado | **v2.6.1** (2.1.0 → 2.6.1 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
@@ -641,6 +641,73 @@ Menores, sin tier asignado:
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
+
+---
+
+### 2026-08-31 (segundo equipo) — TJ-12, y tres cosas que solo se ven al validar en otra máquina
+
+El Tier J se implementó en un equipo y se validó en otro. **Ese cambio de máquina destapó cosas que en
+la primera no se veían**, que es exactamente para lo que sirve.
+
+**🔴 Las tres pruebas que conducen Office eran INESTABLES.** No fallaban por el producto: fallaban por su
+propia limpieza. Cada una abría con un `Assert.Equal(0, PowerPointProcesses())` **instantáneo**, y el
+`EsperarACierre()` de la anterior aguantaba como mucho **5 s**. `POWERPNT.EXE` a veces tarda más en
+morir después de un `Quit()`, así que la siguiente arrancaba viendo un proceso que ya se estaba
+apagando. **Medido:** ejecutando la clase entera falló con «Expected: 0, Actual: 1» **a los 8 ms**; sola
+pasaba, y al repetir la clase también.
+
+*Y la demostración de que el arreglo es el correcto se hizo al revés:* dejando el `EsperarACierre` del
+teardown **sin esperar nada**, la clase ya no falla en la línea 119 (la precondición) sino en la **142**
+— la postcondición, que dependía del mismo reloj corto. O sea: el diagnóstico era ese y no otro, y la
+postcondición tenía el mismo defecto. Las dos esperan ahora **15 s**, y la precondición trae un mensaje
+que distingue *«una prueba anterior no soltó el suyo»* de *«tienes PowerPoint abierto con tu trabajo»*,
+que piden cosas distintas. Estable 3 de 3 tras el cambio.
+
+> **La regla:** una prueba que falla una de cada dos veces por su propia limpieza **deja de ser un
+> guardián** — se acaba ignorando. Y justo esta cubre el fallo más grave del tier.
+
+**🔴 `HardcodedUiTextTests` tenía un hueco en su propia expresión regular.** Con `` pegado a la lista
+de nombres, `StateMessage = "Pendiente"` **no casaba**: entre la «e» de `State` y la «M» de `Message` no
+hay frontera de palabra. El literal estaba en `Models/FileItem.cs` mientras el test pasaba en verde.
+Es el **vigésimo** literal del tier y el **segundo que se le escapa a su propio guardián** — el primero
+fue mirar solo dos archivos (TJ-17). Lo que importa es cómo **acaba** el nombre de la propiedad, no cómo
+empieza: `[A-Za-z_]*(?:Title|Message|Content|Text|Header)`.
+
+*Comprobación limpia:* con el regex anterior y el literal delante, **verde**; con el nuevo, **rojo**.
+
+Al ampliarlo salieron otros dos, y ninguno se ha «arreglado» a lo tonto: el tooltip de la bandeja
+(`"OfiConvert"`, nombre propio, no se traduce) y el rótulo del menú contextual del Explorador
+(`"Convertir con OfiConvert"`), que **sí** es un fallo real pero ya está fichado como `TJ-22` — y no se
+cierra escribiendo una clave: hay que **reescribir el registro** al cambiar de idioma. Va a la lista de
+excepciones **con su fecha de caducidad apuntada**, no se tapa.
+
+**TJ-12 — el instalador contradecía al producto.** Avisaba de que sin Microsoft Office la app «no
+funcionará». Es falso: LibreOffice sirve igual y el README lo anuncia.
+
+*Verificado sobre el instalador compilado*, con los dos detectores forzados por línea de comandos, y sin
+mostrar un solo diálogo (la sonda vuelca la decisión a un archivo y se ejecuta con `/VERYSILENT`):
+
+| Office | LibreOffice | Decisión |
+|---|---|---|
+| 0 | 0 | **AVISA** |
+| 0 | 1 | calla ← *la fila que antes mentía* |
+| 1 | 0 | calla |
+| 1 | 1 | calla |
+
+Los seis textos se volcaron desde el propio instalador, uno por idioma, y se leyeron con sus acentos.
+
+> ⚠️ **Trampa nueva de Inno, pagada aquí:** una línea de comentario que **empiece por corchete** la lee
+> ISCC como etiqueta de sección y aborta con *«Invalid section tag»* — **aunque esté dentro de un
+> comentario `{ }` y sangrada**. Mencionar `[CustomMessages]` al principio de una línea rompió el build.
+> Queda anotado dentro del propio `.iss`.
+
+> ⚠️ **Y un error propio, para que no se repita:** el primer intento escribió los acentos como `%363`,
+> dando por hecho que Inno admite escapes numéricos en los mensajes personalizados. **No los admite**:
+> ahí `%1`–`%9` son parámetros y `%n` el salto de línea. Como el `.iss` ya lleva BOM UTF-8, los acentos
+> van **literales**.
+
+**Estado al cerrar:** 9 de 38 del Tier J. Build 0/0, **233 unitarias pasan · 4 se omiten · 31 de UI**;
+con `OFICONVERT_OFFICE_TESTS=1`, 236.
 
 ---
 
