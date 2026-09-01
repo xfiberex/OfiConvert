@@ -37,6 +37,7 @@ public class LibreOfficeConversionService : IFileConversionService
 
         var sw = Stopwatch.StartNew();
         string? workFolder = null;
+        string? profileFolder = null;
 
         try
         {
@@ -48,7 +49,13 @@ public class LibreOfficeConversionService : IFileConversionService
             // desaparecía. Se convierte en una carpeta temporal exclusiva y desde ahí se mueve (TJ-03).
             workFolder = LibreOfficeOutput.CreateWorkFolder();
 
-            if (sourcePath.IndexOf('"') >= 0 || workFolder.IndexOf('"') >= 0)
+            // Y su PROPIO perfil de usuario. LibreOffice no admite dos procesos headless sobre el mismo:
+            // el segundo no arranca motor, se enchufa al primero por IPC o falla — así que un lote con
+            // paralelismo 4 se degradaba a serie o devolvía errores que no parecían de conversión.
+            // (TJ-25.)
+            profileFolder = LibreOfficeCommand.CreateProfileFolder();
+
+            if (LibreOfficeCommand.HasUnquotablePath(sourcePath, workFolder, profileFolder))
                 return ConversionResult.Failed("MsgInvalidPathCharacters");
 
             Log.Information("LibreOffice: Convirtiendo {Source} a {Format}", sourcePath, formatArg);
@@ -56,7 +63,7 @@ public class LibreOfficeConversionService : IFileConversionService
             var psi = new ProcessStartInfo
             {
                 FileName = loPath,
-                Arguments = $"--headless --norestore --convert-to {formatArg} --outdir \"{workFolder}\" \"{sourcePath}\""
+                Arguments = LibreOfficeCommand.BuildArguments(formatArg, workFolder, profileFolder, sourcePath)
             };
 
             // ProcessRunner lee los dos flujos ANTES de esperar al proceso. Con stdout y stderr
@@ -108,6 +115,14 @@ public class LibreOfficeConversionService : IFileConversionService
             {
                 try { Directory.Delete(workFolder, recursive: true); }
                 catch (Exception ex) { Log.Warning(ex, "LibreOffice: no se pudo borrar {Folder}", workFolder); }
+            }
+
+            // El perfil también: uno por conversión, y no son pequeños. Mismo criterio — si no se deja
+            // borrar, queda en %TEMP% y no se falla por eso una conversión que salió bien.
+            if (profileFolder is not null)
+            {
+                try { Directory.Delete(profileFolder, recursive: true); }
+                catch (Exception ex) { Log.Warning(ex, "LibreOffice: no se pudo borrar el perfil {Folder}", profileFolder); }
             }
         }
     }
