@@ -27,6 +27,19 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ### Corregido
 
+- **Convertir dos archivos con el mismo nombre ya no deja uno solo.** Si en el lote había un
+  `informe.docx` en dos carpetas distintas y todo iba a una carpeta común, las dos conversiones se
+  asignaban `informe.pdf` —ninguna había escrito todavía— y la segunda **pisaba a la primera**. El
+  programa daba las dos por buenas y aparecía un archivo. Pasaba igual con dos presentaciones homónimas
+  convertidas a imágenes, que mezclaban sus diapositivas en la misma carpeta. *(Cierra
+  [TJ-11](ROADMAP.md).)*
+- **Soltar varios archivos demasiado grandes ya avisa de todos, una sola vez.** Con dos o más por encima
+  de 500 MB, el segundo aviso se abría encima del primero y **fallaba en silencio**: no se veía ni el
+  aviso ni el error, solo archivos que no aparecían en la lista. Ahora sale un único mensaje que los
+  nombra. *(Cierra [TJ-13](ROADMAP.md).)*
+- **El resumen ya no termina en «Archivos guardados en:» y nada.** Cuando no elegías carpeta de destino
+  —que es el camino recomendado— la frase se cortaba justo donde iba la respuesta. Ahora dice que cada
+  archivo quedó junto a su original. *(Cierra [TJ-10](ROADMAP.md).)*
 - **Convertir presentaciones ya no te planta PowerPoint delante.** Durante todo el lote se abría la
   ventana de PowerPoint encima de lo que estuvieras haciendo. No hacía falta: la aplicación **pedía** esa
   ventana sin necesitarla. Ahora convierte sin que aparezca nada. *(Cierra [TJ-21](ROADMAP.md).)*
@@ -80,6 +93,13 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
   se calla en las instalaciones silenciosas. *(Cierra [TJ-04](ROADMAP.md).)*
 
 ### Interno
+
+- Se retira el mecanismo de progreso por archivo: atravesaba toda la API, prometía un «Convirtiendo 3/7»
+  y **no se ejecutaba nunca**, porque ningún motor puede informar del avance de una conversión. El
+  progreso del lote, que sí es real, no cambia. *(Cierra [TJ-19](ROADMAP.md).)*
+- Tres guardianes nuevos para clases de fallo, no para casos: ningún diálogo dentro de un bucle, ningún
+  `IProgress<>` sin reportar, y los nombres de salida repartidos con candado.
+- **288 pruebas** (antes 268). Las cuatro correcciones, comprobadas en rojo.
 
 - **249 pruebas** (antes 237): +9 sobre la línea de comandos de LibreOffice y +3 con Office real
   (PowerPoint sin ventana, y los dos caminos de arranque de Word). Las tres correcciones, comprobadas en

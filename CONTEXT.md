@@ -24,7 +24,7 @@
 | **Estado** | Funcional; Tiers 0 y A–I ✅. **Hoja de ruta REABIERTA**: [Tier J](ROADMAP.md) (re-auditoría del 2026-08-29) — 38 tareas, **7 Altas**, 0 cerradas |
 | **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · **xUnit** + **FlaUI** · Inno Setup 6 |
 | **Licencia** | **MIT** ([`LICENSE`](LICENSE)) — pero **lo que redistribuye NO es todo MIT**: ver §4 *Legal* |
-| **Pruebas** | **280**: 249 unitarias (242 pasan + 7 omitidas: 1 de red con `OFICONVERT_NETWORK_TESTS=1` y 6 que conducen Office con `OFICONVERT_OFFICE_TESTS=1`) + **31 de UI** (FlaUI, contra la app real) |
+| **Pruebas** | **295**: 264 unitarias (257 pasan + 7 omitidas: 1 de red con `OFICONVERT_NETWORK_TESTS=1` y 6 que conducen Office con `OFICONVERT_OFFICE_TESTS=1`) + **31 de UI** (FlaUI, contra la app real) |
 | **Hoja de ruta** | [`ROADMAP.md`](ROADMAP.md) — **Tier J abierto** (2026-08-29) |
 | **Cambios por versión** | [`CHANGELOG.md`](CHANGELOG.md) — creado el 2026-08-29; **el _qué_ va allí, el _porqué_ aquí** |
 | **Última actualización** | 2026-08-29 |
@@ -106,7 +106,7 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas unitarias | **242 pasan · 7 se omiten (1 de red + 6 que conducen Office) · 0 fallan**; con `OFICONVERT_OFFICE_TESTS=1`, **248 pasan** |
+| Pruebas unitarias | **257 pasan · 7 se omiten (1 de red + 6 que conducen Office) · 0 fallan**; con `OFICONVERT_OFFICE_TESTS=1`, **263 pasan** |
 | Pruebas de UI | **31 pasan · 0 fallan** (FlaUI, arrancan la app real **en la configuración compilada**) |
 | Publicado | **v2.6.1** (2.1.0 → 2.6.1 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
@@ -655,6 +655,61 @@ Menores, sin tier asignado:
 
 ---
 
+### 2026-08-31 — TJ-11, TJ-13, TJ-10 y TJ-19: cuatro fallos que el usuario nunca podría diagnosticar
+
+Lo que une a los cuatro: **ninguno da un error**. La app hace algo mal y sigue como si nada.
+
+**TJ-11 — dos archivos distintos acababan siendo uno.** `OutputPath.GetSafe` decidía con `File.Exists`,
+que solo ve lo **ya escrito**. Con destino común y dos orígenes homónimos (`ventas\informe.docx` y
+`compras\informe.docx`, de lo más corriente), las dos conversiones preguntaban a la vez por
+`informe.pdf`, las dos oían que no existía, y la segunda pisaba a la primera. **Las dos se apuntaban como
+correctas en el historial.**
+
+La cura no es un candado sobre la escritura, sino **reservar el nombre al calcularlo**:
+`Core/OutputReservations`. Tres decisiones que conviene no deshacer:
+
+- **El alcance es el LOTE.** Uno por conversión no arregla nada; uno global para toda la vida del
+  programa haría que reconvertir el mismo documento fuera a `informe (1).pdf` sin motivo. Un lote es
+  exactamente el tiempo en que dos conversiones pueden solaparse.
+- **Mirar y apuntar van bajo el mismo candado.** Soltarlo entre las dos cosas reabre la carrera.
+- **Las carpetas también** (PPT→imágenes): dos presentaciones homónimas exportaban a la misma carpeta y
+  mezclaban sus diapositivas por número.
+
+*Verificado en rojo:* de **32 reservas simultáneas, solo 1** era distinta.
+
+**TJ-13 — dos avisos a la vez son cero avisos.** `AddFiles` avisaba **dentro** del bucle y
+`ShowInformation` es `async void`. WinUI admite **un** `ContentDialog`: el segundo lanza, y sobre un
+`async void` esa excepción sale sin dueño, la traga `App.UnhandledException` y el usuario **no ve nada** —
+ni el aviso ni el error. Solo archivos que no aparecen.
+
+> **La regla, que vale para toda la app:** *ningún diálogo dentro de un bucle*. Acumular y avisar una vez.
+> La vigila `DialogsInLoopsTests`, que no mira este caso sino **la forma**.
+
+**TJ-10 — la frase se cortaba donde iba la respuesta.** El resumen formateaba `MsgFilesSavedTo` con
+`OutputFolder`, que está **vacío** mientras el usuario no elige carpeta — el camino que el propio Tier G
+recomienda. Así que el flujo **por defecto** terminaba en «*Archivos guardados en:*» y nada. Sin carpeta
+común no hay una ruta que enseñar, así que hay que decirlo con palabras. Las dos ramas del resumen
+—con errores y sin ellos— formaban la frase por separado con el mismo fallo: ahora hay **un solo**
+`DondeSeGuardo()`.
+
+**TJ-19 — se quita, y por una razón.** El `IProgress<ConversionProgress>` atravesaba las dos firmas, las
+dos implementaciones y el ViewModel, que construía un `Progress<>` con «Convirtiendo 3/7». No se ejecutó
+**nunca**.
+
+La tentación era implementarlo. No hay qué implementar: Word y Excel convierten con **una** llamada COM
+sin devolución de llamada, LibreOffice es un proceso externo mudo, y solo PPT→imágenes conoce el número
+de diapositivas —y aun así exporta de una vez—. Reportar en 1 de 6 caminos daría una barra que se mueve
+para un formato y se queda quieta para los demás: **peor que no tenerla**.
+
+> **Una API que promete lo que no puede cumplir es peor que una API pequeña.** El porqué queda escrito en
+> `IFileConversionService`, que es donde alguien irá a preguntarse por qué no hay progreso. Y
+> `DeadProgressTests` cierra la clase entera: quien declare un `IProgress<>` tiene que reportarlo.
+
+**Estado:** 16 de 38 del Tier J. Build 0/0, **257 unitarias pasan · 7 se omiten · 31 de UI**; con
+`OFICONVERT_OFFICE_TESTS=1`, 263.
+
+---
+
 ### 2026-08-31 (noche) — TJ-21, TJ-20 y TJ-25: el motor, y una ficha que se equivocaba de culpable
 
 **TJ-21 — la ficha decía una cosa y la medición dijo otra.** La tarea pedía cambiar un `-1` por un `0` en
@@ -730,7 +785,7 @@ que piden cosas distintas. Estable 3 de 3 tras el cambio.
 > **La regla:** una prueba que falla una de cada dos veces por su propia limpieza **deja de ser un
 > guardián** — se acaba ignorando. Y justo esta cubre el fallo más grave del tier.
 
-**🔴 `HardcodedUiTextTests` tenía un hueco en su propia expresión regular.** Con `` pegado a la lista
+**🔴 `HardcodedUiTextTests` tenía un hueco en su propia expresión regular.** Con `\b` pegado a la lista
 de nombres, `StateMessage = "Pendiente"` **no casaba**: entre la «e» de `State` y la «M» de `Message` no
 hay frontera de palabra. El literal estaba en `Models/FileItem.cs` mientras el test pasaba en verde.
 Es el **vigésimo** literal del tier y el **segundo que se le escapa a su propio guardián** — el primero

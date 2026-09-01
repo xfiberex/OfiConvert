@@ -53,7 +53,7 @@
 | **G** | UI/UX: 3 bugs reales, comandos que se apagan solos, accesibilidad | ✅ Completado (2026-07-14) | 2.4.0 |
 | **H** | Instalador end-to-end: el `/VERYSILENT` que no era silencioso | ✅ Completado (2026-07-14) | **2.5.0** ✔ publicada |
 | **I** | Pase de UX/UI sobre capturas: 3 bugs vistos solo mirando la app | ✅ Completado (2026-07-21) | **2.6.0** ✔ publicada |
-| **J** | **Re-auditoría externa: el motor, el pipeline y los guardianes** | 🔶 **Abierto (2026-08-29)** — **12/38 cerradas**, las **7 Altas** completas | — |
+| **J** | **Re-auditoría externa: el motor, el pipeline y los guardianes** | 🔶 **Abierto (2026-08-29)** — **16/38 cerradas**, las **7 Altas** completas | — |
 
 \* Orden recomendado: **A → B → C → D → E** (F puede ir en cualquier momento). Idealmente D habría ido
 antes que C, pero C se trajo sus propios tests, como hicieron los hermanos.
@@ -366,7 +366,7 @@ translúcidas y el texto del menú pierde contraste. Arreglado con `ThemeDiction
 > `LocalizationUsageTests` vigila tres formas de pedir una clave y ya hay una cuarta. Los tres pasan en
 > verde sobre problemas de su propia especialidad.
 
-**Índice del tier:** 38 tareas — **7 Altas · 19 Medias · 12 Bajas**. **Cerradas: 12** (TJ-01 a TJ-07, TJ-12, TJ-17, TJ-20, TJ-21 y TJ-25) — **las 7 Altas, completas**.
+**Índice del tier:** 38 tareas — **7 Altas · 19 Medias · 12 Bajas**. **Cerradas: 16** (TJ-01 a TJ-07, TJ-10, TJ-11, TJ-12, TJ-13, TJ-17, TJ-19, TJ-20, TJ-21 y TJ-25) — **las 7 Altas, completas**.
 Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 
 ### J.1 — Severidad ALTA
@@ -553,7 +553,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     interactivo visible de esos tipos se queda sin nombre.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
 
-- [ ] **[TJ-10] «Archivos guardados en: » sin nada detrás, en el flujo por defecto** · Medio
+- [x] ✅ **[TJ-10] «Archivos guardados en: » sin nada detrás, en el flujo por defecto** · Medio *(cerrado 2026-08-31)*
   - **Área:** UI/UX · **Ubicación:** `ViewModels/MainViewModel.cs:652,663`
   - **Qué hacer:** el resumen formatea `MsgFilesSavedTo` con `OutputFolder`, que está **vacío** cuando
     el usuario no eligió carpeta — que desde el Tier G es el camino recomendado («sin configurar
@@ -561,9 +561,14 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     original» (clave nueva ×8) cuando `UseCustomOutputFolder` es falso.
   - **Criterio de aceptación:** convertir sin carpeta elegida produce una frase completa; con carpeta,
     la ruta. Añadir el estado a la galería de `capture-ui-states.ps1`.
+  - **✅ Cerrado 2026-08-31.** Un único `DondeSeGuardo()` decide la frase para las dos ramas del
+    resumen (con errores y sin ellos), que antes la formaban por separado con el mismo fallo. Con carpeta
+    elegida, la ruta; sin ella, `MsgFilesSavedNextToOriginal` («Cada archivo se ha guardado junto a su
+    original.», ×8 idiomas) — porque sin carpeta común **no hay una ruta que enseñar**: cada archivo va
+    al lado del suyo. Falta añadir el estado a la galería de `capture-ui-states.ps1`.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
 
-- [ ] **[TJ-11] Dos archivos del mismo nombre pueden pisarse en paralelo** · Medio
+- [x] ✅ **[TJ-11] Dos archivos del mismo nombre pueden pisarse en paralelo** · Medio *(cerrado 2026-08-31)*
   - **Área:** Seguridad · **Ubicación:** `ViewModels/MainViewModel.cs:470,605-623`; `Core/OutputPath.cs:25`
   - **Qué hacer:** `GetOutputPath` se calcula **antes** de convertir y `GetSafe` decide por
     `File.Exists`. Con carpeta de destino común y dos orígenes distintos que se llaman igual
@@ -571,6 +576,13 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     escrito todavía: el segundo pisa al primero. Reservar el nombre al calcularlo (crear el archivo
     vacío, o llevar en memoria las rutas ya asignadas del lote).
   - **Criterio de aceptación:** un lote con dos orígenes homónimos y paralelismo 2 produce dos salidas.
+  - **✅ Cerrado 2026-08-31.** El nombre se **reserva al calcularlo**, no al escribirlo:
+    `Core/OutputReservations` lleva lo ya repartido en el lote y `OutputPath.GetSafe` acepta ahora un
+    predicado de «ocupado» que **suma** a `File.Exists`. Alcance = el lote, a propósito: uno por
+    conversión no arreglaría nada y uno global mandaría a `informe (1).pdf` al reconvertir el mismo
+    documento. Cubre también las **carpetas** de PPT→imágenes, donde dos presentaciones homónimas
+    mezclaban sus diapositivas. **Verificado en rojo:** de **32 reservas simultáneas solo 1** era
+    distinta.
   - **Esfuerzo:** medio · **Depende de:** ninguna
 
 - [x] ✅ **[TJ-12] El instalador contradice al producto sobre LibreOffice** · Medio *(cerrado 2026-08-31)*
@@ -591,7 +603,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     `ElAviso_DeSinMotor_MiraTambienLibreOffice` y `ElTextoDelAviso_EstaEnLosSeisIdiomas`.
   - **Esfuerzo:** bajo · **Depende de:** TJ-04
 
-- [ ] **[TJ-13] Dos archivos demasiado grandes = dos diálogos a la vez** · Medio
+- [x] ✅ **[TJ-13] Dos archivos demasiado grandes = dos diálogos a la vez** · Medio *(cerrado 2026-08-31)*
   - **Área:** UI/UX · **Ubicación:** `Services/DialogService.cs:65-73`; `ViewModels/MainViewModel.cs:217-222`
   - **Qué hacer:** `ShowInformation` es `async void` (dispara y olvida) y `AddFiles` lo llama **dentro
     del bucle**. Soltar dos documentos de más de 500 MB abre el segundo `ContentDialog` con el primero
@@ -599,6 +611,12 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     excepción sale sin dueño y la traga `App.UnhandledException` **sin que el usuario vea nada**.
     Acumular los rechazados y avisar **una vez**, al terminar el bucle.
   - **Criterio de aceptación:** soltar 3 archivos de 600 MB muestra **un** aviso que los nombra.
+  - **✅ Cerrado 2026-08-31.** `AddFiles` acumula los rechazados y avisa **una vez** al terminar el
+    bucle, con `Core/TooBigReport` (mensaje de uno / de varios, clave `MsgFilesTooBig` nueva ×8). Se
+    conserva el texto de un solo archivo: la forma plural con una única línea se lee como un error de la
+    app. Guardián nuevo y **general**: `DialogsInLoopsTests` prohíbe abrir cualquier diálogo dentro de un
+    bucle en todo el código — es la clase de fallo, no este caso. **Verificado en rojo**, y localiza la
+    línea exacta.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
 
 - [ ] **[TJ-14] Las miniaturas dependen de una carrera que se pierde en los dos sentidos** · Medio
@@ -665,7 +683,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     mismo cambio que las creó. Queda **solo el chequeo inverso** (claves declaradas y no usadas), que
     depende de limpiar las 39 de TJ-29.
 
-- [ ] **[TJ-19] `IProgress<ConversionProgress>` atraviesa toda la API y nadie lo reporta** · Medio
+- [x] ✅ **[TJ-19] `IProgress<ConversionProgress>` atraviesa toda la API y nadie lo reporta** · Medio *(cerrado 2026-08-31)*
   - **Área:** Arquitectura · **Ubicación:** `Services/IFileConversionService.cs:10,17`;
     `OfficeFileConversionService.cs:44,55`; `LibreOfficeConversionService.cs:19,28`;
     `ViewModels/MainViewModel.cs:565-568`
@@ -676,6 +694,14 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     y el modelo entero.
   - **Criterio de aceptación:** o el mensaje aparece durante una conversión real, o no queda ni un
     `IProgress<ConversionProgress>` en el árbol.
+  - **✅ Cerrado 2026-08-31 — QUITÁNDOLO, y por una razón, no por pereza.** No hay progreso que
+    reportar: Word y Excel convierten con **una** llamada COM sin devolución de llamada, LibreOffice es un
+    proceso externo que no informa de nada, y solo PPT→imágenes conoce el número de diapositivas — aun así
+    exporta de una vez. Reportar en 1 de 6 caminos daría una barra que se mueve para un formato y se queda
+    quieta para los demás: peor que no tenerla. Fuera el parámetro de las dos firmas, de las dos
+    implementaciones, el `Progress<>` muerto del ViewModel y el modelo `ConversionProgress` entero. El
+    porqué queda escrito en `IFileConversionService`. Guardián: `DeadProgressTests` — quien declare un
+    `IProgress<>` tiene que reportarlo. **Verificado en rojo.**
   - **Esfuerzo:** medio · **Depende de:** ninguna
 
 - [x] ✅ **[TJ-20] Un fallo al configurar Office deja el proceso huérfano** · Medio *(cerrado 2026-08-31)*
@@ -911,8 +937,9 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 | 2026-08-31 | **TJ-03** (LibreOffice borraba un archivo anterior) y **TJ-02** (deadlock de las tuberías) (5/38, **5 de 7 Altas**) |
 | 2026-08-31 | **TJ-01**: PowerPoint serializado y la sesión del usuario intocable, verificado contra el Office real (6/38, **6 de 7 Altas**) |
 | 2026-08-31 | **TJ-06** (18 mensajes en español a fuego → claves traducidas) y **TJ-17** (el guardián miraba 2 archivos de 20) — **las 7 Altas cerradas** (8/38) |
+| 2026-08-31 | **TJ-11** (dos archivos homónimos se pisaban en paralelo), **TJ-13** (dos avisos a la vez = ninguno), **TJ-10** (la frase del resumen se cortaba en el flujo por defecto) y **TJ-19** (progreso muerto: se quita) (16/38) |
 | 2026-08-31 | **TJ-21** (PowerPoint ya no saca su ventana: la sacábamos nosotros), **TJ-20** (un fallo al configurar dejaba un proceso huérfano por intento) y **TJ-25** (perfil propio por proceso de LibreOffice, *verificación de punta a punta pendiente*) (12/38) |
-| 2026-08-31 | **TJ-12**: el instalador deja de decirle a quien usa LibreOffice que la app no funcionará, y el aviso se traduce a los 6 idiomas (9/38). Afinado del propio Tier J: las pruebas con Office dejan de ser inestables, y `HardcodedUiTextTests` caza un vigésimo literal que su `` no veía |
+| 2026-08-31 | **TJ-12**: el instalador deja de decirle a quien usa LibreOffice que la app no funcionará, y el aviso se traduce a los 6 idiomas (9/38). Afinado del propio Tier J: las pruebas con Office dejan de ser inestables, y `HardcodedUiTextTests` caza un vigésimo literal que su `\b` no veía |
 
 ## 🚫 Decisiones cerradas / qué NO portar de los hermanos
 
