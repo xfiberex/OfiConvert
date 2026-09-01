@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml.Media.Imaging;
 using OfiConvert.Core;
 
@@ -38,7 +38,9 @@ public partial class FileItem : ObservableObject
     public FileItem()
     {
         State = FileConversionState.Pending;
-        StateMessage = "Pendiente";
+        // Vacío, no "Pendiente": un modelo no sabe en qué idioma habla el usuario. El texto lo pone
+        // quien crea el FileItem (MainViewModel, con la clave StatePending); el estado real vive en State.
+        StateMessage = string.Empty;
         Options = new ConversionOptions();
         ValidationMessage = string.Empty;
     }
