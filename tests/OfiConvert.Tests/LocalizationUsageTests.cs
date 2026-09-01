@@ -87,6 +87,88 @@ public sealed class LocalizationUsageTests
         return used;
     }
 
+    /// <summary>
+    /// Claves <b>declaradas y sin usar</b> que ya estaban ahí. Es un trinquete: esta lista solo puede
+    /// MENGUAR.
+    /// </summary>
+    /// <remarks>
+    /// El escáner miraba solo en un sentido —que lo usado exista—, así que una clave traducida a ocho
+    /// idiomas y usada por nadie no molestaba a nadie. Hay <b>33</b>, y no se borran a lo bruto porque no
+    /// todas significan lo mismo: unas son restos, y otras son una función a medio construir cuya interfaz
+    /// nunca se escribió (`TJ-26`). Revisarlas una a una es `TJ-29`.
+    ///
+    /// Lo que este trinquete impide desde hoy es que aparezca la número 34. Al usar o borrar una, hay que
+    /// quitarla también de aquí — y el test lo exige, para que la lista no se quede mintiendo.
+    /// </remarks>
+    private static readonly HashSet<string> DeclaredButUnusedToday = new(StringComparer.Ordinal)
+    {
+        // Una función a medio construir: las opciones existen en el modelo y en los ocho diccionarios,
+        // pero no hay interfaz que las ofrezca. Ver TJ-26 — estas hay que USARLAS, no borrarlas.
+        "LblPageRange", "LblSlideRange", "LblSheetNames", "LblImageDpi", "LblImageQuality",
+        "TipPageRange", "TipSlideRange", "TipSheetNames",
+
+        // El menú de la bandeja, que se quedó sin traducir.
+        "TrayShow", "TrayExit", "TrayStartConversion", "TrayNotifSuccess", "TrayNotifErrors",
+
+        // Nombres de idioma: el desplegable los muestra en su propio idioma, no traducidos.
+        "LblSpanish", "LblEnglish", "LblFrench", "LblGerman",
+        "LblItalian", "LblJapanese", "LblPortuguese", "LblChinese",
+
+        // Columnas del historial, rotuladas de otra forma.
+        "LblDate", "LblDuration", "LblResult", "LblSourceFile", "LblDestination", "LblSuccess",
+
+        // Sueltas. OJO con AppTitle y BtnExport: parecen usadas de un grep rápido, pero lo que aparece en
+        // el código es "AppTitleBar" (un x:Name) y "BtnExportCsv"/"BtnExportTxt" (otras claves).
+        "AppTitle", "BtnDownloadUpdate", "BtnExport",
+        "MsgConversionComplete", "MsgOfficeNotFound", "StateSkipped",
+    };
+
+    /// <summary>
+    /// El sentido que faltaba: <b>nada declarado puede quedarse sin usar</b> a partir de ahora.
+    /// </summary>
+    /// <remarks>
+    /// Traducir a ocho idiomas una clave que nadie pide es trabajo tirado, y peor: esconde el caso de
+    /// TJ-06, donde la traducción existía —correcta, en los ocho— mientras el código escribía la frase en
+    /// español a fuego. Nadie se dio cuenta durante versiones porque <b>ningún test miraba en esta
+    /// dirección</b>.
+    /// </remarks>
+    [Fact]
+    public void NoAppearNewKeysDeclaredAndNeverUsed()
+    {
+        var declared = DeclaredKeys();
+        var used = UsedKeys();
+
+        Assert.True(used.Count > 50, $"El escaneo solo encontró {used.Count} claves usadas.");
+
+        var nuevas = declared
+            .Where(k => !used.ContainsKey(k) && !DeclaredButUnusedToday.Contains(k))
+            .OrderBy(k => k, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(nuevas.Count == 0,
+            "Claves nuevas declaradas y usadas por NADIE. Traducirlas a ocho idiomas no sirve de nada si "
+                + "el código no las pide — y así es como se coló TJ-06, con la traducción escrita y el "
+                + "texto en español a fuego al lado:\n  " + string.Join("\n  ", nuevas));
+    }
+
+    /// <summary>La lista de excepciones tiene que quedarse a cero, no envejecer llena de mentiras.</summary>
+    [Fact]
+    public void TheExceptionListDoesNotLie()
+    {
+        var declared = DeclaredKeys();
+        var used = UsedKeys();
+
+        var yaNoAplican = DeclaredButUnusedToday
+            .Where(k => !declared.Contains(k) || used.ContainsKey(k))
+            .OrderBy(k => k, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(yaNoAplican.Count == 0,
+            "Estas claves ya se usan o ya no existen, así que sobran de DeclaredButUnusedToday. Quítalas: "
+                + "una lista de excepciones que no se limpia deja de ser un trinquete y pasa a tapar "
+                + "casos nuevos:\n  " + string.Join("\n  ", yaNoAplican));
+    }
+
     [Fact]
     public void EveryKeyUsedInCodeOrXaml_ExistsInTheDictionary()
     {
