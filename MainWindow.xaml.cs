@@ -19,6 +19,10 @@ public sealed partial class MainWindow : Window
 {
     public MainViewModel ViewModel { get; }
     private H.NotifyIcon.TaskbarIcon? _trayIcon;
+    /// <summary>DPI de la pantalla donde está la ventana. 0 si el handle no vale.</summary>
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(IntPtr hwnd);
+
     /// <summary>Cierto mientras se descarga/instala una actualización: ahí manda el propio flujo.</summary>
     private bool _updateDownloadInProgress;
 
@@ -48,8 +52,20 @@ public sealed partial class MainWindow : Window
         // Mica backdrop
         SystemBackdrop = new MicaBackdrop();
 
-        // Window size
-        _appWindow.Resize(new SizeInt32(1050, 800));
+        // Tamaño de la ventana, ESCALADO POR DPI: Resize habla en píxeles físicos, así que 1050x800 a pelo
+        // solo es correcto al 100 %. Al 150 % la ventana nacía un tercio más pequeña de lo pensado, con el
+        // contenido dibujado más grande dentro. Y un mínimo, porque los desplegables tienen ancho fijo y
+        // con etiquetas alemanas el layout se rompe al encoger. (TJ-16.)
+        uint dpi = GetDpiForWindow(_hWnd);
+        var (ancho, alto) = WindowSizing.Default(dpi);
+        _appWindow.Resize(new SizeInt32(ancho, alto));
+
+        if (_appWindow.Presenter is OverlappedPresenter presenter)
+        {
+            var (anchoMin, altoMin) = WindowSizing.Minimum(dpi);
+            presenter.PreferredMinimumWidth = anchoMin;
+            presenter.PreferredMinimumHeight = altoMin;
+        }
 
         // Window closing event
         _appWindow.Closing += OnAppWindowClosing;

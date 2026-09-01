@@ -27,6 +27,14 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ### Corregido
 
+- **Las miniaturas de los documentos ya se ven.** La lista mostraba siempre el icono genérico: la
+  miniatura se pedía bien, pero la imagen se construía fuera del hilo de la interfaz —donde no se
+  puede— y el fallo se descartaba en silencio. Ahora se ve el documento, y de paso la app dejó de
+  escribir un PNG temporal por archivo encolado. *(Cierra [TJ-14](ROADMAP.md).)*
+- **La ventana abre del tamaño correcto en pantallas con escalado, y ya no se puede encoger hasta
+  romperla.** Con Windows al 125 %, 150 % o 200 % la ventana nacía más pequeña de lo pensado —al 150 %,
+  un tercio— porque el tamaño se pedía en píxeles crudos. Además no tenía mínimo: se podía arrastrar
+  hasta dejar los controles montados unos sobre otros. *(Cierra [TJ-16](ROADMAP.md).)*
 - **Instalar una actualización a mitad de una conversión ya no deja Office colgado.** El botón de
   instalar seguía disponible con un lote en marcha, y al pulsarlo la app se cerraba **por un camino que
   se saltaba la confirmación y la cancelación**: los Word, Excel o PowerPoint que estuvieran abiertos
@@ -54,6 +62,13 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
   que llevaba desde el Tier G pasando en verde sobre los seis controles de TJ-09 — cazó los
   `ToggleSwitch` de rebote, porque UI Automation los expone como botones. Ahora recorre también
   `ComboBox`, `Spinner` y `Edit` en las tres pestañas.
+- **La miniatura no toca el disco:** el trabajo pesado (shell + GDI+) devuelve **bytes** y el
+  `BitmapImage` se crea en el hilo de UI con `SetSourceAsync` sobre un flujo en memoria. Antes se
+  guardaba un PNG en `%TEMP%`, se le daba a `UriSource` —que carga en asíncrono— y se borraba acto
+  seguido: una carrera que se perdía en los dos sentidos. `ThumbnailServiceTests` comprueba que
+  encolar 50 archivos no deja ni un archivo detrás.
+- **El tamaño de la ventana se calcula en `Core/WindowSizing`**, escalado por el DPI de la pantalla, con
+  mínimo propio. Es aritmética pura, así que se prueba sin abrir una ventana.
 - **`ShutdownPathsTests`, nuevo:** ninguna salida de la app puede saltarse el cierre ordenado, el flujo
   de actualización comprueba `CanClose()` y el botón sigue al estado de la conversión. El cierre
   ordenado se extrajo a `ReleaseResources()`, que antes vivía dentro del manejador de cierre de ventana

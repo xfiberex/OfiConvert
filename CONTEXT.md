@@ -106,13 +106,13 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas unitarias | **272 pasan · 9 se omiten (1 de red + 6 que conducen Office + 2 que ejecutan LibreOffice) · 0 fallan** (total 281); con `OFICONVERT_OFFICE_TESTS=1` y `OFICONVERT_LIBREOFFICE_TESTS=1`, **281 pasan** |
+| Pruebas unitarias | **284 pasan · 9 se omiten (1 de red + 6 que conducen Office + 2 que ejecutan LibreOffice) · 0 fallan** (total 293); con `OFICONVERT_OFFICE_TESTS=1` y `OFICONVERT_LIBREOFFICE_TESTS=1`, **293 pasan** |
 | Pruebas de UI | **34 pasan · 0 fallan** (FlaUI, arrancan la app real **en la configuración compilada**) |
 | Publicado | **v2.7.0** (2.1.0 → 2.7.0 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
 | Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real. ⚠️ **Solo en un equipo CON Office**: ver `TJ-04` |
-| Pendiente de release | La verificación de TJ-25, el guardián de puertas de entorno, y **TJ-15 + TJ-09** |
-| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **39 tareas** (TJ-39 nació dentro del tier), **23 cerradas — las 7 Altas, completas**; quedan **4 Medias y 12 Bajas**. Lo cerrado se publicó en la **v2.7.0** |
+| Pendiente de release | La verificación de TJ-25, el guardián de puertas de entorno, y **TJ-15, TJ-09, TJ-14 y TJ-16** |
+| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **39 tareas** (TJ-39 nació dentro del tier), **25 cerradas — las 7 Altas, completas**; quedan **2 Medias** (TJ-22, TJ-26) **y 12 Bajas**. Lo cerrado se publicó en la **v2.7.0** |
 
 **Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **A–I cerrados; J abierto**
 
@@ -275,6 +275,16 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
     peculiaridad de esta máquina: PowerPoint solo admite una instancia de automatización por sesión.*
 - Excel→CSV exporta **una hoja** (la activa, o la indicada en `ConversionOptions.SheetNames`);
   PPT→PNG/JPG exporta **todas las diapositivas** a una subcarpeta con el nombre del archivo.
+
+- **Todo lo que se pinte en la UI se construye en el HILO DE UI.** Un `BitmapImage` creado en un hilo
+  del pool no vale, y el `catch` que se lo tragaba dejó la lista **sin una sola miniatura** durante
+  meses sin que nada lo dijera (TJ-14). Corolario: los `catch` mudos en el camino de la interfaz son
+  cómplices — registran, o no se ponen.
+- **`AppWindow.Resize` habla en píxeles FÍSICOS.** Sin escalar por `GetDpiForWindow`, la ventana nace más
+  pequeña de lo pensado en cuanto Windows no está al 100 % (al 150 %, un tercio). El tamaño y el mínimo
+  se calculan en `Core/WindowSizing`, y el mínimo se fija con
+  `OverlappedPresenter.PreferredMinimumWidth/Height`: los desplegables tienen ancho fijo y las etiquetas
+  alemanas son las más largas de los ocho idiomas (TJ-16).
 
 ### Salir de la app (no romper)
 
@@ -669,6 +679,46 @@ Menores, sin tier asignado:
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
+
+---
+
+### 2026-09-01 — TJ-14 y TJ-16: la miniatura que nunca se vio, y la ventana que encogía sola
+
+**TJ-14 — la ficha preguntaba «¿se ven hoy las miniaturas?». La respuesta es no, y nunca se vieron.**
+
+El código guardaba un PNG en `%TEMP%`, se lo daba a `BitmapImage.UriSource` —que carga de forma
+**asíncrona**— y lo borraba en el `finally` inmediato. La auditoría lo anotó como una carrera que se
+pierde en los dos sentidos: o se borra antes de cargar, o no se borra y `%TEMP%` se llena. La realidad era
+peor y más simple: **siempre ganaba la misma rama**. El `BitmapImage` se construía dentro de un
+`ContinueWith(..., TaskScheduler.Default)`, o sea **fuera del hilo de UI**, donde WinUI no permite
+crearlo; reventaba, el `catch { return null; }` se lo tragaba, y el borrado llegaba de sobra. Resultado:
+la lista mostraba siempre el icono genérico y `%TEMP%` quedaba limpio —la basura que la ficha temía **no
+llegó a existir**, porque el fallo anterior la evitaba—.
+
+Comprobado conduciendo la app real con un `.docx`, la misma ventana antes y después: con el código
+antiguo, icono genérico; con el nuevo, la miniatura del documento. Ahora el disco no se toca: el trabajo
+pesado devuelve **bytes** y el `BitmapImage` se crea en el hilo que llama, con `SetSourceAsync` sobre un
+flujo en memoria. Y el `catch` registra.
+
+> **Lo que enseña:** un `catch` mudo en el camino de la interfaz no «hace la app robusta», la deja
+> **rota en silencio**. Este llevaba desde la v1.0 escondiendo que la función entera no funcionaba, y
+> ninguna prueba podía verlo porque no había ninguna.
+
+**TJ-16 — la ventana.** `AppWindow.Resize` habla en píxeles **físicos**, así que `Resize(1050, 800)` solo
+es correcto al 100 %: al 150 % —un portátil cualquiera— el contenido se dibuja un 50 % más grande dentro
+de la misma caja y la ventana nace un tercio más pequeña de lo pensado. Y no había mínimo: se podía
+arrastrar hasta montar unos controles sobre otros, con desplegables de ancho fijo (110/140/160 px) y
+etiquetas alemanas dentro.
+
+El cálculo vive en `Core/WindowSizing` porque es aritmética pura y así se prueba sin abrir una ventana; el
+mínimo se fija con `OverlappedPresenter.PreferredMinimumWidth/Height`. **Verificado sobre la ventana
+real:** abre 1050×800 a 96 ppp y, forzada a 400×300 con `MoveWindow`, se queda en **880×620**.
+
+⚠️ **No verificado:** el aspecto a 150 % y 200 % en hardware — esta pantalla está al 100 %. Lo que se
+prueba es la aritmética que fallaba, no cómo se ve.
+
+**Pruebas:** 284 pasan · 9 omitidas · 0 fallan; UI 34 · 0. Build 0/0. `ThumbnailServiceTests` comprobado
+en rojo escribiendo el PNG a disco a propósito: 49 restos en `%TEMP%`.
 
 ---
 

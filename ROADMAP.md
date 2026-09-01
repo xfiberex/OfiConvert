@@ -369,7 +369,7 @@ translúcidas y el texto del menú pierde contraste. Arreglado con `ThemeDiction
 > `LocalizationUsageTests` vigila tres formas de pedir una clave y ya hay una cuarta. Los tres pasan en
 > verde sobre problemas de su propia especialidad.
 
-**Índice del tier:** **39 tareas** — 7 Altas · 20 Medias · 12 Bajas *(TJ-39 nació durante el propio tier)*. **Cerradas: 23** (TJ-01 a TJ-13, TJ-15, TJ-17 a TJ-21, TJ-23, TJ-24, TJ-25 y TJ-39) — **las 7 Altas, completas**; quedan **4 Medias y 12 Bajas**.
+**Índice del tier:** **39 tareas** — 7 Altas · 20 Medias · 12 Bajas *(TJ-39 nació durante el propio tier)*. **Cerradas: 25** (TJ-01 a TJ-21, más TJ-23, TJ-24, TJ-25 y TJ-39) — **las 7 Altas, completas**; quedan **2 Medias** (TJ-22, TJ-26) **y 12 Bajas**.
 Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 
 ### J.1 — Severidad ALTA
@@ -634,7 +634,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     línea exacta.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
 
-- [ ] **[TJ-14] Las miniaturas dependen de una carrera que se pierde en los dos sentidos** · Medio
+- [x] ✅ **[TJ-14] Las miniaturas dependían de una carrera que se perdía en los dos sentidos** · Medio *(cerrado 2026-09-01)*
   - **Área:** Código / UI · **Ubicación:** `Services/ThumbnailService.cs:64-83`
   - **Qué hacer:** se guarda un PNG temporal, se asigna `BitmapImage.UriSource` —que carga de forma
     **asíncrona**— y en el `finally` inmediato se **borra el archivo**. O el borrado falla (y quedan
@@ -645,6 +645,18 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
   - **Criterio de aceptación:** las miniaturas se ven en la lista y `%TEMP%` no acumula PNG tras
     encolar 50 archivos. *(Pendiente de verificación: no se ha comprobado si hoy se ven.)*
   - **Esfuerzo:** medio · **Depende de:** ninguna
+  - **Hecho:** el disco ya no se toca. `GetThumbnailBytesAsync` (shell + GDI+, en segundo plano) devuelve
+    **bytes**, y el `BitmapImage` se crea en el hilo que llama —la UI— con `SetSourceAsync` sobre un
+    `InMemoryRandomAccessStream`. El `catch` mudo pasa a registrar.
+  - **Verificado, y la pregunta abierta de la ficha respondida: NO se veían.** Conduciendo la app real
+    con un `.docx` (misma ventana, antes y después): con el código antiguo salía el icono genérico; con
+    el nuevo, la miniatura del documento. Y el `%TEMP%` estaba **limpio** con el código viejo — porque de
+    las dos ramas de la carrera **siempre ganaba la misma**: el `BitmapImage` se construía fuera del hilo
+    de UI, reventaba, el `catch` se lo tragaba y el borrado llegaba a tiempo. La miniatura no aparecía
+    nunca; la basura en `%TEMP%` no llegó a pasar.
+  - **Guardián:** `ThumbnailServiceTests` — hay PNG de verdad (firma incluida), un archivo inexistente no
+    revienta, y 50 miniaturas no dejan **nada** en `%TEMP%`. Comprobado en rojo escribiendo el PNG a
+    disco a propósito: 49 restos.
 
 - [x] ✅ **[TJ-15] Instalar una actualización a mitad de un lote saltaba el cierre protegido** · Medio *(cerrado 2026-09-01)*
   - **Área:** Arquitectura · **Ubicación:** `MainWindow.xaml.cs:355`; `MainWindow.xaml:69-71`
@@ -664,7 +676,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     una actualización publicada, y los UI tests no convierten). Comprobado en rojo quitando el
     `CanClose()` y el cierre ordenado.
 
-- [ ] **[TJ-16] La ventana no tiene tamaño mínimo y se dimensiona en píxeles crudos** · Medio
+- [x] ✅ **[TJ-16] La ventana no tenía tamaño mínimo y se dimensionaba en píxeles crudos** · Medio *(cerrado 2026-09-01)*
   - **Área:** Diseño responsivo · **Ubicación:** `MainWindow.xaml.cs:49`
   - **Qué hacer:** `_appWindow.Resize(new SizeInt32(1050, 800))` usa **píxeles físicos** sin escalar
     por DPI (a 150 % la ventana nace un tercio más pequeña de lo pensado) y no se fija
@@ -673,6 +685,12 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
   - **Criterio de aceptación:** la ventana no baja de un mínimo usable y abre del mismo tamaño aparente
     a 100 %, 150 % y 200 %.
   - **Esfuerzo:** medio · **Depende de:** ninguna
+  - **Hecho:** `Core/WindowSizing` —aritmética pura, probada sin abrir ventana— escala el tamaño por
+    `GetDpiForWindow`, y `OverlappedPresenter.PreferredMinimumWidth/Height` fija el mínimo (880×620 a
+    96 ppp, también escalado).
+  - **Verificado sobre la ventana real:** abre 1050×800 a 96 ppp, y forzándola a 400×300 con
+    `MoveWindow` se queda en **880×620**. ⚠️ El comportamiento a 150 % y 200 % **no** se ha comprobado en
+    hardware: esta pantalla está al 100 %. Lo que sí se prueba es la aritmética que fallaba.
 
 - [x] ✅ **[TJ-17] `HardcodedUiTextTests` solo miraba dos archivos de veintitantos** · Medio *(cerrado 2026-08-31)*
   - **Área:** QA · **Ubicación:** `tests/OfiConvert.Tests/HardcodedUiTextTests.cs:28-32`
@@ -1015,6 +1033,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 | 2026-08-31 | **TJ-06** (18 mensajes en español a fuego → claves traducidas) y **TJ-17** (el guardián miraba 2 archivos de 20) — **las 7 Altas cerradas** (8/38) |
 | 2026-09-01 | **TJ-25 verificado de punta a punta** con LibreOffice 26.8.0.3: ocho documentos, paralelismo 4, **8 de 8**. La premisa, medida: con perfil compartido se pierden **4 de 8** sin un solo mensaje de error — y la versión rota tardaba la mitad. `ReleaseScriptTests` deja de llevar a mano la lista de puertas de entorno: ahora las descubre |
 | 2026-09-01 | **TJ-15** (instalar una actualización a mitad de un lote se saltaba el cierre protegido) y **TJ-09** (siete controles mudos para el Narrador, con el guardián mirando solo botones) (23/39) |
+| 2026-09-01 | **TJ-14** (las miniaturas **no se veían nunca**: el `BitmapImage` se creaba fuera del hilo de UI y el fallo se tragaba) y **TJ-16** (ventana sin mínimo y sin escalar por DPI) (25/39) |
 | 2026-09-01 | **v2.7.0 publicada**: 21 de las 39 fichas del Tier J (las 7 Altas y 14 Medias). Primer corte con el pipeline que el propio tier arregló — notas desde el `CHANGELOG.md` (TJ-07), omitidas contadas aparte (TJ-08), UI tests sobre el binario Release (TJ-05). Quedan **6 Medias y 12 Bajas** |
 | 2026-08-31 | **TJ-18** (el escáner ya mira en los dos sentidos), **TJ-23** (cuatro paquetes redistribuidos sin atribuir, no uno), **TJ-08** (el corte dice pasan/omitidas/fallan) y **TJ-24** (la contraseña ya no llega a `signtool`). Y **TJ-39**, nuevo: dos clases de pruebas se peleaban por el idioma (21/39) |
 | 2026-08-31 | **TJ-11** (dos archivos homónimos se pisaban en paralelo), **TJ-13** (dos avisos a la vez = ninguno), **TJ-10** (la frase del resumen se cortaba en el flujo por defecto) y **TJ-19** (progreso muerto: se quita) (16/38) |
