@@ -17,12 +17,18 @@ namespace OfiConvert.Core;
 public static class OutputPath
 {
     /// <summary>Ruta de un ARCHIVO de salida, sin colisiones.</summary>
+    /// <param name="alsoTaken">
+    /// Rutas que hay que dar por ocupadas <b>aunque no existan en disco</b>. Es lo que permite que dos
+    /// conversiones simultáneas no se lleven el mismo nombre: <c>File.Exists</c> solo ve lo ya escrito, y
+    /// en un lote en paralelo el archivo de la otra conversión <b>todavía no está</b>. Ver
+    /// <see cref="OutputReservations"/>, que es quien lleva la cuenta.
+    /// </param>
     /// <exception cref="InvalidOperationException">Si la ruta resultante se saldría de <paramref name="outputFolder"/>.</exception>
-    public static string GetSafe(string outputFolder, string fileName)
+    public static string GetSafe(string outputFolder, string fileName, Func<string, bool>? alsoTaken = null)
     {
         var candidate = Confine(outputFolder, fileName, out var folder, out var safeName);
 
-        if (!File.Exists(candidate))
+        if (!Ocupado(candidate, alsoTaken))
             return candidate;
 
         var nameWithoutExt = Path.GetFileNameWithoutExtension(safeName);
@@ -31,10 +37,13 @@ public static class OutputPath
         for (int counter = 1; ; counter++)
         {
             candidate = Path.Combine(folder, $"{nameWithoutExt} ({counter}){ext}");
-            if (!File.Exists(candidate))
+            if (!Ocupado(candidate, alsoTaken))
                 return candidate;
         }
     }
+
+    private static bool Ocupado(string candidate, Func<string, bool>? alsoTaken)
+        => File.Exists(candidate) || (alsoTaken?.Invoke(candidate) ?? false);
 
     /// <summary>
     /// Ruta de una SUBCARPETA de salida (una presentación a PNG/JPG son N imágenes, y van juntas).
@@ -44,8 +53,23 @@ public static class OutputPath
     /// la misma presentación reescribe sus imágenes en la misma carpeta, que es lo que el usuario espera.
     /// La garantía que sí se mantiene es la de contención.
     /// </remarks>
-    public static string GetSafeFolder(string outputFolder, string folderName)
-        => Confine(outputFolder, folderName, out _, out _);
+    public static string GetSafeFolder(string outputFolder, string folderName, Func<string, bool>? alsoTaken = null)
+    {
+        var candidate = Confine(outputFolder, folderName, out var folder, out var safeName);
+
+        // Sin reservas se devuelve tal cual: reconvertir la misma presentación reescribe sus imágenes,
+        // que es lo que el usuario espera. Con reservas, en cambio, dos presentaciones DISTINTAS que se
+        // llamen igual dentro de un lote no pueden compartir carpeta: mezclarían sus diapositivas.
+        if (alsoTaken is null || !alsoTaken(candidate))
+            return candidate;
+
+        for (int counter = 1; ; counter++)
+        {
+            candidate = Path.Combine(folder, $"{safeName} ({counter})");
+            if (!alsoTaken(candidate))
+                return candidate;
+        }
+    }
 
     /// <summary>
     /// Compone <paramref name="outputFolder"/> + <paramref name="name"/> y <b>rechaza</b> lo que se salga

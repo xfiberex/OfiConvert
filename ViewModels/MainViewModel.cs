@@ -200,6 +200,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public void AddFiles(IEnumerable<string> fileNames)
     {
+        var demasiadoGrandes = new List<string>();
+
         foreach (var fileName in fileNames)
         {
             if (_selectedFilePaths.Contains(fileName))
@@ -216,8 +218,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
             if (fileInfo.Length > MaxFileSizeBytes)
             {
-                var msg = string.Format(GetLocalizedString("MsgFileTooBig"), fileInfo.Name);
-                _dialogService.ShowInformation(msg, GetLocalizedString("MsgWarning"));
+                // Se APUNTA y se avisa UNA vez al terminar el bucle. Avisar aquí abría un ContentDialog
+                // por archivo, y WinUI solo admite uno: el segundo lanzaba sobre un async void, así que la
+                // excepción salía sin dueño y el usuario no veía ni el aviso ni el error. (TJ-13.)
+                demasiadoGrandes.Add(fileInfo.Name);
                 continue;
             }
 
@@ -239,6 +243,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
             _ = LoadThumbnailAsync(fileItem);
         }
+
+        // Un solo aviso, con todos los nombres. Fuera del bucle a propósito: ver TooBigReport.
+        var aviso = TooBigReport.Compose(
+            demasiadoGrandes,
+            GetLocalizedString("MsgFileTooBig"),
+            GetLocalizedString("MsgFilesTooBig"));
+
+        if (aviso is not null)
+            _dialogService.ShowInformation(aviso, GetLocalizedString("MsgWarning"));
 
         UpdateTotals();
         PersistQueue();
@@ -411,6 +424,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _pauseEvent.Set();
         _cancellationTokenSource = new CancellationTokenSource();
         _parallelSemaphore = new SemaphoreSlim(MaxParallelConversions, MaxParallelConversions);
+
+        // Los nombres de salida se reparten AQUÍ, uno por lote. Sin esto, dos archivos distintos que se
+        // llamen igual (ventas\informe.docx y compras\informe.docx) preguntan a la vez si existe
+        // informe.pdf, los dos oyen que no —ninguno ha escrito todavía— y el segundo pisa al primero
+        // sin un solo error. (TJ-11.)
+        var reservas = new OutputReservations();
+
         var errors = new List<string>();
         var ct = _cancellationTokenSource.Token;
 
@@ -468,7 +488,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     fileItem.State = FileConversionState.Converting;
                     fileItem.StateMessage = GetLocalizedString("StateConverting");
 
-                    var outputPath = GetOutputPath(fileItem);
+                    var outputPath = GetOutputPath(fileItem, reservas);
                     var result = await ConvertWithRetryAsync(fileItem, outputPath, officeAvailable, ct);
 
                     if (result.Success)
@@ -565,12 +585,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
             // Wait if paused
             await Task.Run(() => _pauseEvent.Wait(ct), ct);
 
-            var progress = new Progress<ConversionProgress>(p =>
-            {
-                file.StateMessage = $"{GetLocalizedString("StateConverting")} {p.CurrentFile}/{p.TotalFiles}";
-            });
-
-            result = await service.ConvertAsync(file.Path, outputPath, file.Options, progress, ct);
+            // Aquí vivía un Progress<ConversionProgress> con el mensaje "Convirtiendo 3/7". No se
+            // ejecutaba NUNCA: ningún motor llamaba a Report. Se quita entero en vez de dejarlo (TJ-19);
+            // el porqué de no implementarlo está en IFileConversionService.
+            result = await service.ConvertAsync(file.Path, outputPath, file.Options, ct);
 
             if (result.Success) break;
 
@@ -579,7 +597,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             {
                 Log.Information("Intentando con LibreOffice como fallback para {File}", file.Name);
                 file.StateMessage = GetLocalizedString("MsgLibreOfficeFallback");
-                result = await _libreOfficeService.ConvertAsync(file.Path, outputPath, file.Options, progress, ct);
+                result = await _libreOfficeService.ConvertAsync(file.Path, outputPath, file.Options, ct);
                 if (result.Success) break;
             }
         }
@@ -605,7 +623,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
             ?? throw new InvalidOperationException($"No se pudo determinar la carpeta de '{fileItem.Path}'.");
     }
 
-    private string GetOutputPath(FileItem fileItem)
+    /// <param name="reservas">
+    /// Los nombres ya repartidos en este lote. Es lo que impide que dos conversiones simultáneas se
+    /// asignen la misma salida: el nombre se reserva al CALCULARLO, no al escribirlo.
+    /// </param>
+    private string GetOutputPath(FileItem fileItem, OutputReservations reservas)
     {
         var format = fileItem.Options.OutputFormat;
         var destination = GetDestinationFolder(fileItem);
@@ -615,17 +637,32 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             // Una presentación son N imágenes: van a su propia subcarpeta, con el nombre del documento.
             var folderName = Path.GetFileNameWithoutExtension(fileItem.Name);
-            var outputDir = OutputPath.GetSafeFolder(destination, folderName);
+            var outputDir = reservas.ReserveFolder(destination, folderName);
             Directory.CreateDirectory(outputDir);
             return outputDir;
         }
 
         var ext = OutputFormatHelper.GetFileExtension(format);
         var outputFileName = Path.ChangeExtension(fileItem.Name, ext);
-        return OutputPath.GetSafe(destination, outputFileName);
+        return reservas.ReserveFile(destination, outputFileName);
     }
 
     /// <summary>Retira del listado los archivos del lote recién convertido, respetando los que se hayan añadido mientras corría.</summary>
+    /// <summary>Dónde han quedado los archivos, dicho de forma que se entienda en los dos flujos.</summary>
+    /// <remarks>
+    /// 🔴 <b>Antes esto formateaba `MsgFilesSavedTo` con `OutputFolder` a secas</b>, y `OutputFolder` está
+    /// <b>vacío</b> mientras el usuario no elige carpeta — que desde el Tier G es el camino recomendado,
+    /// el de «sin configurar nada». Así que el flujo por defecto, el más usado, terminaba el resumen en
+    /// «<i>Archivos guardados en:</i>» y nada detrás. La frase se cortaba justo donde iba la respuesta.
+    ///
+    /// Sin carpeta elegida, cada archivo va junto a su original — que puede ser una carpeta distinta por
+    /// archivo, así que no hay una ruta que enseñar: hay que <b>decirlo con palabras</b>.
+    /// </remarks>
+    private string DondeSeGuardo()
+        => UseCustomOutputFolder && !string.IsNullOrWhiteSpace(OutputFolder)
+            ? string.Format(GetLocalizedString("MsgFilesSavedTo"), OutputFolder)
+            : GetLocalizedString("MsgFilesSavedNextToOriginal");
+
     private void RemoveBatchFromQueue(List<FileItem> batch)
     {
         foreach (var file in batch)
@@ -652,7 +689,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             ConversionResultTitle = GetLocalizedString("MsgConversionErrors");
             ConversionResultMessage = string.Format(GetLocalizedString("MsgFilesConverted"), SuccessfulConversions) + "\n" +
                                     string.Format(GetLocalizedString("MsgFilesFailed"), FailedConversions) + "\n\n" +
-                                    string.Format(GetLocalizedString("MsgFilesSavedTo"), OutputFolder);
+                                    DondeSeGuardo();
 
             ConversionErrors.Clear();
             foreach (var error in errors)
@@ -663,7 +700,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             ConversionResultTitle = GetLocalizedString("MsgConversionSuccess");
             ConversionResultMessage = string.Format(GetLocalizedString("MsgFilesConverted"), SuccessfulConversions) + "\n\n" +
-                                    string.Format(GetLocalizedString("MsgFilesSavedTo"), OutputFolder);
+                                    DondeSeGuardo();
             HasConversionErrors = false;
         }
 
