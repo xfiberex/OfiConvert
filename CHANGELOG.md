@@ -23,140 +23,135 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 > correspondiente, que es la fuente. **De la 2.7.0 en adelante, este archivo se escribe antes del
 > corte, no después.**
 
-## [Sin publicar]
+## [2.7.0] — 2026-09-01
+
+Versión de una sola cosa: **la re-auditoría externa del [Tier J](ROADMAP.md)**, 21 de sus 39 fichas.
+No trae funciones nuevas — trae que el programa deje de perder trabajo ajeno, de borrar archivos que no
+eran suyos y de hablar en español a quien eligió otro idioma. Cada corrección se comprobó **en rojo
+antes que en verde**: primero se vio fallar sin el arreglo.
 
 ### Corregido
 
-- **Cuatro componentes de terceros que el instalador redistribuye ya están atribuidos.**
-  `System.Drawing.Common`, `Microsoft.Win32.SystemEvents`, `System.Numerics.Tensors` y
-  `H.GeneratedIcons.System.Drawing` viajaban dentro del programa sin aparecer en los avisos legales. Los
-  cuatro son MIT, comprobado en la ficha de cada paquete. *(Cierra [TJ-23](ROADMAP.md).)*
-- **Convertir dos archivos con el mismo nombre ya no deja uno solo.** Si en el lote había un
-  `informe.docx` en dos carpetas distintas y todo iba a una carpeta común, las dos conversiones se
-  asignaban `informe.pdf` —ninguna había escrito todavía— y la segunda **pisaba a la primera**. El
-  programa daba las dos por buenas y aparecía un archivo. Pasaba igual con dos presentaciones homónimas
-  convertidas a imágenes, que mezclaban sus diapositivas en la misma carpeta. *(Cierra
-  [TJ-11](ROADMAP.md).)*
-- **Soltar varios archivos demasiado grandes ya avisa de todos, una sola vez.** Con dos o más por encima
-  de 500 MB, el segundo aviso se abría encima del primero y **fallaba en silencio**: no se veía ni el
-  aviso ni el error, solo archivos que no aparecían en la lista. Ahora sale un único mensaje que los
-  nombra. *(Cierra [TJ-13](ROADMAP.md).)*
-- **El resumen ya no termina en «Archivos guardados en:» y nada.** Cuando no elegías carpeta de destino
-  —que es el camino recomendado— la frase se cortaba justo donde iba la respuesta. Ahora dice que cada
-  archivo quedó junto a su original. *(Cierra [TJ-10](ROADMAP.md).)*
-- **Convertir presentaciones ya no te planta PowerPoint delante.** Durante todo el lote se abría la
-  ventana de PowerPoint encima de lo que estuvieras haciendo. No hacía falta: la aplicación **pedía** esa
-  ventana sin necesitarla. Ahora convierte sin que aparezca nada. *(Cierra [TJ-21](ROADMAP.md).)*
-- **Ya no quedan procesos de Office colgados cuando algo falla al arrancarlos.** Si la preparación de
-  Word o Excel fallaba —pasa con versiones que no admiten alguna de las opciones que se les piden—, el
-  proceso se quedaba vivo e invisible, **uno por cada archivo del lote**, comiendo memoria hasta reiniciar
-  el equipo. *(Cierra [TJ-20](ROADMAP.md).)*
-- **Convertir varios documentos a la vez con LibreOffice ya no se estorba a sí mismo.** LibreOffice no
-  admite dos conversiones simultáneas que compartan su configuración de usuario: la segunda se enganchaba
-  a la primera o fallaba con un error que no parecía de conversión. Ahora cada una corre por su cuenta.
-  *(Cierra [TJ-25](ROADMAP.md); pendiente de una prueba de punta a punta en un equipo con LibreOffice.)*
-- **El instalador ya no te dice que la app no funcionará si usas LibreOffice.** Cuando no encontraba
-  Microsoft Office avisaba de que OfiConvert «no funcionará hasta que instale Microsoft Office» — y eso
-  es falso: LibreOffice sirve igual, y el propio programa lo anuncia. Ahora comprueba **los dos**
-  motores y solo avisa si no hay ninguno; además el aviso está traducido a los **seis** idiomas del
-  instalador, en vez de salir siempre en español. *(Cierra [TJ-12](ROADMAP.md).)*
-- **Los mensajes de error ya salen en tu idioma.** Dieciocho avisos —«el archivo está protegido con
-  contraseña», «el archivo está bloqueado por otro proceso», los fallos de LibreOffice y de Office—
-  aparecían **en español en los ocho idiomas**: en el panel de resultados, en la columna *Error* del
-  historial y en el CSV/TXT exportado. Varios de ellos ya estaban traducidos desde hace versiones, sin
-  que nadie los usara. *(Cierra [TJ-06](ROADMAP.md).)*
 - **Convertir presentaciones ya no cierra el PowerPoint que tengas abierto.** Si estabas trabajando en
   una presentación **sin guardar**, convertir cualquier `.ppt`/`.pptx` se enganchaba a esa misma sesión
   de PowerPoint y al terminar **la cerraba, sin preguntar**: se perdía lo que no estuviera guardado.
   Ahora la app solo cierra el PowerPoint que ha abierto ella, y el que ya estaba abierto lo deja como
   lo encontró. *(Cierra [TJ-01](ROADMAP.md).)*
-- **Las presentaciones se convierten de una en una.** PowerPoint no admite dos sesiones a la vez —
-  Windows abre una sola, por mucho que se le pidan más—, así que convertir varias presentaciones en
-  paralelo las hacía competir por la misma. Word y Excel siguen convirtiéndose en paralelo, que ahí sí
-  hay una sesión por documento.
 - **Convertir con LibreOffice podía BORRAR un archivo anterior.** Si en la carpeta de destino ya había
   un `informe.pdf` y se convertía `informe.docx`, LibreOffice escribía encima del que estaba y la app
   renombraba el nuevo a `informe (1).pdf`: el archivo de antes **desaparecía**, en contra de lo que
   promete el programa («sin sobrescrituras»). Ahora cada conversión escribe en una carpeta temporal
   propia y de ahí se mueve al destino, que se vuelve a comprobar en el último momento: los dos archivos
   quedan intactos. *(Cierra [TJ-03](ROADMAP.md).)*
+- **Convertir dos archivos con el mismo nombre ya no deja uno solo.** Si en el lote había un
+  `informe.docx` en dos carpetas distintas y todo iba a una carpeta común, las dos conversiones se
+  asignaban `informe.pdf` —ninguna había escrito todavía— y la segunda **pisaba a la primera**. El
+  programa daba las dos por buenas y aparecía un archivo. Pasaba igual con dos presentaciones homónimas
+  convertidas a imágenes, que mezclaban sus diapositivas en la misma carpeta. *(Cierra
+  [TJ-11](ROADMAP.md).)*
 - **Una conversión con LibreOffice podía quedarse congelada para siempre.** Los avisos que escribe
   LibreOffice se acumulaban sin que nadie los leyera; al llenarse el búfer del sistema (unos 4 KB), el
   programa se bloqueaba a mitad y la conversión se quedaba ahí, sin error y sin terminar, ocupando una
   de las plazas de conversión simultánea — con unas cuantas así, la app dejaba de convertir. Basta un
   documento con bastantes avisos de fuentes o macros para llegar a ese tamaño. *(Cierra
   [TJ-02](ROADMAP.md).)*
+- **La actualización automática podía quedarse colgada en los equipos sin Office.** El instalador avisa
+  cuando no encuentra Microsoft Office, y ese aviso salía **también en modo silencioso** — que es como
+  lo lanza la propia app al actualizarse, con la ventana ya cerrada. Quien solo tiene **LibreOffice**
+  (una instalación que OfiConvert soporta a propósito) veía desaparecer el programa y quedarse un
+  diálogo que no había pedido, o la actualización parada esperando un clic. Ahora el aviso se calla en
+  las instalaciones silenciosas. *(Cierra [TJ-04](ROADMAP.md).)*
+- **Ya no quedan procesos de Office colgados cuando algo falla al arrancarlos.** Si la preparación de
+  Word o Excel fallaba —pasa con versiones que no admiten alguna de las opciones que se les piden—, el
+  proceso se quedaba vivo e invisible, **uno por cada archivo del lote**, comiendo memoria hasta
+  reiniciar el equipo. *(Cierra [TJ-20](ROADMAP.md).)*
+- **Los mensajes de error ya salen en tu idioma.** Dieciocho avisos —«el archivo está protegido con
+  contraseña», «el archivo está bloqueado por otro proceso», los fallos de LibreOffice y de Office—
+  aparecían **en español en los ocho idiomas**: en el panel de resultados, en la columna *Error* del
+  historial y en el CSV/TXT exportado. Varios de ellos ya estaban traducidos desde hacía versiones, sin
+  que nadie los usara. *(Cierra [TJ-06](ROADMAP.md).)*
+- **Convertir presentaciones ya no te planta PowerPoint delante.** Durante todo el lote se abría la
+  ventana de PowerPoint encima de lo que estuvieras haciendo. No hacía falta: la aplicación **pedía**
+  esa ventana sin necesitarla. Ahora convierte sin que aparezca nada. *(Cierra [TJ-21](ROADMAP.md).)*
+- **Convertir varios documentos a la vez con LibreOffice ya no se estorba a sí mismo.** LibreOffice no
+  admite dos conversiones simultáneas que compartan su configuración de usuario: la segunda se
+  enganchaba a la primera o fallaba con un error que no parecía de conversión. Ahora cada una corre por
+  su cuenta. *(Cierra [TJ-25](ROADMAP.md); pendiente de una prueba de punta a punta en un equipo con
+  LibreOffice.)*
+- **Soltar varios archivos demasiado grandes ya avisa de todos, una sola vez.** Con dos o más por
+  encima de 500 MB, el segundo aviso se abría encima del primero y **fallaba en silencio**: no se veía
+  ni el aviso ni el error, solo archivos que no aparecían en la lista. Ahora sale un único mensaje que
+  los nombra. *(Cierra [TJ-13](ROADMAP.md).)*
+- **El resumen ya no termina en «Archivos guardados en:» y nada.** Cuando no elegías carpeta de destino
+  —que es el camino recomendado— la frase se cortaba justo donde iba la respuesta. Ahora dice que cada
+  archivo quedó junto a su original. *(Cierra [TJ-10](ROADMAP.md).)*
 - **Un fallo silencioso de LibreOffice ya se cuenta.** Cuando terminaba «bien» pero sin generar nada
   —pasa con formatos que su filtro no soporta para ese documento— la app daba la conversión por buena y
   apuntaba en el historial un archivo que no existía. Ahora se informa del fallo.
-- **La actualización automática podía quedarse colgada en los equipos sin Office.** El instalador
-  avisa cuando no encuentra Microsoft Office, y ese aviso salía **también en modo silencioso** — que es
-  como lo lanza la propia app al actualizarse, con la ventana ya cerrada. Quien solo tiene
-  **LibreOffice** (una instalación que OfiConvert soporta a propósito) veía desaparecer el programa y
-  quedarse un diálogo que no había pedido, o la actualización parada esperando un clic. Ahora el aviso
-  se calla en las instalaciones silenciosas. *(Cierra [TJ-04](ROADMAP.md).)*
+- **El instalador ya no te dice que la app no funcionará si usas LibreOffice.** Cuando no encontraba
+  Microsoft Office avisaba de que OfiConvert «no funcionará hasta que instale Microsoft Office» — y eso
+  es falso: LibreOffice sirve igual, y el propio programa lo anuncia. Ahora comprueba **los dos**
+  motores y solo avisa si no hay ninguno; además el aviso está traducido a los **seis** idiomas del
+  instalador, en vez de salir siempre en español. *(Cierra [TJ-12](ROADMAP.md).)*
+- **Cuatro componentes de terceros que el instalador redistribuye ya están atribuidos.**
+  `System.Drawing.Common`, `Microsoft.Win32.SystemEvents`, `System.Numerics.Tensors` y
+  `H.GeneratedIcons.System.Drawing` viajaban dentro del programa sin aparecer en los avisos legales.
+  Los cuatro son MIT, comprobado en la ficha de cada paquete. *(Cierra [TJ-23](ROADMAP.md).)*
 
-### Interno
+### Cambiado
 
-- El corte de versión ya distingue **omitido** de **correcto**: lee el `.trx` e imprime pasan/omitidas/
-  fallan por proyecto, nombrando las omisiones no previstas. Antes salía en verde con pruebas omitidas
-  sin decirlo. *(Cierra [TJ-08](ROADMAP.md).)*
-- La contraseña del certificado de firma deja de viajar como texto y **ya no llega a la línea de comandos
-  de `signtool`**, donde cualquier proceso del equipo podía leerla. *(Cierra [TJ-24](ROADMAP.md).)*
-- El escáner de claves de traducción mira ya en los dos sentidos: además de comprobar que lo usado
-  exista, avisa de lo declarado y nunca usado. *(Cierra [TJ-18](ROADMAP.md).)*
-- Dos clases de pruebas se pisaban el idioma entre ellas —estado estático compartido— y fallaban 3 de
-  cada 8 veces. *(Cierra [TJ-39](ROADMAP.md), hallazgo aparecido durante el propio tier.)*
-
-- Se retira el mecanismo de progreso por archivo: atravesaba toda la API, prometía un «Convirtiendo 3/7»
-  y **no se ejecutaba nunca**, porque ningún motor puede informar del avance de una conversión. El
-  progreso del lote, que sí es real, no cambia. *(Cierra [TJ-19](ROADMAP.md).)*
-- Tres guardianes nuevos para clases de fallo, no para casos: ningún diálogo dentro de un bucle, ningún
-  `IProgress<>` sin reportar, y los nombres de salida repartidos con candado.
-- **307 pruebas** (antes 268). Las correcciones, comprobadas en rojo.
-
-- **249 pruebas** (antes 237): +9 sobre la línea de comandos de LibreOffice y +3 con Office real
-  (PowerPoint sin ventana, y los dos caminos de arranque de Word). Las tres correcciones, comprobadas en
-  rojo.
-
-- Afinado del propio Tier J, hecho al validar en un segundo equipo: (a) las tres pruebas que conducen
-  Office eran **inestables** —fallaban una de cada dos veces por su propia limpieza, no por el
-  producto—; ahora esperan a que PowerPoint se cierre de verdad en vez de darlo por hecho. (b) El
-  cazador de texto sin traducir tenía un hueco en su expresión regular: `StateMessage = "Pendiente"`
-  no casaba, y ahí seguía el literal. (c) Dos guardianes nuevos sobre el instalador. Los tres
-  arreglos, comprobados en rojo.
-
+- **Las presentaciones se convierten de una en una.** PowerPoint no admite dos sesiones a la vez
+  —Windows abre una sola, por mucho que se le pidan más—, así que convertir varias presentaciones en
+  paralelo las hacía competir por la misma. Word y Excel siguen convirtiéndose en paralelo, que ahí sí
+  hay una sesión por documento.
 - **Las notas de un release ya cuentan qué cambió.** Hasta ahora `release.ps1` publicaba en GitHub el
   mismo texto de plantilla en todas las versiones («Instalador self-contained para Windows x64…»), así
   que quien abría un release no podía saber qué traía. Ahora las notas **son la sección `## [X.Y.Z]` de
   este archivo**, y el corte **aborta antes de compilar nada** si esa sección no está escrita — lo que
   obliga a redactarla antes de cortar. `-NotesFile` sigue mandando sobre todo esto.
-  *(Cierra [TJ-07](ROADMAP.md); ver [`CONTEXT.md`](CONTEXT.md).)*
-- **Dos pruebas nuevas** (`ChangelogTests`) que fallan en `dotnet test` —y no a mitad del corte— si la
-  versión del `.csproj` no está contada en el changelog, o si una versión publicada se quedó sin fecha.
-- **Las pruebas de UI ya conducen el binario que se publica.** El corte compilaba en Release y luego
-  corría `dotnet test` sin `-c Release`, así que MSBuild reconstruía la app en **Debug** y las 30
-  pruebas de interfaz validaban ese binario, no el Release que empaqueta el instalador. `AppFixture`
-  ya no elige "el `.exe` más reciente": exige el de la configuración compilada, deja por escrito cuál
-  conduce y `DrivenBinaryTests` falla si no coinciden. *(Cierra [TJ-05](ROADMAP.md).)*
+  *(Cierra [TJ-07](ROADMAP.md).)*
+
+### Interno
+
 - **Los servicios devuelven claves de traducción, no frases** (`Core/UserMessage`), y la traducción
   ocurre en un único borde (`LocalizationService.Translate`). Un servicio que corre en un hilo de fondo
   no sabe —ni debe saber— en qué idioma está la interfaz: devolviendo texto, no había forma de acertar.
-- **El guardián de textos en duro pasa de dos archivos a todos** (TJ-17): se descubren solos, y además
-  mira los literales que viajan **como argumento** (`ShowError("…")`, `Failed("…")`), que es por donde
-  se colaron los 18. Comprobado en rojo reintroduciendo dos de ellos. El escáner de claves aprende
-  también las formas nuevas, en el mismo cambio que las crea.
-- **Pruebas nuevas contra el Office real** (`PowerPointSharedInstanceTests`), omitidas por defecto y
-  activables con `OFICONVERT_OFFICE_TESTS=1`: comprueban la premisa (dos activaciones de PowerPoint
-  dejan **un** proceso; Word deja dos) y el escenario completo de TJ-01. El corte de versión no depende
-  de ellas.
+- **Las pruebas de UI ya conducen el binario que se publica.** El corte compilaba en Release y luego
+  corría `dotnet test` sin `-c Release`, así que MSBuild reconstruía la app en **Debug** y las pruebas
+  de interfaz validaban ese binario, no el Release que empaqueta el instalador. `AppFixture` ya no
+  elige «el `.exe` más reciente»: exige el de la configuración compilada, deja por escrito cuál conduce
+  y `DrivenBinaryTests` falla si no coinciden. *(Cierra [TJ-05](ROADMAP.md).)*
 - **La ejecución de procesos externos se centraliza en `Services/ProcessRunner`**, que lee `stdout` y
   `stderr` antes de esperar al proceso. `ProcessRunnerTests` reproduce el cuelgue con 64 KB de salida
   —dieciséis veces el búfer— sin necesitar LibreOffice instalado, y la lógica de destino vive ahora en
   `Core/LibreOfficeOutput`, con pruebas propias.
-- **Tres guardianes nuevos sobre el script del instalador** (`InstallerScriptTests`): ningún `MsgBox`
-  sin la guarda `WizardSilent`, el alcance sigue fijándose por línea de comandos y los modificadores
-  del updater se arman en `Core/InstallScope` —probado— y no a mano en el code-behind.
+- **El corte distingue ya «omitida» de «correcta»:** lee el `.trx` e imprime pasan/omitidas/fallan por
+  proyecto y nombra las omisiones no previstas. Antes salía en verde con pruebas omitidas sin decirlo,
+  porque el código de salida de `dotnet test` no separa un caso del otro. *(Cierra
+  [TJ-08](ROADMAP.md).)*
+- **La contraseña del certificado de firma deja de viajar como texto y ya no llega a la línea de
+  comandos de `signtool`**, donde cualquier proceso del equipo podía leerla: el `.pfx` se importa al
+  almacén, se firma por huella y el certificado se retira al terminar. *(Cierra [TJ-24](ROADMAP.md).)*
+- **Se retira el mecanismo de progreso por archivo:** atravesaba toda la API, prometía un
+  «Convirtiendo 3/7» y **no se ejecutaba nunca**, porque ningún motor puede informar del avance de una
+  conversión. El progreso del lote, que sí es real, no cambia. *(Cierra [TJ-19](ROADMAP.md).)*
+- **Guardianes nuevos, para clases de fallo y no para casos sueltos:** ningún texto de interfaz en duro
+  en *ningún* archivo —antes se miraban dos de veintitantos, y los 18 literales de TJ-06 vivían todos
+  fuera (*cierra [TJ-17](ROADMAP.md)*)—, ningún diálogo dentro de un bucle, ningún `IProgress<>` sin
+  reportar, los nombres de salida repartidos con candado, tres sobre el script del instalador
+  (`InstallerScriptTests`), dos sobre este changelog (`ChangelogTests`, que falla en `dotnet test` y no
+  a mitad de un corte) y uno sobre los paquetes redistribuidos.
+- **El escáner de claves de traducción mira ya en los dos sentidos:** además de comprobar que lo usado
+  exista, avisa de lo declarado y nunca usado. *(Cierra [TJ-18](ROADMAP.md).)*
+- **Dos clases de pruebas se pisaban el idioma entre ellas** —estado estático compartido, que aquí es
+  un invariante y no un descuido— y fallaban 3 de cada 8 ejecuciones. *(Cierra [TJ-39](ROADMAP.md),
+  hallazgo aparecido durante el propio tier, en un corte de prueba.)*
+- **Pruebas contra el Office real** (`PowerPointSharedInstanceTests`, `OfficeAppLifetimeTests`),
+  omitidas por defecto y activables con `OFICONVERT_OFFICE_TESTS=1`: comprueban la premisa (dos
+  activaciones de PowerPoint dejan **un** proceso; Word deja dos) y el escenario completo de TJ-01. El
+  corte de versión no depende de ellas.
+- **307 pruebas** (276 unitarias + 31 de interfaz), frente a **230** en la v2.6.1. Las dos cifras están
+  medidas ejecutando cada árbol, no estimadas contando atributos.
 
 ---
 

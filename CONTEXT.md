@@ -19,9 +19,9 @@
 | | |
 |---|---|
 | **Repositorio** | https://github.com/xfiberex/OfiConvert |
-| **Versión publicada** | **2.6.1** (2026-08-29) — los **desplegables opacos** sobre Mica, sobre el **pase de UX/UI** que trajo la 2.6.0 (3 bugs vistos solo mirando la app). Instalador sin firmar, **con `.sha256`** |
+| **Versión publicada** | **2.7.0** (2026-09-01) — **21 de las 39 fichas del [Tier J](ROADMAP.md)**: las 7 Altas y 14 Medias. Deja de cerrarle al usuario su PowerPoint sin guardar, de borrar archivos ajenos por la ruta de LibreOffice y de hablar en español en los ocho idiomas. Instalador sin firmar, **con `.sha256`** |
 | **En `main`, sin publicar** | — (al día) |
-| **Estado** | Funcional; Tiers 0 y A–I ✅. **Hoja de ruta REABIERTA**: [Tier J](ROADMAP.md) (re-auditoría del 2026-08-29) — 38 tareas, **7 Altas**, 0 cerradas |
+| **Estado** | Funcional; Tiers 0 y A–I ✅. **Hoja de ruta REABIERTA**: [Tier J](ROADMAP.md) (re-auditoría del 2026-08-29) — **39 tareas, 21 cerradas** (las **7 Altas**, completas); quedan 6 Medias y 12 Bajas |
 | **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · **xUnit** + **FlaUI** · Inno Setup 6 |
 | **Licencia** | **MIT** ([`LICENSE`](LICENSE)) — pero **lo que redistribuye NO es todo MIT**: ver §4 *Legal* |
 | **Pruebas** | **307**: 276 unitarias (269 pasan + 7 omitidas: 1 de red con `OFICONVERT_NETWORK_TESTS=1` y 6 que conducen Office con `OFICONVERT_OFFICE_TESTS=1`) + **31 de UI** (FlaUI, contra la app real) |
@@ -108,11 +108,11 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
 | Pruebas unitarias | **269 pasan · 7 se omiten (1 de red + 6 que conducen Office) · 0 fallan**; con `OFICONVERT_OFFICE_TESTS=1`, **276 pasan** |
 | Pruebas de UI | **31 pasan · 0 fallan** (FlaUI, arrancan la app real **en la configuración compilada**) |
-| Publicado | **v2.6.1** (2.1.0 → 2.6.1 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
+| Publicado | **v2.7.0** (2.1.0 → 2.7.0 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
 | Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real. ⚠️ **Solo en un equipo CON Office**: ver `TJ-04` |
-| Pendiente de release | — (la 2.6.1 está publicada; nada en `main` sin publicar) |
-| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **38 tareas, 8 cerradas (TJ-01 a TJ-07 y TJ-17) — las 7 Altas, completas**. Verificado en verde antes de auditar: build 0/0 y 199 · 1 omitida · 0 fallos |
+| Pendiente de release | — (la 2.7.0 está publicada; nada en `main` sin publicar) |
+| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **39 tareas** (TJ-39 nació dentro del tier), **21 cerradas — las 7 Altas, completas**; quedan **6 Medias y 12 Bajas**. Lo cerrado se publicó en la **v2.7.0** |
 
 **Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **A–I cerrados; J abierto**
 
@@ -194,7 +194,7 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
   por bueno una vez sin efecto ninguno, y solo se destapó **ampliando la captura** y viendo que el moteado
   del acrílico seguía ahí. *Corolario: un override de tema que "no se ve" casi nunca es el color mal
   elegido; es que la clave no se está resolviendo.*
-- **Cómo se comprueba esto sin ojo clínico:** `.	ools\capture-dropdown.ps1`. Abre los cuatro `ComboBox`
+- **Cómo se comprueba esto sin ojo clínico:** `.\tools\capture-dropdown.ps1`. Abre los cuatro `ComboBox`
   y **cuenta los colores** del fondo del popup. Acrílico = decenas de valores vecinos (`#2B`–`#30`, el
   ruido): 38–68% de "cuota de ruido". Sólido = **un** valor, el que se puso: 0%. Así se distingue "está
   opaco" de "parece opaco" sin discutir sobre una captura. Ojo con el `.exe` que mide: coge el más reciente
@@ -644,6 +644,8 @@ Menores, sin tier asignado:
 
 | Versión | Qué trajo |
 |---|---|
+| **2.7.0** | **Tier J (21 de 39 fichas)** — re-auditoría externa. Deja de **cerrar el PowerPoint del usuario** con trabajo sin guardar, de **borrar un archivo anterior** por la ruta de LibreOffice, de **pisar dos archivos homónimos** en el mismo lote y de mostrar **18 mensajes de error en español** en los ocho idiomas; el instalador deja de contradecir al producto sobre LibreOffice. **307 pruebas.** |
+| **2.6.1** | Los **desplegables se veían borrosos** sobre Mica: fondo sólido en claro, oscuro y alto contraste. El arreglo va en `App.xaml` **después** de `XamlControlsResources` — en la raíz no se aplica. **230 pruebas.** |
 | **2.6.0** | **Pase de UX/UI sobre capturas** — galería de todos los estados (×claro/oscuro, incluidos convirtiendo/resultados con conversión real) que destapó **3 bugs** vistos solo mirando la app (historial que no distinguía éxito de fallo, diálogos que ignoraban el tema, panel de resultados con tilde verde sobre errores) + pulido (destructivos *outline*, jerarquía de tarjetas, layout, diálogo legal, duración con unidad). **230 pruebas.** |
 | **2.5.0** | **Tier H** — el instalador probado de punta a punta: **`/VERYSILENT` no era silencioso** (bloqueaba con un diálogo modal), la app **se cerraba aunque el usuario rechazara el UAC**, y el flujo de actualización estaba **en español a fuego**. **226 pruebas.** |
 | **2.4.0** | **Tiers E, F y G** — legal in-app (licencia y avisos **embebidos**, 8 idiomas), `THIRD-PARTY-NOTICES.txt` **verificado paquete a paquete** (no todo es MIT), capturas regenerables, README público, infraestructura agéntica, y **UI/UX: 3 bugs** (contador de reintentos invertido, carpeta de destino que prometía lo que no hacía, historial que se borraba sin preguntar) + **accesibilidad**. **212 pruebas.** |
@@ -652,6 +654,43 @@ Menores, sin tier asignado:
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
+
+---
+
+### 2026-09-01 — El corte de la v2.7.0, y dos formas de medir mal
+
+Primera versión cortada con el pipeline que el propio Tier J arregló: las notas salen del `CHANGELOG.md`
+(TJ-07), el corte imprime pasan/omitidas/fallan por proyecto (TJ-08) y las pruebas de UI conducen el
+binario Release que empaqueta el instalador (TJ-05). El ensayo (`-DryRun`) salió limpio a la primera:
+269/7/0 y 31/0/0, sin omisiones imprevistas, instalador de 58,2 MB con su `.sha256`.
+
+Lo que costó trabajo no fue cortar, sino **escribir un número honesto**.
+
+**1. El `[Sin publicar]` no era una nota de release, era un sedimento.** Se había ido escribiendo tanda a
+tanda, así que contenía **dos líneas base contradictorias** — «307 pruebas (antes 268)» y «249 (antes
+237)»— y un cambio de comportamiento (PowerPoint pasa a convertir en serie) archivado como corrección.
+Ninguna de las dos cifras era la de la v2.6.1: eran fotos de mitad del tier, ciertas cuando se
+escribieron y falsas al leerlas juntas en un release. **Una sección de changelog se redacta entera al
+cortar, no se acumula**; lo que se acumula es material para redactarla.
+
+**2. La línea base había que medirla, y el primer intento midió otra cosa.** Para decir «307 frente a
+N» hice un `git worktree` sobre `v2.6.1` y lo puse **bajo el scratchpad de la sesión**, cuya ruta es
+larga. Resultado: **177 de 200 pruebas en rojo** con
+`DllNotFoundException: Microsoft.WindowsAppRuntime.dll ... el nombre del archivo o la extensión es
+demasiado largo (0x800700CE)`. No era la v2.6.1: era **MAX_PATH**. Y lo peligroso es que también
+falseaba el **recuento** — decía 196 pruebas donde hay 200, porque algunas se enumeran leyendo archivos
+y esa enumeración también fallaba. Repetido en `C:\ofc-b261`: **200 · 1 omitida · 0 fallos**, verde.
+Base real **230** (200 unitarias + 30 de UI) frente a **307** de hoy (276 + 31).
+
+> **Regla, hermana de la de TJ-39:** un árbol de trabajo para medir va en una **ruta corta**. Un WinUI 3
+> que no arranca en un `git worktree` casi nunca es culpa del commit que se está midiendo. Es la
+> **segunda** vez que MAX_PATH muerde a este proyecto: ya obligaba a publicar en `%TEMP%` (§4,
+> *Build y publicación*), porque el publish self-contained del Windows App SDK trae nombres de hasta
+> 76 caracteres.
+
+Y una corrección al pasar: TJ-06 fueron **18** mensajes de error. El literal número 19 que aparece en el
+registro del 2026-08-31 (`StateMessage = "Pendiente"`) lo cazó el guardián de TJ-17, pero es un **estado
+de la lista**, no un aviso de error; contarlo dentro de TJ-06 inflaba la cifra de cara al usuario.
 
 ---
 

@@ -23,8 +23,11 @@
 > **Tier I — Pase de UX/UI sobre capturas ✅** (v2.6.0): fotografiar **todos** los estados en claro y
 > oscuro destapó **tres bugs que el XAML no delataba**. **230 pruebas.**
 >
-> **v2.6.1** (2026-08-29): el arreglo de los desplegables borrosos sobre Mica. No queda nada en `main`
-> sin publicar.
+> **v2.6.1** (2026-08-29): el arreglo de los desplegables borrosos sobre Mica.
+>
+> **v2.7.0** (2026-09-01): **21 de las 39 fichas del Tier J** — las 7 Altas y 14 Medias. Deja de
+> cerrarle al usuario su PowerPoint sin guardar, de borrar archivos ajenos por la ruta de LibreOffice
+> y de hablar en español en los ocho idiomas. **307 pruebas.** No queda nada en `main` sin publicar.
 
 > **Qué hay aquí:** el trabajo pendiente agrupado por **tiers**, con su porqué y dónde vive cada cosa.
 >
@@ -988,6 +991,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 | 2026-08-31 | **TJ-03** (LibreOffice borraba un archivo anterior) y **TJ-02** (deadlock de las tuberías) (5/38, **5 de 7 Altas**) |
 | 2026-08-31 | **TJ-01**: PowerPoint serializado y la sesión del usuario intocable, verificado contra el Office real (6/38, **6 de 7 Altas**) |
 | 2026-08-31 | **TJ-06** (18 mensajes en español a fuego → claves traducidas) y **TJ-17** (el guardián miraba 2 archivos de 20) — **las 7 Altas cerradas** (8/38) |
+| 2026-09-01 | **v2.7.0 publicada**: 21 de las 39 fichas del Tier J (las 7 Altas y 14 Medias). Primer corte con el pipeline que el propio tier arregló — notas desde el `CHANGELOG.md` (TJ-07), omitidas contadas aparte (TJ-08), UI tests sobre el binario Release (TJ-05). Quedan **6 Medias y 12 Bajas** |
 | 2026-08-31 | **TJ-18** (el escáner ya mira en los dos sentidos), **TJ-23** (cuatro paquetes redistribuidos sin atribuir, no uno), **TJ-08** (el corte dice pasan/omitidas/fallan) y **TJ-24** (la contraseña ya no llega a `signtool`). Y **TJ-39**, nuevo: dos clases de pruebas se peleaban por el idioma (21/39) |
 | 2026-08-31 | **TJ-11** (dos archivos homónimos se pisaban en paralelo), **TJ-13** (dos avisos a la vez = ninguno), **TJ-10** (la frase del resumen se cortaba en el flujo por defecto) y **TJ-19** (progreso muerto: se quita) (16/38) |
 | 2026-08-31 | **TJ-21** (PowerPoint ya no saca su ventana: la sacábamos nosotros), **TJ-20** (un fallo al configurar dejaba un proceso huérfano por intento) y **TJ-25** (perfil propio por proceso de LibreOffice, *verificación de punta a punta pendiente*) (12/38) |
