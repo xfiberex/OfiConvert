@@ -1,4 +1,4 @@
-OfiConvert — Avisos de terceros / Third-party notices
+﻿OfiConvert — Avisos de terceros / Third-party notices
 =====================================================
 
 OfiConvert se distribuye bajo la licencia MIT (ver el archivo LICENSE). El instalador es
@@ -14,7 +14,8 @@ Cada licencia se ha verificado contra el .nuspec y los archivos de licencia del 
 realmente redistribuido, no de memoria: NO todo es MIT. Serilog es Apache-2.0, WebView2 es
 BSD-3-Clause y el Windows App SDK se redistribuye bajo los términos de licencia de Microsoft.
 
-Última verificación: 2026-07-14 (OfiConvert 2.4.0).
+Última verificación: 2026-08-31 (OfiConvert 2.6.1). Licencias leídas del .nuspec de cada
+paquete en la caché de NuGet, no de memoria.
 
 
 --------------------------------------------------------------------------------
@@ -67,6 +68,27 @@ COMPONENTES REDISTRIBUIDOS
    Licencia: MIT License  (ver Apéndice A).
    https://github.com/HavenDV/H.NotifyIcon
 
+8) System.Drawing.Common 9.0.0  (miniaturas de archivo e icono de la bandeja)
+   © Microsoft Corporation y colaboradores de .NET Foundation.
+   Licencia: MIT License  (ver Apéndice A).
+   Llega como dependencia de H.NotifyIcon.WinUI y viaja como DLL en el instalador.
+   https://github.com/dotnet/winforms
+
+9) Microsoft.Win32.SystemEvents 9.0.0  (dependencia de System.Drawing.Common)
+   © Microsoft Corporation y colaboradores de .NET Foundation.
+   Licencia: MIT License  (ver Apéndice A).
+   https://dot.net/
+
+10) System.Numerics.Tensors 9.0.0  (dependencia del Windows App SDK)
+   © Microsoft Corporation y colaboradores de .NET Foundation.
+   Licencia: MIT License  (ver Apéndice A).
+   https://dot.net/
+
+11) H.GeneratedIcons.System.Drawing 2.2.0  (generación de iconos de H.NotifyIcon)
+   © havendv y colaboradores.
+   Licencia: MIT License  (ver Apéndice A).
+   https://github.com/HavenDV/H.NotifyIcon
+
 
 --------------------------------------------------------------------------------
 NO REDISTRIBUIDO
@@ -84,7 +106,7 @@ NO REDISTRIBUIDO
 APÉNDICE A — MIT License
 --------------------------------------------------------------------------------
 
-Se aplica a los componentes 1, 5 y 7 (y al propio OfiConvert; ver LICENSE).
+Se aplica a los componentes 1, 5, 7, 8, 9, 10 y 11 (y al propio OfiConvert; ver LICENSE).
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software
 and associated documentation files (the "Software"), to deal in the Software without
