@@ -1,4 +1,4 @@
-using OfiConvert.Core;
+﻿using OfiConvert.Core;
 using OfiConvert.Helpers;
 using Xunit;
 
@@ -15,6 +15,7 @@ namespace OfiConvert.Tests;
 /// Durante cinco reincidencias el texto nacía en español dentro de los servicios y salía igual en los
 /// ocho idiomas. Estas pruebas fijan lo contrario.
 /// </remarks>
+[Collection(LocalizationCollection.Name)]   // el idioma es estado ESTATICO: ver LocalizationCollection
 public sealed class UserMessageTranslationTests : IDisposable
 {
     // El idioma es estado ESTÁTICO del servicio (ver CONTEXT.md §4): se restaura al terminar para no

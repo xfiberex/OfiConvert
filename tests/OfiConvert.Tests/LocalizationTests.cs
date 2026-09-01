@@ -1,4 +1,4 @@
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
 using OfiConvert.Helpers;
 using Xunit;
 
@@ -13,6 +13,7 @@ namespace OfiConvert.Tests;
 /// al japonés, o un archivo con una clave de menos, se manifiesta como texto raro en la UI de un idioma
 /// que probablemente nadie de la casa abra nunca.
 /// </remarks>
+[Collection(LocalizationCollection.Name)]   // el idioma es estado ESTATICO: ver LocalizationCollection
 public sealed class LocalizationTests
 {
     /// <summary>El de referencia: el idioma en el que se escriben las claves nuevas.</summary>
