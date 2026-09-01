@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
 using OfiConvert.Models;
 using OfiConvert.Services;
@@ -44,7 +44,7 @@ public sealed class PowerPointSharedInstanceTests : IDisposable
     [OfficeFact]
     public void PowerPoint_EsUnaInstanciaCompartida()
     {
-        Assert.Equal(0, PowerPointProcesses());   // el test necesita partir de cero
+        ExigirMaquinaSinPowerPoint();   // el test necesita partir de cero
 
         object? a = null, b = null;
         try
@@ -71,7 +71,7 @@ public sealed class PowerPointSharedInstanceTests : IDisposable
     [OfficeFact]
     public async Task LoteEnParalelo_NoMataLasConversiones_NiLaSesionDelUsuario()
     {
-        Assert.Equal(0, PowerPointProcesses());
+        ExigirMaquinaSinPowerPoint();
 
         object? userApp = null;
         try
@@ -116,7 +116,7 @@ public sealed class PowerPointSharedInstanceTests : IDisposable
     [OfficeFact]
     public async Task LoteEnParalelo_SinSesionDelUsuario_ConvierteLasTres()
     {
-        Assert.Equal(0, PowerPointProcesses());
+        ExigirMaquinaSinPowerPoint();
 
         // Presentaciones grandes a propósito, para que las tres conversiones se solapen de verdad.
         //
@@ -138,8 +138,10 @@ public sealed class PowerPointSharedInstanceTests : IDisposable
         Assert.All(results, r => Assert.True(File.Exists(r.OutputPath), $"No se generó {r.OutputPath}"));
 
         // Y la instancia que abrió la app se cierra: era suya, nadie más la estaba usando.
-        EsperarACierre();
-        Assert.Equal(0, PowerPointProcesses());
+        var vivos = EsperarAQueSeCierren();
+        Assert.True(vivos == 0,
+            $"Quedaron {vivos} PowerPoint abierto(s) 15 s después de convertir. La instancia era de la "
+                + "app —el usuario no tenía ninguna— así que tenía que cerrarla al terminar.");
     }
 
     // ── Utilidades COM ────────────────────────────────────────────────────
@@ -216,13 +218,53 @@ public sealed class PowerPointSharedInstanceTests : IDisposable
         try { Marshal.FinalReleaseComObject(com); } catch { /* ya soltado */ }
     }
 
-    private static void EsperarACierre()
+    /// <summary>
+    /// Espera a que no quede ningun <c>POWERPNT.EXE</c>. Devuelve cuantos quedan al agotar la espera.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 <b>La espera corta era la causa de que esta clase fuese inestable.</b> Eran 5 s, y
+    /// <c>POWERPNT.EXE</c> tarda a veces mas en desaparecer tras un <c>Quit()</c>: la prueba siguiente
+    /// arrancaba viendo un proceso que ya estaba muriendose.
+    ///
+    /// <b>Medido:</b> ejecutando la clase entera,
+    /// <c>LoteEnParalelo_SinSesionDelUsuario_ConvierteLasTres</c> fallo con «Expected: 0, Actual: 1» a los
+    /// 8 ms, y paso en verde ejecutada sola y al repetir la clase. Una prueba que falla una de cada dos
+    /// veces por su propia limpieza deja de ser un guardian: se acaba ignorando — y justo esta cubre el
+    /// fallo mas grave del Tier J.
+    ///
+    /// Pasarse esperando no cuesta nada (se sale en cuanto llega a cero); quedarse corto cuesta un rojo
+    /// falso.
+    /// </remarks>
+    private static int EsperarAQueSeCierren(int segundos = 15)
     {
         GC.Collect();
         GC.WaitForPendingFinalizers();
         GC.Collect();
 
-        for (int i = 0; i < 20 && PowerPointProcesses() > 0; i++)
+        for (int i = 0; i < segundos * 4 && PowerPointProcesses() > 0; i++)
             Thread.Sleep(250);
+
+        return PowerPointProcesses();
+    }
+
+    private static void EsperarACierre() => EsperarAQueSeCierren();
+
+    /// <summary>
+    /// Punto de partida de las pruebas que necesitan la maquina sin PowerPoint: <b>espera</b> a que no
+    /// quede ninguno, y solo entonces afirma.
+    /// </summary>
+    /// <remarks>
+    /// El mensaje distingue los dos casos posibles, que piden cosas distintas: una fuga de la prueba
+    /// anterior (se arregla aqui) o una sesion de verdad del usuario, que <b>si</b> debe parar la
+    /// ejecucion — estas pruebas conducen el PowerPoint de la maquina.
+    /// </remarks>
+    private static void ExigirMaquinaSinPowerPoint()
+    {
+        var vivos = EsperarAQueSeCierren();
+
+        Assert.True(vivos == 0,
+            $"Hay {vivos} PowerPoint abierto(s) al EMPEZAR la prueba, tras esperar 15 s a que se cerraran. "
+                + "O una prueba anterior no solto el suyo, o tienes PowerPoint abierto: estas pruebas "
+                + "conducen el PowerPoint de la maquina y NO deben ejecutarse con trabajo tuyo dentro.");
     }
 }
