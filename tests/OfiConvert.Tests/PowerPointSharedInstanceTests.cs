@@ -144,6 +144,74 @@ public sealed class PowerPointSharedInstanceTests : IDisposable
                 + "app —el usuario no tenía ninguna— así que tenía que cerrarla al terminar.");
     }
 
+    /// <summary>
+    /// Convertir no puede plantarle a nadie una ventana de PowerPoint encima de lo que esté haciendo.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 <b>El código PEDÍA esa ventana.</b> <c>PowerPointSession.Open</c> hacía
+    /// <c>Visible = msoTrue</c>, con un comentario que decía que PowerPoint «no admite trabajar oculto».
+    /// Media verdad: <c>Visible = msoFalse</c> sí lanza («Hiding the application window is not allowed»),
+    /// pero de eso no se sigue que haya que ponerlo a <b>true</b>.
+    ///
+    /// <b>Medido (Office 16 ClickToRun, 2026-08-31):</b> recién activado por COM, PowerPoint está en
+    /// <c>Visible = msoFalse</c> y <b>sin ventana principal</b> (<c>MainWindowHandle = 0</c>), y abrir la
+    /// presentación con <c>WithWindow:=False</c> lo deja igual. Es headless de fábrica; la línea que lo
+    /// sacaba a pantalla era nuestra.
+    ///
+    /// Este test vigila la ventana <b>durante</b> la conversión, no al final: una ventana que aparece y
+    /// se va sigue siendo una ventana que le salta al usuario encima.
+    /// </remarks>
+    [OfficeFact]
+    public async Task Convertir_NoAbreNingunaVentanaDePowerPoint()
+    {
+        ExigirMaquinaSinPowerPoint();
+
+        // Ojo: CrearPresentaciones usa Add(-1) —con ventana— a propósito, así que abre PowerPoint de
+        // verdad. Se espera a que se cierre ANTES de empezar a vigilar, o el test se acusaría a sí mismo.
+        var sources = CrearPresentaciones(1, diapositivas: 40);
+        ExigirMaquinaSinPowerPoint();
+
+        var vistas = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        using var vigilando = new CancellationTokenSource();
+
+        var vigilante = Task.Run(async () =>
+        {
+            while (!vigilando.IsCancellationRequested)
+            {
+                foreach (var proc in Process.GetProcessesByName("POWERPNT"))
+                {
+                    try
+                    {
+                        proc.Refresh();
+                        if (proc.MainWindowHandle != IntPtr.Zero)
+                            vistas.Enqueue($"PID {proc.Id} con ventana '{proc.MainWindowTitle}'");
+                    }
+                    catch { /* el proceso puede morir entre el listado y la consulta */ }
+                    finally { proc.Dispose(); }
+                }
+
+                try { await Task.Delay(50, vigilando.Token); } catch (OperationCanceledException) { return; }
+            }
+        });
+
+        var service = new OfficeFileConversionService();
+        var result = await service.ConvertAsync(
+            sources[0],
+            Path.Combine(_folder, "sin-ventana.pdf"),
+            new ConversionOptions { OutputFormat = OutputFormat.PDF });
+
+        vigilando.Cancel();
+        await vigilante;
+
+        // Que no se vea nada no vale de nada si encima no convierte.
+        Assert.True(result.Success, $"Conversión fallida: {result.Error?.Key}");
+        Assert.True(File.Exists(result.OutputPath), $"No se generó {result.OutputPath}");
+
+        Assert.True(vistas.IsEmpty,
+            "PowerPoint mostró su ventana durante la conversión, encima de lo que estuviera haciendo el "
+                + $"usuario ({vistas.Count} muestras): " + string.Join(" · ", vistas.Take(3)));
+    }
+
     // ── Utilidades COM ────────────────────────────────────────────────────
 
     private string[] CrearPresentaciones(int cuantas, int diapositivas = 1)

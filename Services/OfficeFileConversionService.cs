@@ -251,7 +251,6 @@ public class OfficeFileConversionService : IFileConversionService
                 null, presentations, openParams)
                 ?? throw new InvalidOperationException("No se pudo abrir la presentaci\u00f3n");
 
-            HidePowerPointWindows(presentation);
 
             try
             {
@@ -287,40 +286,16 @@ public class OfficeFileConversionService : IFileConversionService
         }
     }
 
-    private static void HidePowerPointWindows(object presentation)
-    {
-        try
-        {
-            var windows = presentation.GetType().InvokeMember("Windows",
-                System.Reflection.BindingFlags.GetProperty,
-                null, presentation, null);
-
-            if (windows is null) return;
-
-            var count = (int?)windows.GetType().InvokeMember("Count",
-                System.Reflection.BindingFlags.GetProperty,
-                null, windows, null) ?? 0;
-
-            for (int i = 1; i <= count; i++)
-            {
-                try
-                {
-                    var window = windows.GetType().InvokeMember("Item",
-                        System.Reflection.BindingFlags.InvokeMethod,
-                        null, windows, [i]);
-
-                    window?.GetType().InvokeMember("Visible",
-                        System.Reflection.BindingFlags.SetProperty,
-                        null, window, [-1]);
-
-                    if (window is not null)
-                        Marshal.ReleaseComObject(window);
-                }
-                catch { }
-            }
-        }
-        catch { }
-    }
+    // 🔴 Aquí vivía HidePowerPointWindows, y era código muerto QUE ADEMÁS MENTÍA (TJ-21).
+    //
+    // Recorría presentation.Windows poniendo Visible = -1 en cada una. Eso es msoTrue: MOSTRAR, justo lo
+    // contrario de lo que decía su nombre. Y no se notaba porque no llegaba a ejecutarse nunca: las
+    // presentaciones se abren con WithWindow:=False y entonces Windows.Count es 0 — medido, no supuesto.
+    //
+    // Se borra en vez de "arreglarse" a msoFalse: sin ventanas que ocultar no había nada que arreglar, y
+    // dejar una función que no se ejecuta es dejar una trampa cargada para quien algún día abra con
+    // ventana. Lo que SÍ había que arreglar era el Visible = msoTrue de la aplicación, en
+    // PowerPointSession.Open.
 
     #endregion
 
@@ -455,7 +430,6 @@ public class OfficeFileConversionService : IFileConversionService
                 null, presentations, openParams)
                 ?? throw new InvalidOperationException("No se pudo abrir la presentaci\u00f3n");
 
-            HidePowerPointWindows(presentation);
 
             var format = options.OutputFormat == OutputFormat.JPG ? "JPG" : "PNG";
             var width = (int)(options.ImageDpi * 13.333); // ~10 inches wide at given DPI
@@ -526,8 +500,18 @@ public class OfficeFileConversionService : IFileConversionService
             object? previousAlerts = preexisting ? TryGet(type, app, "DisplayAlerts") : null;
             object? previousSecurity = preexisting ? TryGet(type, app, "AutomationSecurity") : null;
 
-            // PowerPoint no admite trabajar oculto en todas las versiones: Visible se queda en msoTrue.
-            TrySet(type, app, "Visible", -1);
+            // 🔴 NO SE TOCA Visible. Medido en esta maquina (Office 16 ClickToRun, 2026-08-31):
+            //
+            //   - Recien activado por COM, PowerPoint arranca en Visible = msoFalse y SIN ventana
+            //     principal (MainWindowHandle = 0), y abrir la presentacion con WithWindow:=False lo deja
+            //     igual. O sea: headless de fabrica, sin pedirlo.
+            //   - Poner Visible = msoTrue —lo que hacia este codigo— es precisamente LO QUE HACE APARECER
+            //     la ventana de PowerPoint encima de lo que el usuario este haciendo, durante todo el lote.
+            //   - Y poner Visible = msoFalse no es alternativa: LANZA
+            //     «Hiding the application window is not allowed». De ahi venia la confusion — se creia que
+            //     habia que elegir entre msoTrue y una excepcion, cuando la respuesta es no tocarlo.
+            //
+            // Sobre una instancia prestada, ademas, cambiar esto seria manipular la ventana del usuario.
             TrySet(type, app, "DisplayAlerts", 2);          // ppAlertsNone
             TrySet(type, app, "AutomationSecurity", 3);     // msoAutomationSecurityForceDisable
 
@@ -594,7 +578,23 @@ public class OfficeFileConversionService : IFileConversionService
         }
     }
 
-    private static object CreateOfficeApp(string progId, Action<object>? configure)
+    /// <summary>
+    /// Activa una aplicación de Office y la deja configurada. <b>Si algo falla por el camino, la cierra
+    /// antes de propagar</b>.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 <b>El fallo que cierra (TJ-20).</b> Antes, <c>configure(app)</c> se llamaba fuera de todo
+    /// <c>try</c>. Si lanzaba —un <c>InvokeMember</c> que esa versión de Office no admite—, el método
+    /// propagaba <b>sin haber devuelto el objeto</b>: la variable del llamante seguía en <c>null</c>, su
+    /// <c>finally</c> no tenía a quién llamarle <c>Quit()</c>, y quedaba un <c>WINWORD.EXE</c> o
+    /// <c>EXCEL.EXE</c> vivo <b>por cada intento</b>. Un lote de 50 documentos contra una versión de
+    /// Office que no admitiera una de estas propiedades dejaba 50 procesos.
+    ///
+    /// Es el riesgo que <c>CONTEXT.md</c> señala como el principal de la app: quien abre por COM es
+    /// responsable de cerrar <b>también cuando el camino se tuerce</b>. La ventana peligrosa es
+    /// exactamente la que va entre «ya existe el proceso» y «el llamante tiene la referencia».
+    /// </remarks>
+    internal static object CreateOfficeApp(string progId, Action<object>? configure)
     {
         var appType = Type.GetTypeFromProgID(progId)
             ?? throw new InvalidOperationException($"No se pudo obtener el tipo de {progId}");
@@ -604,14 +604,23 @@ public class OfficeFileConversionService : IFileConversionService
 
         try
         {
-            app.GetType().InvokeMember("Visible",
-                System.Reflection.BindingFlags.SetProperty,
-                null, app, [false]);
-        }
-        catch { }
+            try
+            {
+                app.GetType().InvokeMember("Visible",
+                    System.Reflection.BindingFlags.SetProperty,
+                    null, app, [false]);
+            }
+            catch { /* PowerPoint no lo admite; se trata en PowerPointSession */ }
 
-        configure?.Invoke(app);
-        return app;
+            configure?.Invoke(app);
+            return app;
+        }
+        catch
+        {
+            // Nadie más va a poder cerrarlo: el llamante todavía no tiene la referencia.
+            CleanupOfficeApp(app);
+            throw;
+        }
     }
 
     private static void CleanupComObject(object? obj, string? closeMethod = null, object[]? closeParams = null)
@@ -635,7 +644,7 @@ public class OfficeFileConversionService : IFileConversionService
         }
     }
 
-    private static void CleanupOfficeApp(object? app)
+    internal static void CleanupOfficeApp(object? app)
     {
         if (app is null) return;
 
