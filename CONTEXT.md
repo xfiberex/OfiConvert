@@ -20,7 +20,7 @@
 |---|---|
 | **Repositorio** | https://github.com/xfiberex/OfiConvert |
 | **Versión publicada** | **2.7.0** (2026-09-01) — **21 de las 39 fichas del [Tier J](ROADMAP.md)**: las 7 Altas y 14 Medias. Deja de cerrarle al usuario su PowerPoint sin guardar, de borrar archivos ajenos por la ruta de LibreOffice y de hablar en español en los ocho idiomas. Instalador sin firmar, **con `.sha256`** |
-| **En `main`, sin publicar** | — (al día) |
+| **En `main`, sin publicar** | La **verificación de punta a punta de TJ-25** contra LibreOffice 26.8.0.3 (2026-09-01) |
 | **Estado** | Funcional; Tiers 0 y A–I ✅. **Hoja de ruta REABIERTA**: [Tier J](ROADMAP.md) (re-auditoría del 2026-08-29) — **39 tareas, 21 cerradas** (las **7 Altas**, completas); quedan 6 Medias y 12 Bajas |
 | **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · **xUnit** + **FlaUI** · Inno Setup 6 |
 | **Licencia** | **MIT** ([`LICENSE`](LICENSE)) — pero **lo que redistribuye NO es todo MIT**: ver §4 *Legal* |
@@ -106,12 +106,12 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas unitarias | **269 pasan · 7 se omiten (1 de red + 6 que conducen Office) · 0 fallan**; con `OFICONVERT_OFFICE_TESTS=1`, **276 pasan** |
+| Pruebas unitarias | **269 pasan · 9 se omiten (1 de red + 6 que conducen Office + 2 que ejecutan LibreOffice) · 0 fallan** (total 278); con `OFICONVERT_OFFICE_TESTS=1` y `OFICONVERT_LIBREOFFICE_TESTS=1`, **278 pasan** |
 | Pruebas de UI | **31 pasan · 0 fallan** (FlaUI, arrancan la app real **en la configuración compilada**) |
 | Publicado | **v2.7.0** (2.1.0 → 2.7.0 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
 | Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real. ⚠️ **Solo en un equipo CON Office**: ver `TJ-04` |
-| Pendiente de release | — (la 2.7.0 está publicada; nada en `main` sin publicar) |
+| Pendiente de release | La verificación de TJ-25 y el guardián de puertas de entorno que se descubre solo |
 | **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **39 tareas** (TJ-39 nació dentro del tier), **21 cerradas — las 7 Altas, completas**; quedan **6 Medias y 12 Bajas**. Lo cerrado se publicó en la **v2.7.0** |
 
 **Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **A–I cerrados; J abierto**
@@ -654,6 +654,55 @@ Menores, sin tier asignado:
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
+
+---
+
+### 2026-09-01 (con LibreOffice instalado) — TJ-25: la deuda que la v2.7.0 dejó por escrito
+
+La v2.7.0 publicó el arreglo de TJ-25 diciendo, en sus propias notas, que el criterio de aceptación
+**no se había ejecutado**: en la máquina no había LibreOffice. Instalado (26.8.0.3), se salda.
+
+**El criterio, tal cual: ocho documentos, paralelismo 4.** Ahora es una prueba
+(`LibreOfficeEndToEndTests`), no una comprobación de una tarde, y corre con el mismo mecanismo que la app
+—semáforo + `Task.WhenAll`— sobre ocho `.docx` reales construidos con `ZipArchive`. **8 de 8.**
+
+**Pero primero se midió la premisa, en vez de darla por buena.**
+
+| | PDFs | código != 0 | tiempo |
+|---|---|---|---|
+| Perfil compartido | **4 de 8** | 4 | **12,8 s** |
+| Perfil propio | **8 de 8** | 0 | 25,9 s |
+
+Dos cosas que la ficha no sabía:
+
+1. **Los cuatro que caen no dan ningún error.** Código de salida 1, y `stdout` **y** `stderr`
+   **vacíos**. La ficha prometía «errores que no parecen de conversión»; la realidad es peor — no hay
+   nada que leer. El usuario veía desaparecer archivos del lote sin un solo mensaje.
+2. 🔴 **La configuración ROTA es la que parece rápida:** la mitad de tiempo, porque la mitad de
+   los documentos moría al instante en vez de convertirse. **Un lote medido por su duración habría
+   premiado el fallo**, y «ahora tarda el doble» es justo lo que se ve al arreglarlo.
+
+Cuatro repeticiones: 4/8 en todas — sistemático, no intermitente; lo que varía es **cuáles** caen. Y la
+prueba se comprobó en rojo apuntando el servicio a un perfil compartido: cae con `Fallaron 4`, el mismo
+número medido por fuera.
+
+**Un guardián que volvía a llevar la lista a mano.** `ReleaseScriptTests` comprobaba que las clases con
+puerta de entorno estuvieran en el `ExpectedSkipPattern` del corte… contra **tres nombres escritos a
+mano**. Al añadir la cuarta puerta (`LibreOfficeFact`) había que acordarse de venir aquí: el fallo de
+TJ-17 otra vez. Ahora las descubre — busca los `*FactAttribute` que miran una variable de entorno, y
+luego quién los usa. Verificado en rojo quitando la clase del patrón.
+
+**Dos trampas del entorno, para no volver a pagarlas:**
+
+- **`soffice --version` es INTERACTIVO en Windows.** Abre una consola y espera un
+  «Press Enter to continue…». Capturado desde un script devuelve **cadena vacía** y deja la ventana
+  abierta esperando a un humano — en un script desatendido, ahí se queda. La instalación se detecta
+  **por la ruta del ejecutable**, que es lo que ya hace `LibreOfficeConversionService`.
+- Escribiendo este mismo registro, un escape `\ud83d\udd34` dentro de un literal de Python
+  reventó el `write` **después** de que `open(..., 'w')` truncara el archivo: `ROADMAP.md` se quedó en
+  **0 bytes** (recuperado con `git checkout`). Dos reglas: los emojis se construyen con `chr()`, y se
+  **escribe a un temporal y se reemplaza**, nunca encima del archivo bueno. La segunda salvó a
+  `CONTEXT.md` del mismo fallo diez minutos después.
 
 ---
 

@@ -809,7 +809,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     fuga por otra. Guardián: `ReleaseScriptTests` prohíbe `[string]$CertPassword` y `/p` en el script.
   - **Esfuerzo:** medio · **Depende de:** ninguna
 
-- [x] ✅ **[TJ-25] Varios `soffice --headless` a la vez comparten perfil de usuario** · Medio *(cerrado 2026-08-31)*
+- [x] ✅ **[TJ-25] Varios `soffice --headless` a la vez comparten perfil de usuario** · Medio *(cerrado 2026-08-31; **verificado de punta a punta 2026-09-01**)*
   - **Área:** Rendimiento · **Ubicación:** `Services/LibreOfficeConversionService.cs:53`
   - **Qué hacer:** LibreOffice **no admite** instancias headless concurrentes sobre el mismo perfil: la
     segunda se enchufa a la primera o falla. Con `MaxParallelConversions` hasta 8, un lote por
@@ -826,9 +826,17 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     ignora y vuelve al perfil compartido, así que el fallo seguiría ahí en silencio y un test que solo
     mirase «que aparezca `-env:`» pasaría igual. Verificado en rojo por los dos lados: barras sin
     normalizar (3 pruebas caen) y `-env:` detrás de `--convert-to` (1 prueba cae).
-    **⚠️ Lo que NO está probado:** el criterio de aceptación tal cual. En esta máquina **no hay
-    LibreOffice instalado**, así que el lote de 8 con paralelismo 4 no se ha ejecutado nunca. Queda
-    pendiente para una máquina que lo tenga.
+  - **✅ VERIFICADO DE PUNTA A PUNTA 2026-09-01**, con LibreOffice **26.8.0.3**. El criterio se
+    ejecuta ya como prueba (`LibreOfficeEndToEndTests`, puerta `OFICONVERT_LIBREOFFICE_TESTS=1`):
+    ocho `.docx` reales, paralelismo 4 con semáforo, como en `MainViewModel`. **8 de 8.**
+    **La premisa, medida antes de afirmarla:** con **un perfil compartido** se convierten **4 de 8**
+    — cuatro procesos salen con código 1 y **stdout y stderr VACÍOS**. La ficha decía «errores que no
+    parecen de conversión»; la realidad es peor: **no hay error que leer**. Cuatro repeticiones, 4/8
+    en todas — sistemático, no intermitente, aunque cambia CUÁLES caen.
+    🔴 **La configuración ROTA parecía la rápida** (12,8 s frente a 25,9 s), justo porque la mitad
+    moría al instante. Medir el lote por su duración habría premiado el fallo.
+    Comprobado **en rojo**: apuntando el servicio a un perfil compartido, la prueba cae con
+    `Fallaron 4` — el mismo 4/8 medido por fuera.
   - **Esfuerzo:** medio · **Depende de:** ninguna
 
 - [ ] **[TJ-26] Una función a medio construir: opciones que existen en todas partes menos en la UI** · Medio
@@ -991,6 +999,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 | 2026-08-31 | **TJ-03** (LibreOffice borraba un archivo anterior) y **TJ-02** (deadlock de las tuberías) (5/38, **5 de 7 Altas**) |
 | 2026-08-31 | **TJ-01**: PowerPoint serializado y la sesión del usuario intocable, verificado contra el Office real (6/38, **6 de 7 Altas**) |
 | 2026-08-31 | **TJ-06** (18 mensajes en español a fuego → claves traducidas) y **TJ-17** (el guardián miraba 2 archivos de 20) — **las 7 Altas cerradas** (8/38) |
+| 2026-09-01 | **TJ-25 verificado de punta a punta** con LibreOffice 26.8.0.3: ocho documentos, paralelismo 4, **8 de 8**. La premisa, medida: con perfil compartido se pierden **4 de 8** sin un solo mensaje de error — y la versión rota tardaba la mitad. `ReleaseScriptTests` deja de llevar a mano la lista de puertas de entorno: ahora las descubre |
 | 2026-09-01 | **v2.7.0 publicada**: 21 de las 39 fichas del Tier J (las 7 Altas y 14 Medias). Primer corte con el pipeline que el propio tier arregló — notas desde el `CHANGELOG.md` (TJ-07), omitidas contadas aparte (TJ-08), UI tests sobre el binario Release (TJ-05). Quedan **6 Medias y 12 Bajas** |
 | 2026-08-31 | **TJ-18** (el escáner ya mira en los dos sentidos), **TJ-23** (cuatro paquetes redistribuidos sin atribuir, no uno), **TJ-08** (el corte dice pasan/omitidas/fallan) y **TJ-24** (la contraseña ya no llega a `signtool`). Y **TJ-39**, nuevo: dos clases de pruebas se peleaban por el idioma (21/39) |
 | 2026-08-31 | **TJ-11** (dos archivos homónimos se pisaban en paralelo), **TJ-13** (dos avisos a la vez = ninguno), **TJ-10** (la frase del resumen se cortaba en el flujo por defecto) y **TJ-19** (progreso muerto: se quita) (16/38) |

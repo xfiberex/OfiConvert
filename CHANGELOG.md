@@ -23,6 +23,22 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 > correspondiente, que es la fuente. **De la 2.7.0 en adelante, este archivo se escribe antes del
 > corte, no después.**
 
+## [Sin publicar]
+
+### Interno
+
+- **La conversión en paralelo por LibreOffice ya está verificada contra LibreOffice de verdad.** La
+  v2.7.0 salió con ese arreglo (TJ-25) probado solo por la forma del comando, y así se dijo en sus notas:
+  no había LibreOffice en la máquina donde se escribió. Ahora sí: ocho documentos con paralelismo 4 se
+  convierten **los ocho**. Con el perfil compartido de antes se perdían **cuatro**, y —lo peor para quien
+  tuviera que diagnosticarlo— **sin un solo mensaje de error**. La prueba vive detrás de
+  `OFICONVERT_LIBREOFFICE_TESTS=1`, así que ningún corte depende de tener LibreOffice instalado.
+- El guardián de omisiones previstas del corte **descubre** las pruebas con puerta de entorno en vez de
+  llevar la lista escrita a mano: la cuarta puerta había que acordarse de darla de alta, que es el mismo
+  fallo que TJ-17.
+
+---
+
 ## [2.7.0] — 2026-09-01
 
 Versión de una sola cosa: **la re-auditoría externa del [Tier J](ROADMAP.md)**, 21 de sus 39 fichas.
