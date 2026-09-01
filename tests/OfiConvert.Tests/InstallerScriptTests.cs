@@ -54,6 +54,59 @@ public sealed class InstallerScriptTests
     }
 
     /// <summary>
+    /// El aviso de «no hay motor» tiene que mirar <b>los dos</b> motores, no solo Microsoft Office.
+    /// </summary>
+    /// <remarks>
+    /// La app convierte con Office <b>o</b> con LibreOffice, y el README lo anuncia. El instalador miraba
+    /// únicamente Office, así que a quien tuviera LibreOffice —una configuración soportada— le decía que
+    /// su instalación no iba a funcionar. Es el instalador contradiciendo al producto (TJ-12).
+    ///
+    /// Comprobado sobre el instalador compilado, con los dos detectores forzados por línea de comandos:
+    /// solo avisa en 0/0 (ningún motor); en 0/1, 1/0 y 1/1 calla.
+    /// </remarks>
+    [Fact]
+    public void ElAviso_DeSinMotor_MiraTambienLibreOffice()
+    {
+        var iss = string.Join("\n", WithoutComments(File.ReadAllLines(IssPath)));
+
+        Assert.Contains("IsLibreOfficeInstalled", iss, StringComparison.Ordinal);
+
+        var condicion = Regex.Match(iss, @"if[^\n]*WizardSilent[^\n]*then");
+        Assert.True(condicion.Success, "No se encontró la condición que decide si sale el aviso.");
+        Assert.True(condicion.Value.Contains("IsLibreOfficeInstalled", StringComparison.Ordinal),
+            "El aviso de «sin motor de conversión» no consulta LibreOffice: a quien lo tenga instalado se "
+                + $"le dirá que la app no funcionará. Condición encontrada: {condicion.Value}");
+    }
+
+    /// <summary>
+    /// El texto de ese aviso no puede nacer en duro: el instalador habla seis idiomas.
+    /// </summary>
+    /// <remarks>
+    /// Es el mismo fallo que TJ-06 dentro de la app, en el instalador: el texto salía en español en los
+    /// seis. Ahora vive en la sección de mensajes personalizados y el código solo pide la clave.
+    /// </remarks>
+    [Fact]
+    public void ElTextoDelAviso_EstaEnLosSeisIdiomas()
+    {
+        var raw = File.ReadAllText(IssPath);
+
+        var idiomas = Regex.Matches(raw, @"(?m)^Name:\s*""(\w+)"";\s*MessagesFile")
+            .Select(m => m.Groups[1].Value)
+            .ToList();
+
+        Assert.True(idiomas.Count >= 6, $"Solo se encontraron {idiomas.Count} idiomas en el instalador.");
+
+        var faltan = idiomas
+            .SelectMany(i => new[] { $"{i}.NoEngineTitle", $"{i}.NoEngineBody" })
+            .Where(clave => !raw.Contains(clave + "=", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.True(faltan.Count == 0,
+            "Faltan traducciones del aviso de «sin motor»; en esos idiomas saldría en español:\n  "
+                + string.Join("\n  ", faltan));
+    }
+
+    /// <summary>
     /// El modo silencioso necesita <c>PrivilegesRequiredOverridesAllowed=commandline</c> (Tier H): sin
     /// <c>commandline</c>, <c>/ALLUSERS</c> y <c>/CURRENTUSER</c> quedan prohibidos y vuelve el diálogo
     /// «Seleccione el modo de instalación» que el updater no puede contestar.
