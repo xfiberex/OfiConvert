@@ -27,6 +27,17 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ### Corregido
 
+- **Convertir presentaciones ya no te planta PowerPoint delante.** Durante todo el lote se abría la
+  ventana de PowerPoint encima de lo que estuvieras haciendo. No hacía falta: la aplicación **pedía** esa
+  ventana sin necesitarla. Ahora convierte sin que aparezca nada. *(Cierra [TJ-21](ROADMAP.md).)*
+- **Ya no quedan procesos de Office colgados cuando algo falla al arrancarlos.** Si la preparación de
+  Word o Excel fallaba —pasa con versiones que no admiten alguna de las opciones que se les piden—, el
+  proceso se quedaba vivo e invisible, **uno por cada archivo del lote**, comiendo memoria hasta reiniciar
+  el equipo. *(Cierra [TJ-20](ROADMAP.md).)*
+- **Convertir varios documentos a la vez con LibreOffice ya no se estorba a sí mismo.** LibreOffice no
+  admite dos conversiones simultáneas que compartan su configuración de usuario: la segunda se enganchaba
+  a la primera o fallaba con un error que no parecía de conversión. Ahora cada una corre por su cuenta.
+  *(Cierra [TJ-25](ROADMAP.md); pendiente de una prueba de punta a punta en un equipo con LibreOffice.)*
 - **El instalador ya no te dice que la app no funcionará si usas LibreOffice.** Cuando no encontraba
   Microsoft Office avisaba de que OfiConvert «no funcionará hasta que instale Microsoft Office» — y eso
   es falso: LibreOffice sirve igual, y el propio programa lo anuncia. Ahora comprueba **los dos**
@@ -69,6 +80,10 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
   se calla en las instalaciones silenciosas. *(Cierra [TJ-04](ROADMAP.md).)*
 
 ### Interno
+
+- **249 pruebas** (antes 237): +9 sobre la línea de comandos de LibreOffice y +3 con Office real
+  (PowerPoint sin ventana, y los dos caminos de arranque de Word). Las tres correcciones, comprobadas en
+  rojo.
 
 - Afinado del propio Tier J, hecho al validar en un segundo equipo: (a) las tres pruebas que conducen
   Office eran **inestables** —fallaban una de cada dos veces por su propia limpieza, no por el

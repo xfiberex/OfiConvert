@@ -24,7 +24,7 @@
 | **Estado** | Funcional; Tiers 0 y A–I ✅. **Hoja de ruta REABIERTA**: [Tier J](ROADMAP.md) (re-auditoría del 2026-08-29) — 38 tareas, **7 Altas**, 0 cerradas |
 | **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · **xUnit** + **FlaUI** · Inno Setup 6 |
 | **Licencia** | **MIT** ([`LICENSE`](LICENSE)) — pero **lo que redistribuye NO es todo MIT**: ver §4 *Legal* |
-| **Pruebas** | **268**: 237 unitarias (233 pasan + 4 omitidas: 1 de red con `OFICONVERT_NETWORK_TESTS=1` y 3 que conducen Office con `OFICONVERT_OFFICE_TESTS=1`) + **31 de UI** (FlaUI, contra la app real) |
+| **Pruebas** | **280**: 249 unitarias (242 pasan + 7 omitidas: 1 de red con `OFICONVERT_NETWORK_TESTS=1` y 6 que conducen Office con `OFICONVERT_OFFICE_TESTS=1`) + **31 de UI** (FlaUI, contra la app real) |
 | **Hoja de ruta** | [`ROADMAP.md`](ROADMAP.md) — **Tier J abierto** (2026-08-29) |
 | **Cambios por versión** | [`CHANGELOG.md`](CHANGELOG.md) — creado el 2026-08-29; **el _qué_ va allí, el _porqué_ aquí** |
 | **Última actualización** | 2026-08-29 |
@@ -106,7 +106,7 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas unitarias | **233 pasan · 4 se omiten (1 de red + 3 que conducen Office) · 0 fallan**; con `OFICONVERT_OFFICE_TESTS=1`, **236 pasan** |
+| Pruebas unitarias | **242 pasan · 7 se omiten (1 de red + 6 que conducen Office) · 0 fallan**; con `OFICONVERT_OFFICE_TESTS=1`, **248 pasan** |
 | Pruebas de UI | **31 pasan · 0 fallan** (FlaUI, arrancan la app real **en la configuración compilada**) |
 | Publicado | **v2.6.1** (2.1.0 → 2.6.1 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
@@ -245,9 +245,20 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
   promete el README, aplicada en Word, Excel y PowerPoint.
 - **Limpieza COM estricta:** `Close`/`Quit` + `Marshal.FinalReleaseComObject` + doble `GC.Collect()`.
   Sin eso quedan `WINWORD.EXE`/`EXCEL.EXE` zombis tras cada lote.
-- **PowerPoint no acepta `Visible = false`** (lanza excepción): se abre con `WithWindow:=False` y se
-  ocultan sus ventanas después (`HidePowerPointWindows`). Por eso sus llamadas van en `try/catch`
-  individuales.
+  - 🔴 **Y la limpieza tiene que cubrir el camino que se tuerce.** `CreateOfficeApp` llamaba a
+    `configure(app)` **fuera de todo `try`**: si esa configuración lanzaba, el método propagaba sin haber
+    devuelto el objeto, el `finally` del llamante recibía `null` y quedaba **un proceso vivo por cada
+    intento**. La ventana peligrosa es exactamente la que va entre «ya existe el proceso» y «el llamante
+    tiene la referencia», y es responsabilidad de quien abre. (TJ-20.)
+- 🔴 **A PowerPoint NO SE LE TOCA `Visible`. Ni a true ni a false.** *Medido el 2026-08-31 (Office 16
+  ClickToRun):* recién activado por COM está en `Visible = msoFalse` y **sin ventana principal**
+  (`MainWindowHandle = 0`), y abrir con `WithWindow:=False` lo deja igual. **Es headless de fábrica.**
+  - `Visible = msoFalse` **lanza** («*Hiding the application window is not allowed*»). Cierto — pero de
+    ahí **no** se sigue que haya que ponerlo a `msoTrue`, que es la conclusión que se sacó y la que hacía
+    aparecer la ventana encima del usuario durante todo el lote. La respuesta es **no tocarlo**.
+  - `HidePowerPointWindows` se borró: recorría `presentation.Windows` poniendo `Visible = -1` —que es
+    **mostrar**, lo contrario de su nombre— y nunca se ejecutaba, porque con `WithWindow:=False`
+    `Windows.Count` es **0**. Código muerto que además mentía. (TJ-21.)
   - ⚠️ **`HidePowerPointWindows` NO oculta nada: pone `Visible = -1`, que es msoTrue.** Hoy da igual
     porque con `WithWindow:=False` la colección viene vacía y el bucle no se ejecuta. Ver `TJ-21`.
 - 🔴 **POWERPOINT ES UNA INSTANCIA COM ÚNICA Y COMPARTIDA. WORD Y EXCEL, NO.** *Medido el 2026-08-29 en
@@ -641,6 +652,59 @@ Menores, sin tier asignado:
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
+
+---
+
+### 2026-08-31 (noche) — TJ-21, TJ-20 y TJ-25: el motor, y una ficha que se equivocaba de culpable
+
+**TJ-21 — la ficha decía una cosa y la medición dijo otra.** La tarea pedía cambiar un `-1` por un `0` en
+`HidePowerPointWindows`. Medir primero cambió el arreglo entero:
+
+| Medición (Office 16 ClickToRun) | Resultado |
+|---|---|
+| `presentation.Windows.Count` con `WithWindow:=False` | **0** → la función era código muerto |
+| `Application.Visible = msoFalse` | **lanza**: *«Hiding the application window is not allowed»* |
+| PowerPoint recién activado, sin tocar nada | `Visible = msoFalse`, **`MainWindowHandle = 0`** |
+
+O sea: **PowerPoint es headless de fábrica**, y la ventana que salía la pedía nuestro código con
+`Visible = msoTrue`. El comentario que lo justificaba —«PowerPoint no admite trabajar oculto»— decía
+*media verdad*: es cierto que no se le puede poner `msoFalse`, pero de ahí no se sigue que haya que
+ponerlo a **true**. Entre las dos opciones que parecían existir faltaba la buena: **no tocarlo**.
+
+`HidePowerPointWindows` se borró en vez de corregirse. Sin ventanas que ocultar no había nada que
+arreglar, y dejar una función que no se ejecuta —y que hace lo contrario de su nombre— es dejar una
+trampa cargada para quien algún día abra con ventana.
+
+> **La lección, que es de método:** una ficha de auditoría es una hipótesis, no un encargo. Esta señalaba
+> el sitio correcto y el culpable equivocado. Se comprueba **antes** de arreglar.
+
+El guardián vigila **durante** la conversión, no al final: una ventana que aparece y se va sigue siendo
+una ventana que le salta al usuario. En rojo, con el código anterior: **16 muestras** con la ventana en
+pantalla.
+
+**TJ-20 — un proceso huérfano por intento.** `CreateOfficeApp` llamaba a `configure(app)` fuera de todo
+`try`. Si lanzaba, propagaba **sin haber devuelto el objeto**: el `finally` del llamante recibía `null` y
+no tenía a quién cerrarle. Verificado en rojo con Word real: **1 `WINWORD.EXE` por intento**. Es el
+riesgo que este documento lleva señalando desde el principio, y estaba abierto justo en la ventana entre
+«ya existe el proceso» y «el llamante tiene la referencia».
+
+Se prueba con **Word y no con PowerPoint** a propósito: Word arranca proceso propio, así que contar
+procesos dice la verdad. Con PowerPoint —instancia única— el recuento no distinguiría el nuestro del que
+ya hubiera.
+
+**TJ-25 — cerrada con la verificación a medias, y dicho.** Cada conversión de LibreOffice lleva ya su
+propio perfil (`-env:UserInstallation=file:///…`, **delante** de `--convert-to`, porque LibreOffice
+decide si arranca motor propio antes de mirar qué convertir).
+
+> ⚠️ **En esta máquina no hay LibreOffice**, así que el criterio de aceptación —8 documentos con
+> paralelismo 4— **no se ha ejecutado nunca**. Lo que sí está probado es la forma exacta del argumento, y
+> eso no es un consuelo menor: pasarle una **ruta de Windows** en vez de una URL **no da error**,
+> LibreOffice la ignora y vuelve al perfil compartido. El fallo seguiría ahí **en silencio** y un test que
+> solo mirase «que aparezca `-env:`» pasaría igual. Por eso se comprueba carácter a carácter, y en rojo
+> por los dos lados: barras sin normalizar (caen 3) y `-env:` mal colocado (cae 1).
+
+**Estado:** 12 de 38 del Tier J. Build 0/0, **242 unitarias pasan · 7 se omiten · 31 de UI**; con
+`OFICONVERT_OFFICE_TESTS=1`, 248.
 
 ---
 

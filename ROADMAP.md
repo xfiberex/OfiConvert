@@ -53,7 +53,7 @@
 | **G** | UI/UX: 3 bugs reales, comandos que se apagan solos, accesibilidad | ✅ Completado (2026-07-14) | 2.4.0 |
 | **H** | Instalador end-to-end: el `/VERYSILENT` que no era silencioso | ✅ Completado (2026-07-14) | **2.5.0** ✔ publicada |
 | **I** | Pase de UX/UI sobre capturas: 3 bugs vistos solo mirando la app | ✅ Completado (2026-07-21) | **2.6.0** ✔ publicada |
-| **J** | **Re-auditoría externa: el motor, el pipeline y los guardianes** | 🔶 **Abierto (2026-08-29)** — **9/38 cerradas**, las **7 Altas** completas | — |
+| **J** | **Re-auditoría externa: el motor, el pipeline y los guardianes** | 🔶 **Abierto (2026-08-29)** — **12/38 cerradas**, las **7 Altas** completas | — |
 
 \* Orden recomendado: **A → B → C → D → E** (F puede ir en cualquier momento). Idealmente D habría ido
 antes que C, pero C se trajo sus propios tests, como hicieron los hermanos.
@@ -366,7 +366,7 @@ translúcidas y el texto del menú pierde contraste. Arreglado con `ThemeDiction
 > `LocalizationUsageTests` vigila tres formas de pedir una clave y ya hay una cuarta. Los tres pasan en
 > verde sobre problemas de su propia especialidad.
 
-**Índice del tier:** 38 tareas — **7 Altas · 19 Medias · 12 Bajas**. **Cerradas: 9** (TJ-01 a TJ-07, TJ-12 y TJ-17) — **las 7 Altas, completas**.
+**Índice del tier:** 38 tareas — **7 Altas · 19 Medias · 12 Bajas**. **Cerradas: 12** (TJ-01 a TJ-07, TJ-12, TJ-17, TJ-20, TJ-21 y TJ-25) — **las 7 Altas, completas**.
 Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 
 ### J.1 — Severidad ALTA
@@ -678,7 +678,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     `IProgress<ConversionProgress>` en el árbol.
   - **Esfuerzo:** medio · **Depende de:** ninguna
 
-- [ ] **[TJ-20] Un fallo al configurar Office deja el proceso huérfano** · Medio
+- [x] ✅ **[TJ-20] Un fallo al configurar Office deja el proceso huérfano** · Medio *(cerrado 2026-08-31)*
   - **Área:** Código · **Ubicación:** `Services/OfficeFileConversionService.cs:509-527`
   - **Qué hacer:** `CreateOfficeApp` crea la instancia y **luego** llama a `configure(app)` fuera de
     todo `try/finally`. Si esa configuración lanza (un `InvokeMember` que la versión de Office no
@@ -686,9 +686,15 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     recibe `null`, no llama a `Quit()`, y queda un `WINWORD.EXE`/`EXCEL.EXE` vivo por cada intento —
     el fallo que `CONTEXT.md` señala como *EL* riesgo de la app.
   - **Criterio de aceptación:** con `configure` forzado a lanzar, no queda ningún proceso de Office.
+  - **✅ Cerrado 2026-08-31.** `CreateOfficeApp` envuelve la configuración: si algo falla entre «ya existe
+    el proceso» y «el llamante tiene la referencia», lo cierra antes de propagar — y propaga la excepción
+    **original**, que también se comprueba. **Verificado en rojo con Office real**
+    (`OfficeAppLifetimeTests`, con puerta `OFICONVERT_OFFICE_TESTS=1`): sin el arreglo queda **1
+    `WINWORD.EXE` por intento**. Se prueba con Word y no con PowerPoint a propósito: Word sí arranca
+    proceso propio, así que contar procesos dice la verdad.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
 
-- [ ] **[TJ-21] `HidePowerPointWindows` hace lo contrario de lo que dice** · Medio
+- [x] ✅ **[TJ-21] `HidePowerPointWindows` hace lo contrario de lo que dice** · Medio *(cerrado 2026-08-31)*
   - **Área:** Código · **Ubicación:** `Services/OfficeFileConversionService.cs:329-331`
   - **Qué hacer:** el bucle pone `window.Visible = -1`, que es **msoTrue** — *muestra* la ventana. Hoy
     no se nota porque las presentaciones se abren con `WithWindow:=False` y la colección viene vacía:
@@ -696,6 +702,19 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     `Visible = -1` también en la **aplicación** (`:229`, `:466`), PowerPoint se hace visible durante el
     lote. Poner `0` (msoFalse) y comprobar qué se ve realmente al convertir un `.pptx`.
   - **Criterio de aceptación:** convertir 3 `.pptx` no muestra ninguna ventana de PowerPoint.
+  - **✅ Cerrado 2026-08-31, y la causa NO era la que decía esta ficha.** Medido en esta máquina
+    (Office 16 ClickToRun): recién activado por COM, PowerPoint está en `Visible = msoFalse` y **sin
+    ventana principal** (`MainWindowHandle = 0`), y abrir con `WithWindow:=False` lo deja igual —
+    **headless de fábrica**. Lo que sacaba la ventana a pantalla era **nuestro** `Visible = msoTrue`.
+    El comentario que lo justificaba decía media verdad: `Visible = msoFalse` sí lanza
+    («*Hiding the application window is not allowed*»), pero de ahí no se sigue que haya que ponerlo a
+    **true**. Ahora **no se toca**.
+    `HidePowerPointWindows` se **borra** en vez de corregirse a `msoFalse`: con `WithWindow:=False`,
+    `Windows.Count` es **0** —medido—, así que no había ventanas que ocultar; dejar una función que no se
+    ejecuta es dejar una trampa cargada.
+    Guardián: `Convertir_NoAbreNingunaVentanaDePowerPoint`, que vigila **durante** la conversión y no al
+    final. **Verificado en rojo**: con el `Visible = msoTrue` anterior, **16 muestras** con la ventana en
+    pantalla.
   - **Esfuerzo:** bajo · **Depende de:** TJ-01
 
 - [ ] **[TJ-22] El menú contextual del Explorador está siempre en español** · Medio
@@ -729,7 +748,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     una firma.
   - **Esfuerzo:** medio · **Depende de:** ninguna
 
-- [ ] **[TJ-25] Varios `soffice --headless` a la vez comparten perfil de usuario** · Medio
+- [x] ✅ **[TJ-25] Varios `soffice --headless` a la vez comparten perfil de usuario** · Medio *(cerrado 2026-08-31)*
   - **Área:** Rendimiento · **Ubicación:** `Services/LibreOfficeConversionService.cs:53`
   - **Qué hacer:** LibreOffice **no admite** instancias headless concurrentes sobre el mismo perfil: la
     segunda se enchufa a la primera o falla. Con `MaxParallelConversions` hasta 8, un lote por
@@ -737,6 +756,18 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     `-env:UserInstallation=file:///…`. *(Pendiente de verificación: no hay LibreOffice en esta máquina.)*
   - **Criterio de aceptación:** un lote de 8 documentos con paralelismo 4 por LibreOffice los convierte
     todos.
+  - **🟡 Cerrado 2026-08-31 — CON UNA VERIFICACIÓN A MEDIAS, dicho claro.** Cada conversión crea su
+    propio perfil (`Core/LibreOfficeCommand`) y lo pasa con `-env:UserInstallation=file:///…`, **delante**
+    de `--convert-to`: LibreOffice decide si arranca motor propio o se enchufa a otro *antes* de mirar qué
+    convertir. El perfil se borra en el `finally`, como la carpeta de trabajo.
+    **Lo que SÍ está probado** (9 pruebas, sin LibreOffice): la forma exacta del argumento. Es lo
+    delicado, porque pasarle una ruta de Windows en vez de una URL **no da error** — LibreOffice la
+    ignora y vuelve al perfil compartido, así que el fallo seguiría ahí en silencio y un test que solo
+    mirase «que aparezca `-env:`» pasaría igual. Verificado en rojo por los dos lados: barras sin
+    normalizar (3 pruebas caen) y `-env:` detrás de `--convert-to` (1 prueba cae).
+    **⚠️ Lo que NO está probado:** el criterio de aceptación tal cual. En esta máquina **no hay
+    LibreOffice instalado**, así que el lote de 8 con paralelismo 4 no se ha ejecutado nunca. Queda
+    pendiente para una máquina que lo tenga.
   - **Esfuerzo:** medio · **Depende de:** ninguna
 
 - [ ] **[TJ-26] Una función a medio construir: opciones que existen en todas partes menos en la UI** · Medio
@@ -880,6 +911,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 | 2026-08-31 | **TJ-03** (LibreOffice borraba un archivo anterior) y **TJ-02** (deadlock de las tuberías) (5/38, **5 de 7 Altas**) |
 | 2026-08-31 | **TJ-01**: PowerPoint serializado y la sesión del usuario intocable, verificado contra el Office real (6/38, **6 de 7 Altas**) |
 | 2026-08-31 | **TJ-06** (18 mensajes en español a fuego → claves traducidas) y **TJ-17** (el guardián miraba 2 archivos de 20) — **las 7 Altas cerradas** (8/38) |
+| 2026-08-31 | **TJ-21** (PowerPoint ya no saca su ventana: la sacábamos nosotros), **TJ-20** (un fallo al configurar dejaba un proceso huérfano por intento) y **TJ-25** (perfil propio por proceso de LibreOffice, *verificación de punta a punta pendiente*) (12/38) |
 | 2026-08-31 | **TJ-12**: el instalador deja de decirle a quien usa LibreOffice que la app no funcionará, y el aviso se traduce a los 6 idiomas (9/38). Afinado del propio Tier J: las pruebas con Office dejan de ser inestables, y `HardcodedUiTextTests` caza un vigésimo literal que su `` no veía |
 
 ## 🚫 Decisiones cerradas / qué NO portar de los hermanos
