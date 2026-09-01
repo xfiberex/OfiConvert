@@ -16,16 +16,14 @@ public class LibreOfficeConversionService : IFileConversionService
 
     public async Task<ConversionResult> ConvertToPdfAsync(
         string sourcePath, string outputPath,
-        IProgress<ConversionProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         return await ConvertAsync(sourcePath, outputPath,
-            new ConversionOptions { OutputFormat = OutputFormat.PDF }, progress, cancellationToken);
+            new ConversionOptions { OutputFormat = OutputFormat.PDF }, cancellationToken);
     }
 
     public async Task<ConversionResult> ConvertAsync(
         string sourcePath, string outputPath, ConversionOptions options,
-        IProgress<ConversionProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         var loPath = GetLibreOfficePath();
