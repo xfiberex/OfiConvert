@@ -369,7 +369,7 @@ translúcidas y el texto del menú pierde contraste. Arreglado con `ThemeDiction
 > `LocalizationUsageTests` vigila tres formas de pedir una clave y ya hay una cuarta. Los tres pasan en
 > verde sobre problemas de su propia especialidad.
 
-**Índice del tier:** **39 tareas** — 7 Altas · 20 Medias · 12 Bajas *(TJ-39 nació durante el propio tier)*. **Cerradas: 21** (TJ-01 a TJ-08, TJ-10 a TJ-13, TJ-17 a TJ-21, TJ-23, TJ-24, TJ-25 y TJ-39) — **las 7 Altas, completas**.
+**Índice del tier:** **39 tareas** — 7 Altas · 20 Medias · 12 Bajas *(TJ-39 nació durante el propio tier)*. **Cerradas: 23** (TJ-01 a TJ-13, TJ-15, TJ-17 a TJ-21, TJ-23, TJ-24, TJ-25 y TJ-39) — **las 7 Altas, completas**; quedan **4 Medias y 12 Bajas**.
 Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 
 ### J.1 — Severidad ALTA
@@ -549,7 +549,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     patrón no nombre clases muertas.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
 
-- [ ] **[TJ-09] Cuatro `ComboBox` y dos `NumberBox` son mudos para un lector de pantalla** · Medio
+- [x] ✅ **[TJ-09] Cuatro `ComboBox` y dos `NumberBox` eran mudos para un lector de pantalla** · Medio *(cerrado 2026-09-01)*
   - **Área:** Accesibilidad · **Ubicación:** `MainWindow.xaml:134,692,713,744,767,803`;
     `tests/OfiConvert.UiTests/AccessibilityTests.cs:58`
   - **Qué hacer:** su etiqueta es un `TextBlock` hermano, que UI Automation **no asocia** — la misma
@@ -562,6 +562,11 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
   - **Criterio de aceptación:** el test recorre las tres pestañas y falla si cualquier control
     interactivo visible de esos tipos se queda sin nombre.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
+  - **Hecho:** `AutomationProperties.Name` en los seis (más el `ComboBox` de formato por archivo, que
+    tampoco lo tenía: son **siete**), atado a la misma clave que su etiqueta, así que se traduce con
+    ella. `AccessibilityTests` recorre ahora `ComboBox`, `Spinner` y `Edit` además de `Button` en las
+    tres pestañas — los tres tipos porque el reparto depende de la versión de WinUI, y de eso no puede
+    depender la accesibilidad. Comprobado en rojo quitando el nombre de *Idioma*.
 
 - [x] ✅ **[TJ-10] «Archivos guardados en: » sin nada detrás, en el flujo por defecto** · Medio *(cerrado 2026-08-31)*
   - **Área:** UI/UX · **Ubicación:** `ViewModels/MainViewModel.cs:652,663`
@@ -641,7 +646,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     encolar 50 archivos. *(Pendiente de verificación: no se ha comprobado si hoy se ven.)*
   - **Esfuerzo:** medio · **Depende de:** ninguna
 
-- [ ] **[TJ-15] Instalar una actualización a mitad de un lote salta el cierre protegido** · Medio
+- [x] ✅ **[TJ-15] Instalar una actualización a mitad de un lote saltaba el cierre protegido** · Medio *(cerrado 2026-09-01)*
   - **Área:** Arquitectura · **Ubicación:** `MainWindow.xaml.cs:355`; `MainWindow.xaml:69-71`
   - **Qué hacer:** `btnInstalarUpdate` **no** está atado a `IsConverting`, y el flujo termina en
     `Application.Current.Exit()`, que **no pasa por `OnAppWindowClosing`**: se salta la confirmación y
@@ -649,6 +654,15 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     declarado de esta app. Deshabilitar el botón mientras se convierte y cancelar el lote antes de salir.
   - **Criterio de aceptación:** con una conversión en curso, el botón de instalar está apagado.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
+  - **Hecho:** el botón se apaga solo con `IsConverting` (`SyncUpdateButtonState`), el manejador
+    comprueba además `CanClose()` —un botón deshabilitado es una promesa de la UI, no una garantía— y la
+    salida pasa por `ShutdownForUpdateAsync`, que cancela el lote, espera hasta 10 s a que Office suelte
+    lo suyo y hace el mismo cierre ordenado que el aspa (`ReleaseResources`, extraído de
+    `OnAppWindowClosing`, donde estaba escrito en línea y por eso solo ocurría al cerrar la ventana).
+    Importa porque entre pulsar «instalar» y salir pasan los minutos de la descarga, con la ventana viva.
+  - **Guardián:** `ShutdownPathsTests` (estructural: el botón vive en una `InfoBar` que solo aparece con
+    una actualización publicada, y los UI tests no convierten). Comprobado en rojo quitando el
+    `CanClose()` y el cierre ordenado.
 
 - [ ] **[TJ-16] La ventana no tiene tamaño mínimo y se dimensiona en píxeles crudos** · Medio
   - **Área:** Diseño responsivo · **Ubicación:** `MainWindow.xaml.cs:49`
@@ -1000,6 +1014,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 | 2026-08-31 | **TJ-01**: PowerPoint serializado y la sesión del usuario intocable, verificado contra el Office real (6/38, **6 de 7 Altas**) |
 | 2026-08-31 | **TJ-06** (18 mensajes en español a fuego → claves traducidas) y **TJ-17** (el guardián miraba 2 archivos de 20) — **las 7 Altas cerradas** (8/38) |
 | 2026-09-01 | **TJ-25 verificado de punta a punta** con LibreOffice 26.8.0.3: ocho documentos, paralelismo 4, **8 de 8**. La premisa, medida: con perfil compartido se pierden **4 de 8** sin un solo mensaje de error — y la versión rota tardaba la mitad. `ReleaseScriptTests` deja de llevar a mano la lista de puertas de entorno: ahora las descubre |
+| 2026-09-01 | **TJ-15** (instalar una actualización a mitad de un lote se saltaba el cierre protegido) y **TJ-09** (siete controles mudos para el Narrador, con el guardián mirando solo botones) (23/39) |
 | 2026-09-01 | **v2.7.0 publicada**: 21 de las 39 fichas del Tier J (las 7 Altas y 14 Medias). Primer corte con el pipeline que el propio tier arregló — notas desde el `CHANGELOG.md` (TJ-07), omitidas contadas aparte (TJ-08), UI tests sobre el binario Release (TJ-05). Quedan **6 Medias y 12 Bajas** |
 | 2026-08-31 | **TJ-18** (el escáner ya mira en los dos sentidos), **TJ-23** (cuatro paquetes redistribuidos sin atribuir, no uno), **TJ-08** (el corte dice pasan/omitidas/fallan) y **TJ-24** (la contraseña ya no llega a `signtool`). Y **TJ-39**, nuevo: dos clases de pruebas se peleaban por el idioma (21/39) |
 | 2026-08-31 | **TJ-11** (dos archivos homónimos se pisaban en paralelo), **TJ-13** (dos avisos a la vez = ninguno), **TJ-10** (la frase del resumen se cortaba en el flujo por defecto) y **TJ-19** (progreso muerto: se quita) (16/38) |

@@ -25,6 +25,23 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Sin publicar]
 
+### Corregido
+
+- **Instalar una actualización a mitad de una conversión ya no deja Office colgado.** El botón de
+  instalar seguía disponible con un lote en marcha, y al pulsarlo la app se cerraba **por un camino que
+  se saltaba la confirmación y la cancelación**: los Word, Excel o PowerPoint que estuvieran abiertos
+  para convertir se quedaban sueltos en el equipo. Ahora el botón se apaga mientras se convierte y, si
+  la conversión empieza durante la descarga, el lote se cancela y se espera a que Office cierre antes de
+  salir. *(Cierra [TJ-15](ROADMAP.md).)*
+
+### Accesibilidad
+
+- **Cuatro desplegables y dos campos numéricos ya se anuncian con su nombre.** *Formato*, *Tema*,
+  *Idioma*, *Formato por defecto*, *Conversiones en paralelo* y *Reintentos máximos* eran mudos para un
+  lector de pantalla: el Narrador decía «cuadro combinado, PDF» o «cuadro de número, 2», sin decir nunca
+  **de qué** eran. La etiqueta de al lado no basta: nadie asocia una cosa con otra por estar juntas en
+  pantalla. *(Cierra [TJ-09](ROADMAP.md).)*
+
 ### Interno
 
 - **La conversión en paralelo por LibreOffice ya está verificada contra LibreOffice de verdad.** La
@@ -33,6 +50,14 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
   convierten **los ocho**. Con el perfil compartido de antes se perdían **cuatro**, y —lo peor para quien
   tuviera que diagnosticarlo— **sin un solo mensaje de error**. La prueba vive detrás de
   `OFICONVERT_LIBREOFFICE_TESTS=1`, así que ningún corte depende de tener LibreOffice instalado.
+- **El guardián de accesibilidad dejó de mirar solo botones.** Filtraba por `ControlType.Button`, así
+  que llevaba desde el Tier G pasando en verde sobre los seis controles de TJ-09 — cazó los
+  `ToggleSwitch` de rebote, porque UI Automation los expone como botones. Ahora recorre también
+  `ComboBox`, `Spinner` y `Edit` en las tres pestañas.
+- **`ShutdownPathsTests`, nuevo:** ninguna salida de la app puede saltarse el cierre ordenado, el flujo
+  de actualización comprueba `CanClose()` y el botón sigue al estado de la conversión. El cierre
+  ordenado se extrajo a `ReleaseResources()`, que antes vivía dentro del manejador de cierre de ventana
+  y por eso solo ocurría al cerrar con el aspa.
 - El guardián de omisiones previstas del corte **descubre** las pruebas con puerta de entorno en vez de
   llevar la lista escrita a mano: la cuarta puerta había que acordarse de darla de alta, que es el mismo
   fallo que TJ-17.

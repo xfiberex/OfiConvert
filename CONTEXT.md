@@ -106,13 +106,13 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas unitarias | **269 pasan · 9 se omiten (1 de red + 6 que conducen Office + 2 que ejecutan LibreOffice) · 0 fallan** (total 278); con `OFICONVERT_OFFICE_TESTS=1` y `OFICONVERT_LIBREOFFICE_TESTS=1`, **278 pasan** |
-| Pruebas de UI | **31 pasan · 0 fallan** (FlaUI, arrancan la app real **en la configuración compilada**) |
+| Pruebas unitarias | **272 pasan · 9 se omiten (1 de red + 6 que conducen Office + 2 que ejecutan LibreOffice) · 0 fallan** (total 281); con `OFICONVERT_OFFICE_TESTS=1` y `OFICONVERT_LIBREOFFICE_TESTS=1`, **281 pasan** |
+| Pruebas de UI | **34 pasan · 0 fallan** (FlaUI, arrancan la app real **en la configuración compilada**) |
 | Publicado | **v2.7.0** (2.1.0 → 2.7.0 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
 | Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real. ⚠️ **Solo en un equipo CON Office**: ver `TJ-04` |
-| Pendiente de release | La verificación de TJ-25 y el guardián de puertas de entorno que se descubre solo |
-| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **39 tareas** (TJ-39 nació dentro del tier), **21 cerradas — las 7 Altas, completas**; quedan **6 Medias y 12 Bajas**. Lo cerrado se publicó en la **v2.7.0** |
+| Pendiente de release | La verificación de TJ-25, el guardián de puertas de entorno, y **TJ-15 + TJ-09** |
+| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **39 tareas** (TJ-39 nació dentro del tier), **23 cerradas — las 7 Altas, completas**; quedan **4 Medias y 12 Bajas**. Lo cerrado se publicó en la **v2.7.0** |
 
 **Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **A–I cerrados; J abierto**
 
@@ -276,6 +276,18 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 - Excel→CSV exporta **una hoja** (la activa, o la indicada en `ConversionOptions.SheetNames`);
   PPT→PNG/JPG exporta **todas las diapositivas** a una subcarpeta con el nombre del archivo.
 
+### Salir de la app (no romper)
+
+- **Toda salida pasa por el cierre ordenado**: cancelar el lote, guardar ajustes, `Dispose` del
+  ViewModel y soltar el icono de bandeja (`ReleaseResources`). Existe porque *el* riesgo declarado de
+  este programa es dejar **procesos de Office huérfanos**.
+- **`Application.Current.Exit()` NO pasa por `OnAppWindowClosing`.** La instalación de una actualización
+  terminaba ahí y se saltaba las cuatro cosas (TJ-15). Hoy hay un único camino, `ShutdownForUpdateAsync`,
+  y `ShutdownPathsTests` falla si aparece otro `Exit()` suelto.
+- **Un botón deshabilitado es una promesa de la interfaz, no una garantía**: el manejador comprueba
+  `CanClose()` por su cuenta. Entre pulsar «instalar» y salir pasan los minutos de la descarga con la
+  ventana viva, tiempo de sobra para que el usuario ponga un lote en marcha.
+
 ### Activación (menú contextual del Explorador) — trampas ya pagadas
 
 - **`RedirectActivationToAsync` NO se puede esperar desde el hilo STA de `Main`:** la redirección
@@ -414,9 +426,12 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
   cambia el idioma y se le borra la cola —y **sin sembrar el estado, las pruebas dependen de con qué se
   encuentren**: «el botón Convertir está apagado porque no hay archivos» fallaría en la máquina de alguien
   con una cola pendiente, sin que la app tuviera ningún fallo.
-- **Los `ToggleSwitch` se exponen a UI Automation como BOTONES SIN NOMBRE.** Su etiqueta es un `TextBlock`
-  aparte y el lector de pantalla no la asocia: hay que darles `AutomationProperties.Name` a mano. Lo mismo
-  para todo botón de solo icono. Lo fija `AccessibilityTests`.
+- **UI Automation NO asocia una etiqueta a un control por estar al lado.** Un `TextBlock` hermano no es
+  el nombre de nadie: sin `AutomationProperties.Name`, el lector de pantalla anuncia el tipo y el valor
+  («botón, activado», «cuadro combinado, PDF», «cuadro de número, 2») y jamás **de qué** son. Vale para
+  los `ToggleSwitch` —que además UIA expone como botones—, para todo botón de solo icono y para los
+  `ComboBox` y `NumberBox` (TJ-09). El `Name` se ata a la **misma clave** que su etiqueta, así se traduce
+  con ella. Lo fija `AccessibilityTests`, que desde TJ-09 mira `Button`, `ComboBox`, `Spinner` y `Edit`.
 - **El `.csproj` de la app vive en la RAÍZ**, así que su glob por defecto (`**/*.cs`) **se tragaba los
   archivos de `tests/`** y el build reventaba con errores absurdos (`Fact` no encontrado *dentro de la
   app*). Por eso el `.csproj` lleva `<Compile Remove="tests\**" />`. Si algún día se añade otra carpeta
@@ -615,10 +630,10 @@ Menores, sin tier asignado:
 
 - **Sin detección del idioma del sistema** en el primer arranque (los hermanos sí la tienen): la app
   abre en español hasta que el usuario elija.
-- **`FileValidationService` devuelve sus mensajes de error en español a fuego** ("El archivo está
-  vacío.", "…protegido con contraseña."), y llegan a la UI tal cual. Es el último rincón sin traducir:
-  `HardcodedUiTextTests` **no** lo caza, porque ahí los literales no se asignan a una propiedad de UI, sino
-  que viajan dentro de un `FileValidationResult`.
+> ✅ **Resuelto en el Tier J** (2026-08-31): `FileValidationService` —y los otros tres sitios— devolvían
+> sus mensajes en español a fuego, y `HardcodedUiTextTests` no los cazaba porque no se asignaban a una
+> propiedad de UI. Hoy los servicios devuelven **claves** (`Core/UserMessage`) y el guardián mira también
+> los literales que viajan como argumento (TJ-06, TJ-17).
 
 > ✅ **Resuelto en el Tier H** (2026-07-14): los textos en duro de `DialogService` («Sí», «No», «Aceptar»,
 > «Error») y los del flujo de actualización. Los prohíbe ahora `HardcodedUiTextTests`.
@@ -654,6 +669,65 @@ Menores, sin tier asignado:
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
+
+---
+
+### 2026-09-01 — TJ-15 y TJ-09: la salida que se saltaba el cierre, y siete controles mudos
+
+Dos Medias, y las dos del mismo tipo: **el arreglo estaba escrito en un solo camino** y había un segundo
+camino que nadie miró.
+
+**TJ-15 — actualizar a mitad de un lote se saltaba todo.** El botón «instalar actualización» no estaba
+atado a `IsConverting`, y el flujo terminaba en `Application.Current.Exit()`, que **no pasa por
+`OnAppWindowClosing`**. Es decir: se saltaba la confirmación al cerrar convirtiendo, la cancelación del
+lote, el guardado de ajustes y el `Dispose` del ViewModel — precisamente las cuatro cosas que existen para
+no dejar **procesos de Office huérfanos**, que es *el* riesgo declarado de esta app. Todo eso vivía escrito
+en línea dentro del manejador de cierre de ventana, así que solo ocurría al cerrar con el aspa.
+
+Tres piezas, y ninguna sobra:
+
+- el botón se apaga solo cuando `IsConverting` cambia (`SyncUpdateButtonState`);
+- el manejador comprueba `CanClose()` **por su cuenta**: un botón deshabilitado es una promesa de la
+  interfaz, no una garantía;
+- la salida pasa por `ShutdownForUpdateAsync`, que cancela el lote, espera hasta 10 s a que Office suelte
+  lo suyo y hace el mismo cierre ordenado que el aspa (`ReleaseResources`, extraído del manejador).
+
+> **Por qué el botón apagado no basta:** entre pulsar «instalar» y salir pasan los **minutos de la
+> descarga**, con la ventana viva y usable. El usuario puede encolar y arrancar un lote mientras tanto.
+> El estado que se comprobó al pulsar no es el estado que hay al salir.
+
+**TJ-09 — siete controles mudos, y el guardián que los tapaba.** Cuatro `ComboBox` (*Formato*, *Tema*,
+*Idioma*, *Formato por defecto*), dos `NumberBox` (*Conversiones en paralelo*, *Reintentos máximos*) y —de
+propina, no estaba en la ficha— el `ComboBox` de formato **por archivo** no tenían nombre accesible: el
+Narrador anunciaba «cuadro combinado, PDF» o «cuadro de número, 2» sin decir nunca de qué. La etiqueta de
+al lado es un `TextBlock` hermano, y **UI Automation no asocia nada por proximidad visual**.
+
+Lo grave no es el arreglo —un `AutomationProperties.Name` atado a la misma clave que la etiqueta, así se
+traduce con ella— sino que `AccessibilityTests` existía desde el Tier G **filtrando por
+`ControlType.Button`**: llevaba meses en verde sobre estos siete. Cazó los `ToggleSwitch` de puro rebote,
+porque UIA los expone como botones. Ahora recorre `Button`, `ComboBox`, `Spinner` y `Edit` — los tres
+últimos porque el reparto de tipos depende de la versión de WinUI, y de eso no puede depender la
+accesibilidad de nadie.
+
+**Guardianes** (los dos comprobados en rojo antes de darlos por buenos):
+
+- `AccessibilityTests`, ampliado — rojo quitando el `Name` de *Idioma*.
+- `ShutdownPathsTests`, nuevo y **estructural**: ninguna llamada a `Application.Current.Exit()` sin cierre
+  ordenado delante, el flujo de actualización comprueba `CanClose()` y el botón sigue al estado de la
+  conversión. Estructural porque no hay forma de probarlo por la interfaz: el botón vive en una `InfoBar`
+  que solo aparece si hay una versión publicada más nueva, y los UI tests no convierten nada a propósito.
+  Rojo al reponer las dos versiones anteriores.
+
+> Y una repetición de la trampa de siempre: el escáner de salidas se puso rojo con **su propio comentario**
+> —el que explica que `Application.Current.Exit()` no pasa por `OnAppWindowClosing`—. Es la tercera vez en
+> este tier que un guardián lee comentarios como si fueran código (pasó con el `.iss` en TJ-04 y con
+> `WizardSilent`). Se vacían los comentarios antes de mirar, siempre.
+
+**Pruebas:** 272 pasan · 9 omitidas · 0 fallan; UI **34** · 0. Build 0/0.
+
+De paso, §6 de este documento seguía diciendo que `FileValidationService` devolvía sus mensajes en español
+a fuego y que `HardcodedUiTextTests` no lo cazaba: las dos cosas las cerró el propio Tier J (TJ-06 y
+TJ-17) y el párrafo llevaba desde entonces mintiendo. Corregido.
 
 ---
 
@@ -1253,7 +1327,7 @@ sitio donde dolió, no el riesgo.*
 | Guardián | Qué vigila | Por dónde se le escapa |
 |---|---|---|
 | `HardcodedUiTextTests` | 2 archivos, y solo asignaciones a propiedades | Los **18 literales en español** de `Services/` y `ViewModels/` (`TJ-06`) |
-| `AccessibilityTests` | `ControlType.Button` | Los 4 `ComboBox` y 2 `NumberBox`, mudos para un lector (`TJ-09`) — cazó los `ToggleSwitch` solo porque UIA los expone **como botones** |
+| `AccessibilityTests` | `ControlType.Button` *(hasta TJ-09)* | Los 4 `ComboBox` y 2 `NumberBox`, mudos para un lector (`TJ-09`) — cazó los `ToggleSwitch` solo porque UIA los expone **como botones**. Ahora mira también `ComboBox`, `Spinner` y `Edit` |
 | `LocalizationUsageTests` | 3 formas de pedir una clave | La cuarta, `T("…")`, estrenada en el mismo arreglo que añadió la tercera (`TJ-18`) |
 | `LegalTextTests` | Que no se **borre** una atribución | `System.Drawing.Common 9.0.0`, que se redistribuye sin estar citado (`TJ-23`) — el propio test avisa de este hueco en su comentario |
 

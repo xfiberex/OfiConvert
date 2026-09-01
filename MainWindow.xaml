@@ -131,7 +131,12 @@
 
                                             <TextBlock Text="{Binding [LblFormat], Source={StaticResource Loc}}"
                                                        VerticalAlignment="Center" FontSize="13"/>
+                                            <!-- La etiqueta es el TextBlock de al lado, y UI Automation NO
+                                                 los asocia: sin nombre propio, el Narrador anuncia "cuadro
+                                                 combinado, PDF" sin decir de qué. Misma trampa que el
+                                                 ToggleSwitch de más abajo (TJ-09). -->
                                             <ComboBox x:Name="cmbFormat" Width="110"
+                                                      AutomationProperties.Name="{Binding [LblFormat], Source={StaticResource Loc}}"
                                                       SelectedIndex="0"
                                                       IsEnabled="{Binding IsConverting, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
                                                       SelectionChanged="CmbFormat_SelectionChanged">
@@ -338,6 +343,7 @@
 
                                                         <!-- Per-file Format -->
                                                         <ComboBox Grid.Column="2" Width="80"
+                                                                  AutomationProperties.Name="{Binding [LblFormat], Source={StaticResource Loc}}"
                                                                   VerticalAlignment="Center" FontSize="11"
                                                                   ItemsSource="{Binding AvailableFormats}"
                                                                   SelectedItem="{Binding Options.OutputFormat, Mode=TwoWay}"/>
@@ -690,6 +696,7 @@
                                     <TextBlock Text="{Binding [LblTheme], Source={StaticResource Loc}}"
                                                Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center"/>
                                     <ComboBox x:Name="cmbTheme" Grid.Column="1" Width="160"
+                                              AutomationProperties.Name="{Binding [LblTheme], Source={StaticResource Loc}}"
                                               VerticalAlignment="Center"
                                               SelectionChanged="CmbTheme_SelectionChanged">
                                         <ComboBoxItem Content="{Binding [LblThemeSystem], Source={StaticResource Loc}}" Tag="System"/>
@@ -711,6 +718,7 @@
                                     <TextBlock Text="{Binding [LblLanguage], Source={StaticResource Loc}}"
                                                Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center"/>
                                     <ComboBox x:Name="cmbLanguage" Grid.Column="1" Width="160"
+                                              AutomationProperties.Name="{Binding [LblLanguage], Source={StaticResource Loc}}"
                                               VerticalAlignment="Center"
                                               SelectionChanged="CmbLanguage_SelectionChanged">
                                         <ComboBoxItem Content="Espa&#xF1;ol" Tag="es"/>
@@ -742,6 +750,7 @@
                                     <TextBlock Text="{Binding [LblDefaultFormat], Source={StaticResource Loc}}"
                                                Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center"/>
                                     <ComboBox x:Name="cmbDefaultFormat" Grid.Column="1" Width="140"
+                                              AutomationProperties.Name="{Binding [LblDefaultFormat], Source={StaticResource Loc}}"
                                               VerticalAlignment="Center"
                                               SelectionChanged="CmbDefaultFormat_SelectionChanged">
                                         <ComboBoxItem Content="PDF"/>
@@ -765,6 +774,7 @@
                                     <TextBlock Text="{Binding [LblParallelConversions], Source={StaticResource Loc}}"
                                                Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center"/>
                                     <NumberBox x:Name="nbParallel" Grid.Column="1" Width="100"
+                                              AutomationProperties.Name="{Binding [LblParallelConversions], Source={StaticResource Loc}}"
                                               VerticalAlignment="Center"
                                               Value="{Binding MaxParallelConversions, Mode=TwoWay}"
                                               Minimum="1" Maximum="8" SmallChange="1"
@@ -801,6 +811,7 @@
                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                    VerticalAlignment="Center"/>
                                         <NumberBox Grid.Column="1" Width="100" VerticalAlignment="Center"
+                                                  AutomationProperties.Name="{Binding [LblMaxRetries], Source={StaticResource Loc}}"
                                                   Value="{Binding MaxRetryCount, Mode=TwoWay}"
                                                   Minimum="1" Maximum="10" SmallChange="1"
                                                   SpinButtonPlacementMode="Inline"/>
