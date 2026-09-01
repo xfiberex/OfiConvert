@@ -115,6 +115,7 @@
 
     <!-- Messages -->
     <system:String x:Key="MsgFileTooBig">文件 '{0}' 超过 500 MB 限制，将不会被添加。</system:String>
+    <system:String x:Key="MsgFilesTooBig">以下文件超过 500 MB 的限制，将不会被添加：&#x0a;&#x0a;{0}</system:String>
     <system:String x:Key="MsgOfficeNotFound">未安装 Microsoft Office 或无法访问。
 
 此应用程序需要系统上安装 Microsoft Office（Word、Excel 和/或 PowerPoint）才能将文件转换为 PDF。
@@ -125,6 +126,7 @@
     <system:String x:Key="MsgFilesConverted">已成功转换 {0} 个文件。</system:String>
     <system:String x:Key="MsgFilesFailed">{0} 个文件失败。</system:String>
     <system:String x:Key="MsgFilesSavedTo">文件已保存到：{0}</system:String>
+    <system:String x:Key="MsgFilesSavedNextToOriginal">每个文件都已保存在其原始文件旁边。</system:String>
     <system:String x:Key="MsgCancelConfirm">正在进行转换。如果现在关闭，Office 进程可能会保持打开状态。
 
 是否要取消转换并退出？</system:String>

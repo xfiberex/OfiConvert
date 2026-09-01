@@ -115,6 +115,7 @@
 
     <!-- Messages -->
     <system:String x:Key="MsgFileTooBig">ファイル '{0}' は 500 MB の制限を超えているため、追加されません。</system:String>
+    <system:String x:Key="MsgFilesTooBig">これらのファイルは 500 MB の上限を超えているため追加されません:&#x0a;&#x0a;{0}</system:String>
     <system:String x:Key="MsgOfficeNotFound">Microsoft Office がインストールされていないか、アクセスできません。
 
 このアプリケーションでは、ファイルを PDF に変換するために、システムに Microsoft Office（Word、Excel、PowerPoint）がインストールされている必要があります。
@@ -125,6 +126,7 @@
     <system:String x:Key="MsgFilesConverted">{0} 個のファイルが正常に変換されました。</system:String>
     <system:String x:Key="MsgFilesFailed">{0} 個のファイルが失敗しました。</system:String>
     <system:String x:Key="MsgFilesSavedTo">ファイルの保存先：{0}</system:String>
+    <system:String x:Key="MsgFilesSavedNextToOriginal">各ファイルは元のファイルと同じ場所に保存されました。</system:String>
     <system:String x:Key="MsgCancelConfirm">変換が進行中です。今閉じると、Office のプロセスが開いたままになる可能性があります。
 
 変換をキャンセルして終了しますか？</system:String>

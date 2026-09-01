@@ -115,6 +115,7 @@
 
     <!-- Messages -->
     <system:String x:Key="MsgFileTooBig">O arquivo '{0}' excede o limite de 500 MB e não será adicionado.</system:String>
+    <system:String x:Key="MsgFilesTooBig">Estes arquivos excedem o limite de 500 MB e não serão adicionados:&#x0a;&#x0a;{0}</system:String>
     <system:String x:Key="MsgOfficeNotFound">O Microsoft Office não está instalado ou não pode ser acessado.
 
 Este aplicativo requer o Microsoft Office (Word, Excel e/ou PowerPoint) instalado no sistema para converter arquivos em PDF.
@@ -125,6 +126,7 @@ Será tentado usar o LibreOffice como alternativa, se disponível.</system:Strin
     <system:String x:Key="MsgFilesConverted">{0} arquivo(s) convertido(s) com sucesso.</system:String>
     <system:String x:Key="MsgFilesFailed">{0} arquivo(s) falharam.</system:String>
     <system:String x:Key="MsgFilesSavedTo">Arquivos salvos em: {0}</system:String>
+    <system:String x:Key="MsgFilesSavedNextToOriginal">Cada arquivo foi salvo junto ao seu original.</system:String>
     <system:String x:Key="MsgCancelConfirm">Há uma conversão em andamento. Se você fechar agora, os processos do Office podem permanecer abertos.
 
 Deseja cancelar a conversão e sair?</system:String>
