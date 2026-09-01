@@ -14,9 +14,11 @@ namespace OfiConvert.Tests.Core;
 /// ignora y vuelve al perfil compartido. El fallo seguiría ahí, en silencio, y estas pruebas pasarían si
 /// solo miraran «que aparezca <c>-env:</c>».
 ///
-/// ⚠️ <b>Lo que estas pruebas NO cubren:</b> que ocho documentos con paralelismo 4 se conviertan de
-/// verdad. Eso necesita LibreOffice, que no está en la máquina donde se escribió esto. Queda anotado en
-/// <c>ROADMAP.md</c> como pendiente de verificación.
+/// <b>Lo que estas pruebas no cubren</b> —que ocho documentos con paralelismo 4 se conviertan de verdad—
+/// lo cubre desde el 2026-09-01 <see cref="OfiConvert.Tests.LibreOfficeEndToEndTests"/>, que necesita
+/// LibreOffice instalado y por eso vive detrás de <c>OFICONVERT_LIBREOFFICE_TESTS=1</c>. Estas siguen
+/// siendo las que se ejecutan <b>en cualquier máquina</b>, y las que cazan el fallo silencioso: una ruta
+/// de Windows en vez de una URL vuelve al perfil compartido <b>sin dar error</b>.
 /// </remarks>
 public sealed class LibreOfficeCommandTests
 {

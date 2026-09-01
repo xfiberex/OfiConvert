@@ -78,7 +78,7 @@ function Die($m)  { Write-Host "[X] $m" -ForegroundColor Red; exit 1 }
 # Pruebas que se omiten A PROPOSITO, con su puerta de entorno. Cualquier otra omision se avisa: el
 # escenario que se quiere evitar es una prueba que deja de ejecutarse sin que nadie lo note, y el
 # codigo de salida de "dotnet test" no distingue omitida de correcta. (TJ-08.)
-$ExpectedSkipPattern = 'PublishedReleaseTests|PowerPointSharedInstanceTests|OfficeAppLifetimeTests'
+$ExpectedSkipPattern = 'PublishedReleaseTests|PowerPointSharedInstanceTests|OfficeAppLifetimeTests|LibreOfficeEndToEndTests'
 
 <#
 .SYNOPSIS

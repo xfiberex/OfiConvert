@@ -104,10 +104,21 @@ public sealed class ReleaseScriptTests
 
         var regla = new Regex(patron.Groups[1].Value);
 
-        // Las clases que hoy llevan puerta de entorno tienen que estar cubiertas, o el corte llenaría la
-        // pantalla de avisos y se acabaría ignorando el mecanismo entero.
-        foreach (var clase in new[] { "PublishedReleaseTests", "PowerPointSharedInstanceTests", "OfficeAppLifetimeTests" })
-            Assert.True(regla.IsMatch(clase), $"{clase} se omite por diseño y no está en ExpectedSkipPattern.");
+        // Las clases con puerta de entorno tienen que estar cubiertas, o el corte llenaría la pantalla de
+        // avisos y se acabaría ignorando el mecanismo entero.
+        //
+        // 🔴 Esta lista se DESCUBRE. Estuvo escrita a mano —tres nombres— hasta que llegó una cuarta
+        // puerta (`LibreOfficeFact`, TJ-25 verificado de punta a punta) y hubo que acordarse de venir
+        // aquí. Es el fallo de TJ-17 otra vez: un guardián que solo mira donde ya se miró no protege del
+        // caso siguiente, que es justo el que se olvida.
+        var conPuerta = ClasesConPuertaDeEntorno();
+        Assert.True(conPuerta.Count >= 4,
+            $"Solo se descubrieron {conPuerta.Count} clases con puerta de entorno: el descubrimiento está roto.");
+
+        foreach (var clase in conPuerta)
+            Assert.True(regla.IsMatch(clase),
+                $"{clase} se omite por diseño (usa una puerta de entorno) y no está en ExpectedSkipPattern: "
+                    + "el corte la avisaría como omisión imprevista en cada versión.");
 
         // Y al revés: lo declarado tiene que existir. Un patrón que nombra clases muertas deja de proteger.
         var fuentes = TestPaths.RepoRoot;
@@ -118,5 +129,42 @@ public sealed class ReleaseScriptTests
                 .Any();
             Assert.True(existe, $"ExpectedSkipPattern nombra '{clase}', que ya no existe.");
         }
+    }
+
+    /// <summary>
+    /// Las clases de prueba que se omiten por diseño, descubiertas a partir de las <b>puertas de
+    /// entorno</b> que existan hoy.
+    /// </summary>
+    /// <remarks>
+    /// Una puerta es un <c>*FactAttribute</c> que pone <c>Skip</c> según una variable de entorno
+    /// (<c>NetworkFact</c>, <c>OfficeFact</c>, <c>LibreOfficeFact</c>…). Se buscan esos atributos y luego
+    /// quién los usa: así, la puerta número cinco entra sola el día que se escriba.
+    /// </remarks>
+    private static List<string> ClasesConPuertaDeEntorno()
+    {
+        var testsDir = Path.Combine(TestPaths.RepoRoot, "tests");
+
+        var puertas = Directory
+            .EnumerateFiles(testsDir, "*FactAttribute.cs", SearchOption.AllDirectories)
+            .Where(f => File.ReadAllText(f).Contains("GetEnvironmentVariable", StringComparison.Ordinal))
+            .Select(f => Path.GetFileNameWithoutExtension(f).Replace("Attribute", "", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.NotEmpty(puertas);
+
+        var clases = new List<string>();
+        foreach (var archivo in Directory.EnumerateFiles(testsDir, "*.cs", SearchOption.AllDirectories))
+        {
+            if (archivo.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") ||
+                archivo.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
+                continue;
+
+            var codigo = File.ReadAllText(archivo);
+            if (!puertas.Any(p => codigo.Contains($"[{p}]", StringComparison.Ordinal))) continue;
+
+            var nombre = Regex.Match(codigo, @"\bclass\s+(?<n>\w+)");
+            if (nombre.Success) clases.Add(nombre.Groups["n"].Value);
+        }
+        return clases;
     }
 }

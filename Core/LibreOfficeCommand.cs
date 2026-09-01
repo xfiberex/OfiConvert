@@ -19,10 +19,14 @@ namespace OfiConvert.Core;
 /// compartido, con lo que el problema sigue ahí <b>en silencio</b>. Por eso la conversión a URL se prueba
 /// carácter a carácter.
 ///
-/// ⚠️ <b>PENDIENTE DE VERIFICACIÓN DE PUNTA A PUNTA:</b> en la máquina donde se escribió esto no hay
-/// LibreOffice instalado, así que el criterio de aceptación de TJ-25 —un lote de 8 documentos con
-/// paralelismo 4— <b>no se ha podido ejecutar</b>. Lo que sí está probado es la línea de comandos que se
-/// construye. Ver <c>ROADMAP.md</c>.
+/// ✅ <b>VERIFICADO DE PUNTA A PUNTA (2026-09-01, LibreOffice 26.8.0.3).</b> El criterio de TJ-25 —ocho
+/// documentos con paralelismo 4— se ejecuta en <c>LibreOfficeEndToEndTests</c>: <b>8 de 8</b> con perfil
+/// propio. Y la premisa está medida, no supuesta: con <b>un perfil compartido</b> se convierten <b>4 de
+/// 8</b>, y los cuatro que caen salen con código 1 y <b>stdout y stderr VACÍOS</b> — no hay ningún error
+/// que leer, que es lo que hacía tan caro diagnosticarlo. Sistemático en cuatro repeticiones.
+///
+/// 🔴 Y lo más traicionero: <b>la configuración rota parecía la rápida</b> (12,8 s frente a 25,9 s),
+/// porque la mitad de los documentos moría al instante en vez de convertirse.
 /// </remarks>
 public static class LibreOfficeCommand
 {
