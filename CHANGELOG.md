@@ -27,6 +27,10 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ### Corregido
 
+- **Cuatro componentes de terceros que el instalador redistribuye ya están atribuidos.**
+  `System.Drawing.Common`, `Microsoft.Win32.SystemEvents`, `System.Numerics.Tensors` y
+  `H.GeneratedIcons.System.Drawing` viajaban dentro del programa sin aparecer en los avisos legales. Los
+  cuatro son MIT, comprobado en la ficha de cada paquete. *(Cierra [TJ-23](ROADMAP.md).)*
 - **Convertir dos archivos con el mismo nombre ya no deja uno solo.** Si en el lote había un
   `informe.docx` en dos carpetas distintas y todo iba a una carpeta común, las dos conversiones se
   asignaban `informe.pdf` —ninguna había escrito todavía— y la segunda **pisaba a la primera**. El
@@ -94,12 +98,22 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ### Interno
 
+- El corte de versión ya distingue **omitido** de **correcto**: lee el `.trx` e imprime pasan/omitidas/
+  fallan por proyecto, nombrando las omisiones no previstas. Antes salía en verde con pruebas omitidas
+  sin decirlo. *(Cierra [TJ-08](ROADMAP.md).)*
+- La contraseña del certificado de firma deja de viajar como texto y **ya no llega a la línea de comandos
+  de `signtool`**, donde cualquier proceso del equipo podía leerla. *(Cierra [TJ-24](ROADMAP.md).)*
+- El escáner de claves de traducción mira ya en los dos sentidos: además de comprobar que lo usado
+  exista, avisa de lo declarado y nunca usado. *(Cierra [TJ-18](ROADMAP.md).)*
+- Dos clases de pruebas se pisaban el idioma entre ellas —estado estático compartido— y fallaban 3 de
+  cada 8 veces. *(Cierra [TJ-39](ROADMAP.md), hallazgo aparecido durante el propio tier.)*
+
 - Se retira el mecanismo de progreso por archivo: atravesaba toda la API, prometía un «Convirtiendo 3/7»
   y **no se ejecutaba nunca**, porque ningún motor puede informar del avance de una conversión. El
   progreso del lote, que sí es real, no cambia. *(Cierra [TJ-19](ROADMAP.md).)*
 - Tres guardianes nuevos para clases de fallo, no para casos: ningún diálogo dentro de un bucle, ningún
   `IProgress<>` sin reportar, y los nombres de salida repartidos con candado.
-- **288 pruebas** (antes 268). Las cuatro correcciones, comprobadas en rojo.
+- **307 pruebas** (antes 268). Las correcciones, comprobadas en rojo.
 
 - **249 pruebas** (antes 237): +9 sobre la línea de comandos de LibreOffice y +3 con Office real
   (PowerPoint sin ventana, y los dos caminos de arranque de Word). Las tres correcciones, comprobadas en

@@ -24,7 +24,7 @@
 | **Estado** | Funcional; Tiers 0 y A–I ✅. **Hoja de ruta REABIERTA**: [Tier J](ROADMAP.md) (re-auditoría del 2026-08-29) — 38 tareas, **7 Altas**, 0 cerradas |
 | **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · **xUnit** + **FlaUI** · Inno Setup 6 |
 | **Licencia** | **MIT** ([`LICENSE`](LICENSE)) — pero **lo que redistribuye NO es todo MIT**: ver §4 *Legal* |
-| **Pruebas** | **295**: 264 unitarias (257 pasan + 7 omitidas: 1 de red con `OFICONVERT_NETWORK_TESTS=1` y 6 que conducen Office con `OFICONVERT_OFFICE_TESTS=1`) + **31 de UI** (FlaUI, contra la app real) |
+| **Pruebas** | **307**: 276 unitarias (269 pasan + 7 omitidas: 1 de red con `OFICONVERT_NETWORK_TESTS=1` y 6 que conducen Office con `OFICONVERT_OFFICE_TESTS=1`) + **31 de UI** (FlaUI, contra la app real) |
 | **Hoja de ruta** | [`ROADMAP.md`](ROADMAP.md) — **Tier J abierto** (2026-08-29) |
 | **Cambios por versión** | [`CHANGELOG.md`](CHANGELOG.md) — creado el 2026-08-29; **el _qué_ va allí, el _porqué_ aquí** |
 | **Última actualización** | 2026-08-29 |
@@ -106,7 +106,7 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas unitarias | **257 pasan · 7 se omiten (1 de red + 6 que conducen Office) · 0 fallan**; con `OFICONVERT_OFFICE_TESTS=1`, **263 pasan** |
+| Pruebas unitarias | **269 pasan · 7 se omiten (1 de red + 6 que conducen Office) · 0 fallan**; con `OFICONVERT_OFFICE_TESTS=1`, **276 pasan** |
 | Pruebas de UI | **31 pasan · 0 fallan** (FlaUI, arrancan la app real **en la configuración compilada**) |
 | Publicado | **v2.6.1** (2.1.0 → 2.6.1 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
@@ -652,6 +652,68 @@ Menores, sin tier asignado:
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
+
+---
+
+### 2026-08-31 — El pipeline, lo legal, y una carrera en las propias pruebas
+
+**TJ-23 — eran CUATRO paquetes sin atribuir, no uno.** La ficha señalaba `System.Drawing.Common`. Leer lo
+que de verdad se publica destapó tres más: `Microsoft.Win32.SystemEvents`, `System.Numerics.Tensors` y
+`H.GeneratedIcons.System.Drawing`. **949 KB de DLL** redistribuidas sin una línea de atribución.
+
+Ninguna se pidió: las cuatro son **transitivas** de `H.NotifyIcon.WinUI` y del Windows App SDK. Por eso
+`LegalTextTests` tenía razón al advertir de sí misma —«*si mañana entra una dependencia nueva y nadie
+toca el archivo de avisos, esto no lo caza*»— y por eso el arreglo no es añadir cuatro líneas sino
+**cruzar `obj/project.assets.json` con las DLL de la salida**. Licencias leídas del `.nuspec` de cada
+paquete en la caché de NuGet, **no de memoria**, como manda la regla de este proyecto.
+
+> 🔴 **Y el aviso más útil de todo esto es sobre el propio test.** La primera versión buscaba el nombre
+> con `Contains` sobre el documento entero. Al comprobarla en rojo —quitando la atribución— **pasó en
+> verde**: el nombre seguía apareciendo en la descripción de otra entrada, «*9) Microsoft.Win32.SystemEvents
+> (dependencia de System.Drawing.Common)*». **Una mención no es una atribución.** Ahora se exige que el
+> paquete esté en el **título** de una entrada numerada. Sin el paso de verificar en rojo, ese test se
+> habría quedado ahí dando falsa tranquilidad.
+
+**TJ-24 — la contraseña no se «asegura», se quita de en medio.** `SecureString` arregla que se teclee y
+se quede en `ConsoleHost_history.txt`, pero **no** lo importante: `signtool /p <contraseña>` la publicaba
+en la línea de comandos del proceso, que **cualquier proceso del equipo puede leer** sin permisos
+especiales mientras dura la firma. Ahora el `.pfx` se importa al almacén con el `SecureString`, se firma
+por **huella** —que no es secreta— y el certificado se retira en un `finally`: dejar la clave privada en
+el almacén sería cambiar una fuga por otra.
+
+**TJ-08 — «omitida» no es «pasa», y el código de salida no las distingue.** El corte lee ya el `.trx` y
+dice los tres números por proyecto. Lo que más valor tiene no es el recuento sino **nombrar** las
+omitidas inesperadas: «1 omitida» no dice nada; «`PublishedReleaseTests` omitida» sí.
+
+**TJ-18 — al escáner de claves le faltaba el sentido de vuelta.** La ida ya estaba (siete formas). Lo que
+faltaba es lo que habría cazado `TJ-06` mucho antes: **nada declarado puede quedarse sin usar**. Hay 33,
+congeladas como trinquete y anotadas por grupos —ocho son de la función a medio construir de `TJ-26` y
+hay que **usarlas**, no borrarlas—. Con un segundo test que obliga a limpiar la propia lista de
+excepciones: *una lista que no se limpia deja de ser un trinquete y pasa a tapar casos nuevos*.
+
+---
+
+**🔴 TJ-39 — hallazgo nuevo, y la lección de método de la jornada.**
+
+Durante un corte de prueba falló `UserMessageTranslationTests`. Una vez. En la suite completa no se
+reproducía.
+
+**El mecanismo:** el idioma es **estado estático** en `LocalizationService` —invariante de §4, y tiene
+que serlo—, pero xUnit corre **cada clase en su propia colección y las colecciones en paralelo**. Las dos
+clases que cambian de idioma se pisaban la misma variable. **Medido: 3 rojos de 8**, con víctima distinta
+cada vez, que es la firma de una carrera. Compartir `[Collection]` las serializa: **10 de 10 en verde**.
+
+> ⚠️ **Pero antes de esa medición hice una mala.** El primer intento dio «6 rojos de 6» *antes y después*
+> del arreglo, y estuve a punto de darlo por bueno como reproducción. El detector buscaba el texto «Con
+> error» en la salida… y la línea de éxito de `dotnet test` dice literalmente «**Con error: 0**». Marcaba
+> rojo siempre.
+>
+> **La regla:** *una medición que da el mismo resultado con y sin el arreglo no está midiendo el
+> arreglo.* Es la misma disciplina del «en rojo antes que en verde», aplicada al instrumento y no al
+> código. Se mira el **código de salida**, no un texto que puede contener su propia negación.
+
+**Estado:** 21 de 39 del Tier J. Build 0/0, **269 unitarias pasan · 7 se omiten · 31 de UI**; con
+`OFICONVERT_OFFICE_TESTS=1`, 276.
 
 ---
 

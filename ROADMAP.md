@@ -53,7 +53,7 @@
 | **G** | UI/UX: 3 bugs reales, comandos que se apagan solos, accesibilidad | ✅ Completado (2026-07-14) | 2.4.0 |
 | **H** | Instalador end-to-end: el `/VERYSILENT` que no era silencioso | ✅ Completado (2026-07-14) | **2.5.0** ✔ publicada |
 | **I** | Pase de UX/UI sobre capturas: 3 bugs vistos solo mirando la app | ✅ Completado (2026-07-21) | **2.6.0** ✔ publicada |
-| **J** | **Re-auditoría externa: el motor, el pipeline y los guardianes** | 🔶 **Abierto (2026-08-29)** — **16/38 cerradas**, las **7 Altas** completas | — |
+| **J** | **Re-auditoría externa: el motor, el pipeline y los guardianes** | 🔶 **Abierto (2026-08-29)** — **21/39 cerradas**, las **7 Altas** completas | — |
 
 \* Orden recomendado: **A → B → C → D → E** (F puede ir en cualquier momento). Idealmente D habría ido
 antes que C, pero C se trajo sus propios tests, como hicieron los hermanos.
@@ -366,7 +366,7 @@ translúcidas y el texto del menú pierde contraste. Arreglado con `ThemeDiction
 > `LocalizationUsageTests` vigila tres formas de pedir una clave y ya hay una cuarta. Los tres pasan en
 > verde sobre problemas de su propia especialidad.
 
-**Índice del tier:** 38 tareas — **7 Altas · 19 Medias · 12 Bajas**. **Cerradas: 16** (TJ-01 a TJ-07, TJ-10, TJ-11, TJ-12, TJ-13, TJ-17, TJ-19, TJ-20, TJ-21 y TJ-25) — **las 7 Altas, completas**.
+**Índice del tier:** **39 tareas** — 7 Altas · 20 Medias · 12 Bajas *(TJ-39 nació durante el propio tier)*. **Cerradas: 21** (TJ-01 a TJ-08, TJ-10 a TJ-13, TJ-17 a TJ-21, TJ-23, TJ-24, TJ-25 y TJ-39) — **las 7 Altas, completas**.
 Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 
 ### J.1 — Severidad ALTA
@@ -530,13 +530,20 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 
 ### J.2 — Severidad MEDIA
 
-- [ ] **[TJ-08] El corte no distingue «omitido» de «correcto»** · Medio
+- [x] ✅ **[TJ-08] El corte no distingue «omitido» de «correcto»** · Medio *(cerrado 2026-08-31)*
   - **Área:** QA · **Ubicación:** `release.ps1:171-178`
   - **Qué hacer:** solo se mira `$LASTEXITCODE`. Hoy mismo el corte sale en verde con **199 pasan · 1
     omitido** (`PublishedReleaseTests`, gated por `OFICONVERT_NETWORK_TESTS`) sin decirlo. Leer el
     `.trx` (`--logger trx`) e informar de los tres números, avisando si algún omitido no está en la
     lista de omisiones esperadas.
   - **Criterio de aceptación:** la salida del corte imprime «pasan / omitidos / fallan» por proyecto.
+  - **✅ Cerrado 2026-08-31.** El corte corre con `--logger trx` y `Read-TestSummary` lee el `.trx`,
+    recalculando los contadores desde los `<UnitTestResult outcome="…">` (los atributos de
+    `<Counters>` no siempre están todos). Imprime **pasan / omitidas / fallan** por proyecto y **nombra**
+    las omitidas que no estén en `$ExpectedSkipPattern` — «1 omitida» no dice nada, «PublishedReleaseTests
+    omitida» sí. **Verificado ejecutando el corte**: `OfiConvert.Tests: 269 pasan / 7 omitidas / 0 fallan`
+    y `OfiConvert.UiTests: 31 / 0 / 0`. Guardián: `ReleaseScriptTests`, que además comprueba que el
+    patrón no nombre clases muertas.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
 
 - [ ] **[TJ-09] Cuatro `ComboBox` y dos `NumberBox` son mudos para un lector de pantalla** · Medio
@@ -668,7 +675,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     reintroduciendo dos de los 18 literales de TJ-06. La prueba también falla si deja de encontrar
     archivos: un escáner que no mira nada pasa en verde.
 
-- [ ] **[TJ-18] El escáner de claves va otra vez por detrás del código** · Medio
+- [x] ✅ **[TJ-18] El escáner de claves va otra vez por detrás del código** · Medio *(cerrado 2026-08-31)*
   - **Área:** QA · **Ubicación:** `tests/OfiConvert.Tests/LocalizationUsageTests.cs:28-30`
   - **Qué hacer:** cubre `GetLocalizedString("…")`, `LocalizationService.Instance["…"]` y `loc["…"]`.
     **Falta `T("…")`**, el envoltorio que `DialogService:63` estrenó *en el mismo arreglo* que añadió
@@ -677,6 +684,14 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     mejor, detectar envoltorios genéricamente. Añadir además el chequeo **inverso**: claves declaradas
     y no usadas (hay 39; ver TJ-29).
   - **Criterio de aceptación:** borrar `MsgError` de `es-ES.xaml` pone el test en rojo.
+  - **✅ Cerrado 2026-08-31.** La mitad de ida ya la había cerrado el trabajo de `TJ-06`: el escáner
+    cubre las **siete** formas, `T("…")` incluida. Lo que faltaba era **el sentido inverso**, y ese es el
+    que habría cazado `TJ-06` años antes: ahora `NoAppearNewKeysDeclaredAndNeverUsed` exige que nada
+    declarado se quede sin usar, con las **33** de hoy congeladas como trinquete —anotadas por qué existe
+    cada grupo— y `TheExceptionListDoesNotLie`, que obliga a limpiar esa lista según se usen o se borren.
+    Revisar las 33 sigue siendo `TJ-29`; ocho de ellas son de la función a medio construir de `TJ-26` y
+    hay que **usarlas**, no borrarlas. **Verificado en rojo por los dos lados**, incluido el criterio
+    literal (borrar `MsgError` de `es-ES.xaml`).
   - **Esfuerzo:** bajo · **Depende de:** ninguna
   - **Avance (2026-08-31):** el escáner ya cubre **siete** formas — se le añadieron `T("…")` (la que
     pedía esta tarea) y las dos que nacieron con TJ-06, `new UserMessage("…")` y `Failed("…")`, en el
@@ -751,7 +766,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
   - **Criterio de aceptación:** con la app en alemán, el menú contextual está en alemán.
   - **Esfuerzo:** medio · **Depende de:** ninguna
 
-- [ ] **[TJ-23] `System.Drawing.Common` se redistribuye y no está atribuido** · Medio
+- [x] ✅ **[TJ-23] `System.Drawing.Common` se redistribuye y no está atribuido** · Medio *(cerrado 2026-08-31)*
   - **Área:** Legal · **Ubicación:** `THIRD-PARTY-NOTICES.txt`; `tests/OfiConvert.Tests/Core/LegalTextTests.cs:40-48`
   - **Qué hacer:** `System.Drawing.Common 9.0.0` llega como dependencia de `H.NotifyIcon.WinUI`, se usa
     en `ThumbnailService` y en el icono de bandeja, y **viaja como DLL en el instalador** (verificado:
@@ -761,9 +776,20 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     Añadirlo y, ya puestos, un test que **compare los ensamblados publicados** con los componentes
     nombrados.
   - **Criterio de aceptación:** el test falla si un `.dll` de un paquete NuGet publicado no está citado.
+  - **✅ Cerrado 2026-08-31 — eran CUATRO, no una.** Además de `System.Drawing.Common 9.0.0`, viajan
+    sin atribuir `Microsoft.Win32.SystemEvents 9.0.0`, `System.Numerics.Tensors 9.0.0` y
+    `H.GeneratedIcons.System.Drawing 2.2.0`: **949 KB de DLL**. Ninguna se pidió — todas son
+    **transitivas** de `H.NotifyIcon.WinUI` y del Windows App SDK, que es justo por lo que una lista
+    escrita a mano se queda atrás sola. Las cuatro son **MIT**, leído del `.nuspec` de cada paquete en la
+    caché de NuGet, **no de memoria**.
+    `RedistributedPackagesTests` cruza ahora `obj/project.assets.json` con las DLL de la salida de
+    compilación. **Aviso sobre el propio test:** la primera versión buscaba el nombre con `Contains` sobre
+    todo el documento y **pasó en verde** al quitarle la atribución, porque el nombre seguía apareciendo
+    en la descripción de otra entrada («*dependencia de System.Drawing.Common*»). Una mención no es una
+    atribución: ahora se exige que el paquete esté en el **título** de una entrada numerada.
   - **Esfuerzo:** medio · **Depende de:** ninguna
 
-- [ ] **[TJ-24] La contraseña del certificado viaja como `[string]`** · Medio
+- [x] ✅ **[TJ-24] La contraseña del certificado viaja como `[string]`** · Medio *(cerrado 2026-08-31)*
   - **Área:** Seguridad · **Ubicación:** `release.ps1:56`; `installer/build-installer.ps1:43,85`
   - **Qué hacer:** `-CertPassword` es `[string]`, así que se teclea en la línea de comandos (y queda en
     `ConsoleHost_history.txt`), se reenvía entre scripts en claro y acaba como `/p <contraseña>` en la
@@ -772,6 +798,12 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     camino documentado para el día que se firme.
   - **Criterio de aceptación:** ninguna contraseña aparece en `Get-CimInstance Win32_Process` durante
     una firma.
+  - **✅ Cerrado 2026-08-31.** `-CertPassword` es `[SecureString]` en los dos scripts, y puede llegar
+    por `OFICONVERT_CERT_PASSWORD` para no teclearla. Lo importante es lo otro: **ya no se le pasa a
+    `signtool`**. Con un `.pfx`, se importa al almacén del usuario con el `SecureString` (que
+    `Import-PfxCertificate` acepta sin convertirlo a texto), se firma por **huella** —que no es secreta— y
+    se **retira el certificado en un `finally`**: dejar la clave privada en el almacén sería cambiar una
+    fuga por otra. Guardián: `ReleaseScriptTests` prohíbe `[string]$CertPassword` y `/p` en el script.
   - **Esfuerzo:** medio · **Depende de:** ninguna
 
 - [x] ✅ **[TJ-25] Varios `soffice --headless` a la vez comparten perfil de usuario** · Medio *(cerrado 2026-08-31)*
@@ -807,6 +839,25 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     las imágenes de PowerPoint con un 150 fijo. Decidir: exponerlas, o retirar modelo, claves y código.
   - **Criterio de aceptación:** o hay UI para ellas, o no quedan ni las claves ni las propiedades.
   - **Esfuerzo:** alto · **Depende de:** ninguna
+
+- [x] ✅ **[TJ-39] Dos clases de pruebas se peleaban por el idioma, que es estado estático** · Medio *(abierto y cerrado 2026-08-31)*
+  - **Área:** QA · **Ubicación:** `tests/OfiConvert.Tests/LocalizationTests.cs`,
+    `tests/OfiConvert.Tests/UserMessageTranslationTests.cs`
+  - **Qué hacer:** *(hallazgo NUEVO, aparecido durante el propio Tier J: asomó una sola vez, en un corte
+    de versión de prueba.)* El idioma es **estado estático** en `LocalizationService` —invariante de
+    `CONTEXT.md` §4, y tiene que serlo—, pero xUnit corre **cada clase en su propia colección y las
+    colecciones en paralelo**. Las dos clases que cambian de idioma se pisaban la misma variable: la que
+    perdía la carrera afirmaba sobre el idioma de la otra. **Medido: 3 rojos de 8**, con víctima distinta
+    cada vez. En la suite completa el reparto las separa casi siempre, así que fallaba muy de tarde en
+    tarde — la peor forma de fallar, porque invita a repetir y seguir.
+  - **Criterio de aceptación:** ejecutar solo esas dos clases diez veces seguidas no falla ninguna.
+  - **✅ Cerrado 2026-08-31.** Comparten `[Collection]` (`LocalizationCollection`), que las serializa.
+    **10 de 10 en verde** tras el cambio. Cuesta milisegundos.
+  - **⚠️ De paso, un error de método propio, anotado porque es fácil de repetir:** el primer intento de
+    medirlo dio «6 rojos de 6» *antes y después* del arreglo. El detector buscaba el texto «Con error» en
+    la salida… y la línea de éxito dice literalmente «Con error: **0**». **Una medición que da el mismo
+    resultado con y sin el arreglo no está midiendo el arreglo.** Ahora se mira el código de salida.
+  - **Esfuerzo:** bajo · **Depende de:** ninguna
 
 ### J.3 — Severidad BAJA
 
@@ -937,6 +988,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 | 2026-08-31 | **TJ-03** (LibreOffice borraba un archivo anterior) y **TJ-02** (deadlock de las tuberías) (5/38, **5 de 7 Altas**) |
 | 2026-08-31 | **TJ-01**: PowerPoint serializado y la sesión del usuario intocable, verificado contra el Office real (6/38, **6 de 7 Altas**) |
 | 2026-08-31 | **TJ-06** (18 mensajes en español a fuego → claves traducidas) y **TJ-17** (el guardián miraba 2 archivos de 20) — **las 7 Altas cerradas** (8/38) |
+| 2026-08-31 | **TJ-18** (el escáner ya mira en los dos sentidos), **TJ-23** (cuatro paquetes redistribuidos sin atribuir, no uno), **TJ-08** (el corte dice pasan/omitidas/fallan) y **TJ-24** (la contraseña ya no llega a `signtool`). Y **TJ-39**, nuevo: dos clases de pruebas se peleaban por el idioma (21/39) |
 | 2026-08-31 | **TJ-11** (dos archivos homónimos se pisaban en paralelo), **TJ-13** (dos avisos a la vez = ninguno), **TJ-10** (la frase del resumen se cortaba en el flujo por defecto) y **TJ-19** (progreso muerto: se quita) (16/38) |
 | 2026-08-31 | **TJ-21** (PowerPoint ya no saca su ventana: la sacábamos nosotros), **TJ-20** (un fallo al configurar dejaba un proceso huérfano por intento) y **TJ-25** (perfil propio por proceso de LibreOffice, *verificación de punta a punta pendiente*) (12/38) |
 | 2026-08-31 | **TJ-12**: el instalador deja de decirle a quien usa LibreOffice que la app no funcionará, y el aviso se traduce a los 6 idiomas (9/38). Afinado del propio Tier J: las pruebas con Office dejan de ser inestables, y `HardcodedUiTextTests` caza un vigésimo literal que su `\b` no veía |
