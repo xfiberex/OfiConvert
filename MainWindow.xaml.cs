@@ -19,6 +19,13 @@ public sealed partial class MainWindow : Window
 {
     public MainViewModel ViewModel { get; }
     private H.NotifyIcon.TaskbarIcon? _trayIcon;
+    /// <summary>DPI de la pantalla donde está la ventana. 0 si el handle no vale.</summary>
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(IntPtr hwnd);
+
+    /// <summary>Cierto mientras se descarga/instala una actualización: ahí manda el propio flujo.</summary>
+    private bool _updateDownloadInProgress;
+
     private string? _appUpdateUrl;
     private string? _appUpdateChecksumUrl;
     private AppWindow _appWindow = null!;
@@ -45,8 +52,20 @@ public sealed partial class MainWindow : Window
         // Mica backdrop
         SystemBackdrop = new MicaBackdrop();
 
-        // Window size
-        _appWindow.Resize(new SizeInt32(1050, 800));
+        // Tamaño de la ventana, ESCALADO POR DPI: Resize habla en píxeles físicos, así que 1050x800 a pelo
+        // solo es correcto al 100 %. Al 150 % la ventana nacía un tercio más pequeña de lo pensado, con el
+        // contenido dibujado más grande dentro. Y un mínimo, porque los desplegables tienen ancho fijo y
+        // con etiquetas alemanas el layout se rompe al encoger. (TJ-16.)
+        uint dpi = GetDpiForWindow(_hWnd);
+        var (ancho, alto) = WindowSizing.Default(dpi);
+        _appWindow.Resize(new SizeInt32(ancho, alto));
+
+        if (_appWindow.Presenter is OverlappedPresenter presenter)
+        {
+            var (anchoMin, altoMin) = WindowSizing.Minimum(dpi);
+            presenter.PreferredMinimumWidth = anchoMin;
+            presenter.PreferredMinimumHeight = altoMin;
+        }
 
         // Window closing event
         _appWindow.Closing += OnAppWindowClosing;
@@ -131,12 +150,25 @@ public sealed partial class MainWindow : Window
         {
             ApplyTheme(ViewModel.SelectedTheme);
         }
-        else if (e.PropertyName == nameof(MainViewModel.CanInstallUpdate))
+        else if (e.PropertyName == nameof(MainViewModel.IsConverting))
         {
-            // En código y no por binding: el botón vive en el ActionButton de la InfoBar, y su estado es
-            // UNA sola regla del ViewModel (ver CanInstallUpdate) en vez de asignaciones sueltas aquí.
-            btnInstalarUpdate.IsEnabled = ViewModel.CanInstallUpdate;
+            // Instalar una actualización cierra la app. Mientras se convierte, eso deja procesos de Office
+            // huérfanos — EL riesgo declarado de este programa (TJ-15). El botón se apaga solo, en vez de
+            // confiar en que nadie lo pulse. No es un binding porque el propio flujo de descarga lo
+            // enciende y lo apaga a mano, y un valor local mataría el binding a la primera.
+            SyncUpdateButtonState();
         }
+    }
+
+    /// <summary>
+    /// El botón de instalar la actualización solo está vivo si hay actualización <b>y</b> no se está
+    /// convirtiendo.
+    /// </summary>
+    private void SyncUpdateButtonState()
+    {
+        if (_updateDownloadInProgress) return;   // durante la descarga manda el propio flujo
+
+        btnInstalarUpdate.IsEnabled = !string.IsNullOrEmpty(_appUpdateUrl) && ViewModel.CanClose();
     }
 
     private void ApplyTheme(string theme)
@@ -282,16 +314,21 @@ public sealed partial class MainWindow : Window
             ViewModel.CancelConversionCommand.Execute(null);
         }
 
-        ReleaseForShutdown();
+        ReleaseResources();
         Close();
     }
 
     /// <summary>
-    /// Lo que hay que hacer antes de que la app deje de existir, por cualquiera de las dos salidas: el
-    /// cierre de la ventana y la instalación de una actualización (que sale por
-    /// <c>Application.Current.Exit()</c> y NO pasa por <see cref="OnAppWindowClosing"/>).
+    /// Suelta lo que la app tiene cogido: suscripciones, ajustes en disco, el ViewModel y el icono de
+    /// bandeja.
     /// </summary>
-    private void ReleaseForShutdown()
+    /// <remarks>
+    /// Estaba escrito dentro de <see cref="OnAppWindowClosing"/>, así que <b>solo</b> ocurría al cerrar la
+    /// ventana. La instalación de una actualización terminaba en <c>Application.Current.Exit()</c>, que no
+    /// pasa por ahí: se iba sin guardar los ajustes ni soltar nada (TJ-15). Ahora las dos salidas usan
+    /// esto.
+    /// </remarks>
+    private void ReleaseResources()
     {
         ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
         ViewModel.OnConversionCompleted -= OnConversionCompleted;
@@ -304,6 +341,33 @@ public sealed partial class MainWindow : Window
             _trayIcon.Dispose();
             _trayIcon = null;
         }
+    }
+
+    /// <summary>
+    /// Cierre ordenado antes de que el instalador se lleve la app por delante.
+    /// </summary>
+    /// <remarks>
+    /// El botón de instalar está apagado mientras se convierte, pero entre pulsarlo y llegar aquí pasan
+    /// los segundos —o minutos— de la descarga, y la ventana sigue viva: el usuario puede haber puesto un
+    /// lote en marcha mientras tanto. Si lo ha hecho, se <b>cancela y se espera</b> a que Office suelte lo
+    /// que tenga abierto; una espera corta, porque el instalador ya está lanzado y no se le puede hacer
+    /// esperar indefinidamente. (TJ-15.)
+    /// </remarks>
+    private async Task ShutdownForUpdateAsync()
+    {
+        if (!ViewModel.CanClose())
+        {
+            Serilog.Log.Warning("Actualización: hay una conversión en curso; se cancela antes de salir.");
+            ViewModel.CancelConversionCommand.Execute(null);
+
+            for (int i = 0; i < 40 && !ViewModel.CanClose(); i++)
+                await Task.Delay(250);
+
+            if (!ViewModel.CanClose())
+                Serilog.Log.Error("Actualización: la conversión no terminó de cancelarse en 10 s; se sale igualmente.");
+        }
+
+        ReleaseResources();
     }
 
     private async Task CheckForAppUpdateAsync()
@@ -319,17 +383,22 @@ public sealed partial class MainWindow : Window
         infoBarUpdate.Message = loc["MsgUpdateAvailable"];
         infoBarUpdate.IsOpen = true;
         btnBuscarActualizacion.Content = $"\u2b06 {info.Version}";
+        SyncUpdateButtonState();
     }
 
     private async void BtnDownloadUpdate_Click(object sender, RoutedEventArgs e)
     {
-        // El botón ya está apagado con un lote en marcha; esto es el cinturón por si el clic llega en el
-        // mismo instante en que empieza uno.
-        if (string.IsNullOrEmpty(_appUpdateUrl) || !ViewModel.CanInstallUpdate) return;
+        if (string.IsNullOrEmpty(_appUpdateUrl)) return;
 
-        // Apaga el botón (ver OnViewModelPropertyChanged) y Convertir: el progreso lo cuenta la InfoBar
-        // ("Descargando... 42%"). Antes se le metía aquí al botón un texto en duro, en español.
-        ViewModel.IsInstallingUpdate = true;
+        // Cinturón sobre los tirantes del botón apagado: instalar cierra la app, y cerrarla a mitad de un
+        // lote deja procesos de Office huérfanos (TJ-15). Un botón deshabilitado es una promesa de la UI;
+        // esto es la garantía.
+        if (!ViewModel.CanClose()) return;
+
+        _updateDownloadInProgress = true;
+        btnInstalarUpdate.IsEnabled = false;
+        // El botón se deshabilita y ya está: el progreso lo cuenta la InfoBar ("Descargando... 42%"). Antes
+        // se le metía aquí un texto en duro, en español, para los ocho idiomas.
         pbUpdate.Visibility = Visibility.Visible;
         infoBarUpdate.IsClosable = false;
 
@@ -368,15 +437,19 @@ public sealed partial class MainWindow : Window
             if (installer is not null && installer.WaitForExit(4000) && installer.ExitCode != 0)
                 throw new InvalidOperationException(string.Format(loc["MsgUpdateInstallFailed"], installer.ExitCode));
 
-            // Exit() no pasa por OnAppWindowClosing: la limpieza se hace aquí a mano (TJ-15).
-            ReleaseForShutdown();
+            // Application.Current.Exit() NO pasa por OnAppWindowClosing: se saltaba la cancelación del
+            // lote, el guardado de ajustes y el Dispose del ViewModel —todo lo que existe para no dejar
+            // procesos de Office sueltos—. Entre pulsar «instalar» y llegar aquí pasan segundos o minutos
+            // de descarga: tiempo de sobra para que el usuario haya puesto a convertir. (TJ-15.)
+            await ShutdownForUpdateAsync();
             Application.Current.Exit();
         }
         catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)   // ERROR_CANCELLED
         {
             // El usuario dijo que NO al UAC. No es un fallo: es una decisi\u00f3n suya, y se le trata como tal.
             pbUpdate.Visibility = Visibility.Collapsed;
-            ViewModel.IsInstallingUpdate = false;
+            _updateDownloadInProgress = false;
+            SyncUpdateButtonState();
             infoBarUpdate.IsClosable = true;
             infoBarUpdate.Severity = InfoBarSeverity.Warning;
             infoBarUpdate.Message = loc["MsgUpdateElevationDenied"];
@@ -385,7 +458,8 @@ public sealed partial class MainWindow : Window
         catch (Exception ex)
         {
             pbUpdate.Visibility = Visibility.Collapsed;
-            ViewModel.IsInstallingUpdate = false;
+            _updateDownloadInProgress = false;
+            SyncUpdateButtonState();
             infoBarUpdate.IsClosable = true;
             infoBarUpdate.Severity = InfoBarSeverity.Error;
             infoBarUpdate.Message = ex.Message;
@@ -479,6 +553,7 @@ public sealed partial class MainWindow : Window
                 infoBarUpdate.Title = $"\u2b06 {loc["TitleUpdateAvailable"]}: {info.Version}";
                 infoBarUpdate.Message = loc["MsgUpdateAvailable"];
                 infoBarUpdate.IsOpen = true;
+                SyncUpdateButtonState();
 
                 var dialog = new ContentDialog
                 {

@@ -1,6 +1,6 @@
 # OfiConvert — Hoja de ruta
 
-> ## Estado (2026-09-22)
+> ## Estado (2026-08-29)
 >
 > **Los tiers 0 y A–I están todos completados. El Tier J acaba de abrirse.** El proyecto ya tiene la
 > infraestructura que sus hermanos habían pagado (pipeline de release, actualización verificada, cara
@@ -27,11 +27,7 @@
 >
 > **v2.7.0** (2026-09-01): **21 de las 39 fichas del Tier J** — las 7 Altas y 14 Medias. Deja de
 > cerrarle al usuario su PowerPoint sin guardar, de borrar archivos ajenos por la ruta de LibreOffice
-> y de hablar en español en los ocho idiomas. **307 pruebas.**
->
-> **Sin publicar en `main`:** TJ-25 verificado de punta a punta (2026-09-01) y **TJ-15** (2026-09-22):
-> instalar una actualización ya no puede cortar un lote a medias. **22 de 39**; quedan **5 Medias y 12
-> Bajas**. **315 pruebas.**
+> y de hablar en español en los ocho idiomas. **307 pruebas.** No queda nada en `main` sin publicar.
 
 > **Qué hay aquí:** el trabajo pendiente agrupado por **tiers**, con su porqué y dónde vive cada cosa.
 >
@@ -60,7 +56,7 @@
 | **G** | UI/UX: 3 bugs reales, comandos que se apagan solos, accesibilidad | ✅ Completado (2026-07-14) | 2.4.0 |
 | **H** | Instalador end-to-end: el `/VERYSILENT` que no era silencioso | ✅ Completado (2026-07-14) | **2.5.0** ✔ publicada |
 | **I** | Pase de UX/UI sobre capturas: 3 bugs vistos solo mirando la app | ✅ Completado (2026-07-21) | **2.6.0** ✔ publicada |
-| **J** | **Re-auditoría externa: el motor, el pipeline y los guardianes** | 🔶 **Abierto (2026-08-29)** — **22/39 cerradas**, las **7 Altas** completas | — |
+| **J** | **Re-auditoría externa: el motor, el pipeline y los guardianes** | 🔶 **Abierto (2026-08-29)** — **21/39 cerradas**, las **7 Altas** completas | — |
 
 \* Orden recomendado: **A → B → C → D → E** (F puede ir en cualquier momento). Idealmente D habría ido
 antes que C, pero C se trajo sus propios tests, como hicieron los hermanos.
@@ -373,7 +369,7 @@ translúcidas y el texto del menú pierde contraste. Arreglado con `ThemeDiction
 > `LocalizationUsageTests` vigila tres formas de pedir una clave y ya hay una cuarta. Los tres pasan en
 > verde sobre problemas de su propia especialidad.
 
-**Índice del tier:** **39 tareas** — 7 Altas · 20 Medias · 12 Bajas *(TJ-39 nació durante el propio tier)*. **Cerradas: 22** (TJ-01 a TJ-08, TJ-10 a TJ-13, TJ-15, TJ-17 a TJ-21, TJ-23, TJ-24, TJ-25 y TJ-39) — **las 7 Altas, completas**.
+**Índice del tier:** **39 tareas** — 7 Altas · 20 Medias · 12 Bajas *(TJ-39 nació durante el propio tier)*. **Cerradas: 25** (TJ-01 a TJ-21, más TJ-23, TJ-24, TJ-25 y TJ-39) — **las 7 Altas, completas**; quedan **2 Medias** (TJ-22, TJ-26) **y 12 Bajas**.
 Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 
 ### J.1 — Severidad ALTA
@@ -553,7 +549,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     patrón no nombre clases muertas.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
 
-- [ ] **[TJ-09] Cuatro `ComboBox` y dos `NumberBox` son mudos para un lector de pantalla** · Medio
+- [x] ✅ **[TJ-09] Cuatro `ComboBox` y dos `NumberBox` eran mudos para un lector de pantalla** · Medio *(cerrado 2026-09-01)*
   - **Área:** Accesibilidad · **Ubicación:** `MainWindow.xaml:134,692,713,744,767,803`;
     `tests/OfiConvert.UiTests/AccessibilityTests.cs:58`
   - **Qué hacer:** su etiqueta es un `TextBlock` hermano, que UI Automation **no asocia** — la misma
@@ -566,6 +562,11 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
   - **Criterio de aceptación:** el test recorre las tres pestañas y falla si cualquier control
     interactivo visible de esos tipos se queda sin nombre.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
+  - **Hecho:** `AutomationProperties.Name` en los seis (más el `ComboBox` de formato por archivo, que
+    tampoco lo tenía: son **siete**), atado a la misma clave que su etiqueta, así que se traduce con
+    ella. `AccessibilityTests` recorre ahora `ComboBox`, `Spinner` y `Edit` además de `Button` en las
+    tres pestañas — los tres tipos porque el reparto depende de la versión de WinUI, y de eso no puede
+    depender la accesibilidad. Comprobado en rojo quitando el nombre de *Idioma*.
 
 - [x] ✅ **[TJ-10] «Archivos guardados en: » sin nada detrás, en el flujo por defecto** · Medio *(cerrado 2026-08-31)*
   - **Área:** UI/UX · **Ubicación:** `ViewModels/MainViewModel.cs:652,663`
@@ -633,7 +634,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     línea exacta.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
 
-- [ ] **[TJ-14] Las miniaturas dependen de una carrera que se pierde en los dos sentidos** · Medio
+- [x] ✅ **[TJ-14] Las miniaturas dependían de una carrera que se perdía en los dos sentidos** · Medio *(cerrado 2026-09-01)*
   - **Área:** Código / UI · **Ubicación:** `Services/ThumbnailService.cs:64-83`
   - **Qué hacer:** se guarda un PNG temporal, se asigna `BitmapImage.UriSource` —que carga de forma
     **asíncrona**— y en el `finally` inmediato se **borra el archivo**. O el borrado falla (y quedan
@@ -644,8 +645,20 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
   - **Criterio de aceptación:** las miniaturas se ven en la lista y `%TEMP%` no acumula PNG tras
     encolar 50 archivos. *(Pendiente de verificación: no se ha comprobado si hoy se ven.)*
   - **Esfuerzo:** medio · **Depende de:** ninguna
+  - **Hecho:** el disco ya no se toca. `GetThumbnailBytesAsync` (shell + GDI+, en segundo plano) devuelve
+    **bytes**, y el `BitmapImage` se crea en el hilo que llama —la UI— con `SetSourceAsync` sobre un
+    `InMemoryRandomAccessStream`. El `catch` mudo pasa a registrar.
+  - **Verificado, y la pregunta abierta de la ficha respondida: NO se veían.** Conduciendo la app real
+    con un `.docx` (misma ventana, antes y después): con el código antiguo salía el icono genérico; con
+    el nuevo, la miniatura del documento. Y el `%TEMP%` estaba **limpio** con el código viejo — porque de
+    las dos ramas de la carrera **siempre ganaba la misma**: el `BitmapImage` se construía fuera del hilo
+    de UI, reventaba, el `catch` se lo tragaba y el borrado llegaba a tiempo. La miniatura no aparecía
+    nunca; la basura en `%TEMP%` no llegó a pasar.
+  - **Guardián:** `ThumbnailServiceTests` — hay PNG de verdad (firma incluida), un archivo inexistente no
+    revienta, y 50 miniaturas no dejan **nada** en `%TEMP%`. Comprobado en rojo escribiendo el PNG a
+    disco a propósito: 49 restos.
 
-- [x] ✅ **[TJ-15] Instalar una actualización a mitad de un lote salta el cierre protegido** · Medio *(cerrado 2026-09-22)*
+- [x] ✅ **[TJ-15] Instalar una actualización a mitad de un lote saltaba el cierre protegido** · Medio *(cerrado 2026-09-01)*
   - **Área:** Arquitectura · **Ubicación:** `MainWindow.xaml.cs:355`; `MainWindow.xaml:69-71`
   - **Qué hacer:** `btnInstalarUpdate` **no** está atado a `IsConverting`, y el flujo termina en
     `Application.Current.Exit()`, que **no pasa por `OnAppWindowClosing`**: se salta la confirmación y
@@ -653,22 +666,17 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     declarado de esta app. Deshabilitar el botón mientras se convierte y cancelar el lote antes de salir.
   - **Criterio de aceptación:** con una conversión en curso, el botón de instalar está apagado.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
-  - **Hecho:** el estado del botón es **una regla del ViewModel**, `CanInstallUpdate = !IsConverting &&
-    !IsInstallingUpdate`, que la ventana aplica al oír su `PropertyChanged`; fuera las asignaciones sueltas
-    `IsEnabled = true` de los `catch`, que lo habrían vuelto a encender con un lote en marcha. La carrera
-    se cierra **por los dos lados**: la descarga tarda, y mientras dura tampoco se puede empezar a
-    convertir (`CanWorkWithQueue`). Y la salida por `Exit()` hace ya la misma limpieza que el cierre de la
-    ventana (`ReleaseForShutdown`: guardar ajustes, soltar el ViewModel, quitar el icono de la bandeja),
-    que antes se saltaba entera.
-  - **Verificado:** `UpdateInstallGateTests` (6) — las dos reglas sobre un `MainViewModel` creado **sin
-    constructor** (el constructor lee los datos reales del usuario), el aviso de `CanInstallUpdate` al
-    cambiar `IsConverting`, y dos guardias sobre el code-behind: el botón solo obedece a la regla, y todo
-    `Exit()` va precedido de la limpieza. Comprobado en rojo: cada uno de los cuatro sabotajes lo caza
-    su prueba.
-  - ⚠️ **No ejercido de punta a punta:** la InfoBar solo aparece con una versión nueva publicada, y los UI
-    tests no convierten. Queda para el próximo corte, actualizando **desde** la 2.7.x con un lote en marcha.
+  - **Hecho:** el botón se apaga solo con `IsConverting` (`SyncUpdateButtonState`), el manejador
+    comprueba además `CanClose()` —un botón deshabilitado es una promesa de la UI, no una garantía— y la
+    salida pasa por `ShutdownForUpdateAsync`, que cancela el lote, espera hasta 10 s a que Office suelte
+    lo suyo y hace el mismo cierre ordenado que el aspa (`ReleaseResources`, extraído de
+    `OnAppWindowClosing`, donde estaba escrito en línea y por eso solo ocurría al cerrar la ventana).
+    Importa porque entre pulsar «instalar» y salir pasan los minutos de la descarga, con la ventana viva.
+  - **Guardián:** `ShutdownPathsTests` (estructural: el botón vive en una `InfoBar` que solo aparece con
+    una actualización publicada, y los UI tests no convierten). Comprobado en rojo quitando el
+    `CanClose()` y el cierre ordenado.
 
-- [ ] **[TJ-16] La ventana no tiene tamaño mínimo y se dimensiona en píxeles crudos** · Medio
+- [x] ✅ **[TJ-16] La ventana no tenía tamaño mínimo y se dimensionaba en píxeles crudos** · Medio *(cerrado 2026-09-01)*
   - **Área:** Diseño responsivo · **Ubicación:** `MainWindow.xaml.cs:49`
   - **Qué hacer:** `_appWindow.Resize(new SizeInt32(1050, 800))` usa **píxeles físicos** sin escalar
     por DPI (a 150 % la ventana nace un tercio más pequeña de lo pensado) y no se fija
@@ -677,6 +685,12 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
   - **Criterio de aceptación:** la ventana no baja de un mínimo usable y abre del mismo tamaño aparente
     a 100 %, 150 % y 200 %.
   - **Esfuerzo:** medio · **Depende de:** ninguna
+  - **Hecho:** `Core/WindowSizing` —aritmética pura, probada sin abrir ventana— escala el tamaño por
+    `GetDpiForWindow`, y `OverlappedPresenter.PreferredMinimumWidth/Height` fija el mínimo (880×620 a
+    96 ppp, también escalado).
+  - **Verificado sobre la ventana real:** abre 1050×800 a 96 ppp, y forzándola a 400×300 con
+    `MoveWindow` se queda en **880×620**. ⚠️ El comportamiento a 150 % y 200 % **no** se ha comprobado en
+    hardware: esta pantalla está al 100 %. Lo que sí se prueba es la aritmética que fallaba.
 
 - [x] ✅ **[TJ-17] `HardcodedUiTextTests` solo miraba dos archivos de veintitantos** · Medio *(cerrado 2026-08-31)*
   - **Área:** QA · **Ubicación:** `tests/OfiConvert.Tests/HardcodedUiTextTests.cs:28-32`
@@ -1018,8 +1032,9 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 | 2026-08-31 | **TJ-01**: PowerPoint serializado y la sesión del usuario intocable, verificado contra el Office real (6/38, **6 de 7 Altas**) |
 | 2026-08-31 | **TJ-06** (18 mensajes en español a fuego → claves traducidas) y **TJ-17** (el guardián miraba 2 archivos de 20) — **las 7 Altas cerradas** (8/38) |
 | 2026-09-01 | **TJ-25 verificado de punta a punta** con LibreOffice 26.8.0.3: ocho documentos, paralelismo 4, **8 de 8**. La premisa, medida: con perfil compartido se pierden **4 de 8** sin un solo mensaje de error — y la versión rota tardaba la mitad. `ReleaseScriptTests` deja de llevar a mano la lista de puertas de entorno: ahora las descubre |
+| 2026-09-01 | **TJ-15** (instalar una actualización a mitad de un lote se saltaba el cierre protegido) y **TJ-09** (siete controles mudos para el Narrador, con el guardián mirando solo botones) (23/39) |
+| 2026-09-01 | **TJ-14** (las miniaturas **no se veían nunca**: el `BitmapImage` se creaba fuera del hilo de UI y el fallo se tragaba) y **TJ-16** (ventana sin mínimo y sin escalar por DPI) (25/39) |
 | 2026-09-01 | **v2.7.0 publicada**: 21 de las 39 fichas del Tier J (las 7 Altas y 14 Medias). Primer corte con el pipeline que el propio tier arregló — notas desde el `CHANGELOG.md` (TJ-07), omitidas contadas aparte (TJ-08), UI tests sobre el binario Release (TJ-05). Quedan **6 Medias y 12 Bajas** |
-| 2026-09-22 | **TJ-15**: instalar una actualización y convertir ya no se solapan — ni el botón se enciende con un lote en marcha, ni se empieza un lote mientras se descarga, y la salida por `Exit()` hace la limpieza del cierre (22/39) |
 | 2026-08-31 | **TJ-18** (el escáner ya mira en los dos sentidos), **TJ-23** (cuatro paquetes redistribuidos sin atribuir, no uno), **TJ-08** (el corte dice pasan/omitidas/fallan) y **TJ-24** (la contraseña ya no llega a `signtool`). Y **TJ-39**, nuevo: dos clases de pruebas se peleaban por el idioma (21/39) |
 | 2026-08-31 | **TJ-11** (dos archivos homónimos se pisaban en paralelo), **TJ-13** (dos avisos a la vez = ninguno), **TJ-10** (la frase del resumen se cortaba en el flujo por defecto) y **TJ-19** (progreso muerto: se quita) (16/38) |
 | 2026-08-31 | **TJ-21** (PowerPoint ya no saca su ventana: la sacábamos nosotros), **TJ-20** (un fallo al configurar dejaba un proceso huérfano por intento) y **TJ-25** (perfil propio por proceso de LibreOffice, *verificación de punta a punta pendiente*) (12/38) |
