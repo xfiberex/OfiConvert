@@ -25,6 +25,15 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Sin publicar]
 
+### Corregido
+
+- **Instalar una actualización ya no puede cortar una conversión a medias.** El botón «Instalar» de la
+  barra de actualización seguía activo mientras se convertía, y al pulsarlo la app se cerraba sin pasar
+  por la confirmación de siempre, pudiendo dejar Word, Excel o PowerPoint abiertos en segundo plano.
+  Ahora el botón se apaga mientras hay un lote en marcha, y mientras se descarga la actualización no se
+  puede empezar uno nuevo. Al instalar, la app guarda además sus ajustes antes de cerrarse, como al
+  cerrarla a mano.
+
 ### Interno
 
 - **La conversión en paralelo por LibreOffice ya está verificada contra LibreOffice de verdad.** La

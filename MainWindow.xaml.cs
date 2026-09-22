@@ -131,6 +131,12 @@ public sealed partial class MainWindow : Window
         {
             ApplyTheme(ViewModel.SelectedTheme);
         }
+        else if (e.PropertyName == nameof(MainViewModel.CanInstallUpdate))
+        {
+            // En código y no por binding: el botón vive en el ActionButton de la InfoBar, y su estado es
+            // UNA sola regla del ViewModel (ver CanInstallUpdate) en vez de asignaciones sueltas aquí.
+            btnInstalarUpdate.IsEnabled = ViewModel.CanInstallUpdate;
+        }
     }
 
     private void ApplyTheme(string theme)
@@ -276,7 +282,17 @@ public sealed partial class MainWindow : Window
             ViewModel.CancelConversionCommand.Execute(null);
         }
 
-        // Cleanup
+        ReleaseForShutdown();
+        Close();
+    }
+
+    /// <summary>
+    /// Lo que hay que hacer antes de que la app deje de existir, por cualquiera de las dos salidas: el
+    /// cierre de la ventana y la instalación de una actualización (que sale por
+    /// <c>Application.Current.Exit()</c> y NO pasa por <see cref="OnAppWindowClosing"/>).
+    /// </summary>
+    private void ReleaseForShutdown()
+    {
         ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
         ViewModel.OnConversionCompleted -= OnConversionCompleted;
         ViewModel.SaveSettings();
@@ -288,8 +304,6 @@ public sealed partial class MainWindow : Window
             _trayIcon.Dispose();
             _trayIcon = null;
         }
-
-        Close();
     }
 
     private async Task CheckForAppUpdateAsync()
@@ -309,11 +323,13 @@ public sealed partial class MainWindow : Window
 
     private async void BtnDownloadUpdate_Click(object sender, RoutedEventArgs e)
     {
-        if (string.IsNullOrEmpty(_appUpdateUrl)) return;
+        // El botón ya está apagado con un lote en marcha; esto es el cinturón por si el clic llega en el
+        // mismo instante en que empieza uno.
+        if (string.IsNullOrEmpty(_appUpdateUrl) || !ViewModel.CanInstallUpdate) return;
 
-        btnInstalarUpdate.IsEnabled = false;
-        // El botón se deshabilita y ya está: el progreso lo cuenta la InfoBar ("Descargando... 42%"). Antes
-        // se le metía aquí un texto en duro, en español, para los ocho idiomas.
+        // Apaga el botón (ver OnViewModelPropertyChanged) y Convertir: el progreso lo cuenta la InfoBar
+        // ("Descargando... 42%"). Antes se le metía aquí al botón un texto en duro, en español.
+        ViewModel.IsInstallingUpdate = true;
         pbUpdate.Visibility = Visibility.Visible;
         infoBarUpdate.IsClosable = false;
 
@@ -352,13 +368,15 @@ public sealed partial class MainWindow : Window
             if (installer is not null && installer.WaitForExit(4000) && installer.ExitCode != 0)
                 throw new InvalidOperationException(string.Format(loc["MsgUpdateInstallFailed"], installer.ExitCode));
 
+            // Exit() no pasa por OnAppWindowClosing: la limpieza se hace aquí a mano (TJ-15).
+            ReleaseForShutdown();
             Application.Current.Exit();
         }
         catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)   // ERROR_CANCELLED
         {
             // El usuario dijo que NO al UAC. No es un fallo: es una decisi\u00f3n suya, y se le trata como tal.
             pbUpdate.Visibility = Visibility.Collapsed;
-            btnInstalarUpdate.IsEnabled = true;
+            ViewModel.IsInstallingUpdate = false;
             infoBarUpdate.IsClosable = true;
             infoBarUpdate.Severity = InfoBarSeverity.Warning;
             infoBarUpdate.Message = loc["MsgUpdateElevationDenied"];
@@ -367,7 +385,7 @@ public sealed partial class MainWindow : Window
         catch (Exception ex)
         {
             pbUpdate.Visibility = Visibility.Collapsed;
-            btnInstalarUpdate.IsEnabled = true;
+            ViewModel.IsInstallingUpdate = false;
             infoBarUpdate.IsClosable = true;
             infoBarUpdate.Severity = InfoBarSeverity.Error;
             infoBarUpdate.Message = ex.Message;

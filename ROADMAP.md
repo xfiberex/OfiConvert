@@ -1,6 +1,6 @@
 # OfiConvert — Hoja de ruta
 
-> ## Estado (2026-08-29)
+> ## Estado (2026-09-22)
 >
 > **Los tiers 0 y A–I están todos completados. El Tier J acaba de abrirse.** El proyecto ya tiene la
 > infraestructura que sus hermanos habían pagado (pipeline de release, actualización verificada, cara
@@ -27,7 +27,11 @@
 >
 > **v2.7.0** (2026-09-01): **21 de las 39 fichas del Tier J** — las 7 Altas y 14 Medias. Deja de
 > cerrarle al usuario su PowerPoint sin guardar, de borrar archivos ajenos por la ruta de LibreOffice
-> y de hablar en español en los ocho idiomas. **307 pruebas.** No queda nada en `main` sin publicar.
+> y de hablar en español en los ocho idiomas. **307 pruebas.**
+>
+> **Sin publicar en `main`:** TJ-25 verificado de punta a punta (2026-09-01) y **TJ-15** (2026-09-22):
+> instalar una actualización ya no puede cortar un lote a medias. **22 de 39**; quedan **5 Medias y 12
+> Bajas**. **315 pruebas.**
 
 > **Qué hay aquí:** el trabajo pendiente agrupado por **tiers**, con su porqué y dónde vive cada cosa.
 >
@@ -56,7 +60,7 @@
 | **G** | UI/UX: 3 bugs reales, comandos que se apagan solos, accesibilidad | ✅ Completado (2026-07-14) | 2.4.0 |
 | **H** | Instalador end-to-end: el `/VERYSILENT` que no era silencioso | ✅ Completado (2026-07-14) | **2.5.0** ✔ publicada |
 | **I** | Pase de UX/UI sobre capturas: 3 bugs vistos solo mirando la app | ✅ Completado (2026-07-21) | **2.6.0** ✔ publicada |
-| **J** | **Re-auditoría externa: el motor, el pipeline y los guardianes** | 🔶 **Abierto (2026-08-29)** — **21/39 cerradas**, las **7 Altas** completas | — |
+| **J** | **Re-auditoría externa: el motor, el pipeline y los guardianes** | 🔶 **Abierto (2026-08-29)** — **22/39 cerradas**, las **7 Altas** completas | — |
 
 \* Orden recomendado: **A → B → C → D → E** (F puede ir en cualquier momento). Idealmente D habría ido
 antes que C, pero C se trajo sus propios tests, como hicieron los hermanos.
@@ -369,7 +373,7 @@ translúcidas y el texto del menú pierde contraste. Arreglado con `ThemeDiction
 > `LocalizationUsageTests` vigila tres formas de pedir una clave y ya hay una cuarta. Los tres pasan en
 > verde sobre problemas de su propia especialidad.
 
-**Índice del tier:** **39 tareas** — 7 Altas · 20 Medias · 12 Bajas *(TJ-39 nació durante el propio tier)*. **Cerradas: 21** (TJ-01 a TJ-08, TJ-10 a TJ-13, TJ-17 a TJ-21, TJ-23, TJ-24, TJ-25 y TJ-39) — **las 7 Altas, completas**.
+**Índice del tier:** **39 tareas** — 7 Altas · 20 Medias · 12 Bajas *(TJ-39 nació durante el propio tier)*. **Cerradas: 22** (TJ-01 a TJ-08, TJ-10 a TJ-13, TJ-15, TJ-17 a TJ-21, TJ-23, TJ-24, TJ-25 y TJ-39) — **las 7 Altas, completas**.
 Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 
 ### J.1 — Severidad ALTA
@@ -641,7 +645,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     encolar 50 archivos. *(Pendiente de verificación: no se ha comprobado si hoy se ven.)*
   - **Esfuerzo:** medio · **Depende de:** ninguna
 
-- [ ] **[TJ-15] Instalar una actualización a mitad de un lote salta el cierre protegido** · Medio
+- [x] ✅ **[TJ-15] Instalar una actualización a mitad de un lote salta el cierre protegido** · Medio *(cerrado 2026-09-22)*
   - **Área:** Arquitectura · **Ubicación:** `MainWindow.xaml.cs:355`; `MainWindow.xaml:69-71`
   - **Qué hacer:** `btnInstalarUpdate` **no** está atado a `IsConverting`, y el flujo termina en
     `Application.Current.Exit()`, que **no pasa por `OnAppWindowClosing`**: se salta la confirmación y
@@ -649,6 +653,20 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     declarado de esta app. Deshabilitar el botón mientras se convierte y cancelar el lote antes de salir.
   - **Criterio de aceptación:** con una conversión en curso, el botón de instalar está apagado.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
+  - **Hecho:** el estado del botón es **una regla del ViewModel**, `CanInstallUpdate = !IsConverting &&
+    !IsInstallingUpdate`, que la ventana aplica al oír su `PropertyChanged`; fuera las asignaciones sueltas
+    `IsEnabled = true` de los `catch`, que lo habrían vuelto a encender con un lote en marcha. La carrera
+    se cierra **por los dos lados**: la descarga tarda, y mientras dura tampoco se puede empezar a
+    convertir (`CanWorkWithQueue`). Y la salida por `Exit()` hace ya la misma limpieza que el cierre de la
+    ventana (`ReleaseForShutdown`: guardar ajustes, soltar el ViewModel, quitar el icono de la bandeja),
+    que antes se saltaba entera.
+  - **Verificado:** `UpdateInstallGateTests` (6) — las dos reglas sobre un `MainViewModel` creado **sin
+    constructor** (el constructor lee los datos reales del usuario), el aviso de `CanInstallUpdate` al
+    cambiar `IsConverting`, y dos guardias sobre el code-behind: el botón solo obedece a la regla, y todo
+    `Exit()` va precedido de la limpieza. Comprobado en rojo: cada uno de los cuatro sabotajes lo caza
+    su prueba.
+  - ⚠️ **No ejercido de punta a punta:** la InfoBar solo aparece con una versión nueva publicada, y los UI
+    tests no convierten. Queda para el próximo corte, actualizando **desde** la 2.7.x con un lote en marcha.
 
 - [ ] **[TJ-16] La ventana no tiene tamaño mínimo y se dimensiona en píxeles crudos** · Medio
   - **Área:** Diseño responsivo · **Ubicación:** `MainWindow.xaml.cs:49`
@@ -1001,6 +1019,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 | 2026-08-31 | **TJ-06** (18 mensajes en español a fuego → claves traducidas) y **TJ-17** (el guardián miraba 2 archivos de 20) — **las 7 Altas cerradas** (8/38) |
 | 2026-09-01 | **TJ-25 verificado de punta a punta** con LibreOffice 26.8.0.3: ocho documentos, paralelismo 4, **8 de 8**. La premisa, medida: con perfil compartido se pierden **4 de 8** sin un solo mensaje de error — y la versión rota tardaba la mitad. `ReleaseScriptTests` deja de llevar a mano la lista de puertas de entorno: ahora las descubre |
 | 2026-09-01 | **v2.7.0 publicada**: 21 de las 39 fichas del Tier J (las 7 Altas y 14 Medias). Primer corte con el pipeline que el propio tier arregló — notas desde el `CHANGELOG.md` (TJ-07), omitidas contadas aparte (TJ-08), UI tests sobre el binario Release (TJ-05). Quedan **6 Medias y 12 Bajas** |
+| 2026-09-22 | **TJ-15**: instalar una actualización y convertir ya no se solapan — ni el botón se enciende con un lote en marcha, ni se empieza un lote mientras se descarga, y la salida por `Exit()` hace la limpieza del cierre (22/39) |
 | 2026-08-31 | **TJ-18** (el escáner ya mira en los dos sentidos), **TJ-23** (cuatro paquetes redistribuidos sin atribuir, no uno), **TJ-08** (el corte dice pasan/omitidas/fallan) y **TJ-24** (la contraseña ya no llega a `signtool`). Y **TJ-39**, nuevo: dos clases de pruebas se peleaban por el idioma (21/39) |
 | 2026-08-31 | **TJ-11** (dos archivos homónimos se pisaban en paralelo), **TJ-13** (dos avisos a la vez = ninguno), **TJ-10** (la frase del resumen se cortaba en el flujo por defecto) y **TJ-19** (progreso muerto: se quita) (16/38) |
 | 2026-08-31 | **TJ-21** (PowerPoint ya no saca su ventana: la sacábamos nosotros), **TJ-20** (un fallo al configurar dejaba un proceso huérfano por intento) y **TJ-25** (perfil propio por proceso de LibreOffice, *verificación de punta a punta pendiente*) (12/38) |

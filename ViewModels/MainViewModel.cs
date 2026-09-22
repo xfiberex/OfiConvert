@@ -107,7 +107,23 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConvertFilesCommand))]
     [NotifyCanExecuteChangedFor(nameof(ClearFilesCommand))]
+    [NotifyPropertyChangedFor(nameof(CanInstallUpdate))]
     public partial bool IsConverting { get; set; }
+
+    /// <summary>La actualización se está descargando o lanzando: la app va a cerrarse.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConvertFilesCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ClearFilesCommand))]
+    [NotifyPropertyChangedFor(nameof(CanInstallUpdate))]
+    public partial bool IsInstallingUpdate { get; set; }
+
+    /// <summary>
+    /// Instalar una actualización termina en <c>Application.Current.Exit()</c>, que NO pasa por el cierre
+    /// protegido de la ventana: con un lote en marcha, dejaría procesos de Office huérfanos (TJ-15). Así
+    /// que, mientras se convierte, no se instala; y mientras se instala, no se empieza a convertir
+    /// (ver <see cref="CanWorkWithQueue"/>) — la descarga tarda, y la carrera se cierra por los dos lados.
+    /// </summary>
+    public bool CanInstallUpdate => !IsConverting && !IsInstallingUpdate;
 
     [ObservableProperty]
     public partial bool IsPaused { get; set; }
@@ -293,7 +309,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     /// riñendo con un diálogo («No hay archivos seleccionados»). Apagarlos es mejor producto —el usuario
     /// ve de un vistazo qué puede hacer— y **quita** código: tres diálogos y sus claves en 8 idiomas.
     /// </remarks>
-    private bool CanWorkWithQueue() => SelectedFiles.Count > 0 && !IsConverting;
+    private bool CanWorkWithQueue() => SelectedFiles.Count > 0 && !IsConverting && !IsInstallingUpdate;
 
     [RelayCommand(CanExecute = nameof(CanWorkWithQueue))]
     private void ClearFiles()

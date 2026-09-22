@@ -106,13 +106,13 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas unitarias | **269 pasan · 9 se omiten (1 de red + 6 que conducen Office + 2 que ejecutan LibreOffice) · 0 fallan** (total 278); con `OFICONVERT_OFFICE_TESTS=1` y `OFICONVERT_LIBREOFFICE_TESTS=1`, **278 pasan** |
+| Pruebas unitarias | **275 pasan · 9 se omiten (1 de red + 6 que conducen Office + 2 que ejecutan LibreOffice) · 0 fallan** (total 284); con `OFICONVERT_OFFICE_TESTS=1` y `OFICONVERT_LIBREOFFICE_TESTS=1`, solo se omite la de red |
 | Pruebas de UI | **31 pasan · 0 fallan** (FlaUI, arrancan la app real **en la configuración compilada**) |
 | Publicado | **v2.7.0** (2.1.0 → 2.7.0 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
 | Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real. ⚠️ **Solo en un equipo CON Office**: ver `TJ-04` |
-| Pendiente de release | La verificación de TJ-25 y el guardián de puertas de entorno que se descubre solo |
-| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **39 tareas** (TJ-39 nació dentro del tier), **21 cerradas — las 7 Altas, completas**; quedan **6 Medias y 12 Bajas**. Lo cerrado se publicó en la **v2.7.0** |
+| Pendiente de release | La verificación de TJ-25, el guardián de puertas de entorno que se descubre solo, y **TJ-15** (instalar una actualización ya no corta un lote) |
+| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **39 tareas** (TJ-39 nació dentro del tier), **22 cerradas — las 7 Altas, completas**; quedan **5 Medias y 12 Bajas**. 21 se publicaron en la **v2.7.0** |
 
 **Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **A–I cerrados; J abierto**
 
@@ -481,6 +481,10 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
   estado a medio cargar**: el guardado disparado por `SelectedTheme` llevaba todavía el
   `DefaultOutputFormat` y el `LastOutputFolder` por defecto, **pisando los del usuario**. El guardado
   se ignora mientras se carga (y de paso desaparecen 7 escrituras redundantes en cada arranque).
+- **`Application.Current.Exit()` NO pasa por `OnAppWindowClosing`.** Toda salida que no sea cerrar la
+  ventana (hoy, solo instalar una actualización) llama antes a **`ReleaseForShutdown()`**, y el estado
+  que decide si se puede salir vive en el ViewModel (`CanInstallUpdate`), no en `IsEnabled = …` sueltos.
+  Lo vigila `UpdateInstallGateTests` (TJ-15).
 
 ### Localización
 
@@ -654,6 +658,41 @@ Menores, sin tier asignado:
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
+
+---
+
+### 2026-09-22 — TJ-15: la actualización salía por la puerta de atrás
+
+El botón «Instalar» de la InfoBar no estaba atado a nada, y el flujo termina en `Application.Current.Exit()`,
+que **no dispara `AppWindow.Closing`**: con un lote en marcha, se saltaba la confirmación y la cancelación
+que protegen contra los procesos de Office huérfanos — *el* riesgo de esta app.
+
+**Lo que la ficha no contaba:**
+
+1. **La carrera tenía dos lados.** Apagar el botón mientras se convierte no basta: la descarga tarda, y
+   entre pulsar «Instalar» y el `Exit()` se podía **empezar** un lote. Ahora `IsInstallingUpdate` también
+   apaga Convertir y Limpiar (`CanWorkWithQueue`).
+2. **La salida por `Exit()` tampoco hacía la limpieza**: ni guardaba los ajustes, ni soltaba el ViewModel,
+   ni quitaba el icono de la bandeja. Esa limpieza vivía dentro de `OnAppWindowClosing`; se extrajo a
+   `ReleaseForShutdown()` y la usan las dos salidas.
+3. **El botón se reencendía a mano** en los dos `catch` (`IsEnabled = true`). Con la regla metida en el
+   ViewModel, esas líneas la habrían contradicho: un fallo de descarga con un lote en marcha dejaba el
+   botón vivo. Ahora hay **una sola** asignación, y una prueba que exige que sea esa.
+
+**Cómo se prueba sin tocar los datos del usuario:** el constructor de `MainViewModel` lee los ajustes, la
+cola y el historial reales. `UpdateInstallGateTests` lo crea con `RuntimeHelpers.GetUninitializedObject`,
+sin constructor: las reglas solo dependen de las propiedades que el test fija. Comprobado en rojo con
+cuatro sabotajes (sin `NotifyPropertyChangedFor` en `IsConverting`, sin el `IsInstallingUpdate` en
+`CanWorkWithQueue`, un `IsEnabled = true` en un `catch`, un `Exit()` sin limpieza): cada uno lo caza su
+prueba.
+
+⚠️ **Sin ejercer de punta a punta:** la InfoBar solo sale con una versión nueva publicada. Se comprobará en
+el próximo corte, actualizando desde la 2.7.x.
+
+> **Trampa del sabotaje, para la próxima:** el primer intento de romper el código a propósito con Python
+> **no rompió nada** en tres de sus cuatro cambios — `open()` en modo texto convierte los CRLF a `\n`, y
+> los patrones con `\r\n` no casaban. Si la prueba de «se pone en rojo» sale verde, mirar primero si el
+> sabotaje se aplicó. (Se abre con `newline=''` para conservar los CRLF.)
 
 ---
 
