@@ -1,0 +1,58 @@
+# CI de OfiConvert: compila en Release y corre las dos suites de tests\ en cada push y PR a main.
+#
+# Los UI tests (FlaUI) arrancan la app de verdad y necesitan un escritorio interactivo. Los runners
+# windows-latest hospedados por GitHub lo tienen (sesión con auto-logon), así que corren aquí igual que
+# en release.ps1. No necesitan Office ni LibreOffice: ninguno convierte un archivo.
+# Las pruebas con puerta de entorno (Office, LibreOffice, red) se omiten, como en la máquina del
+# desarrollador. release.ps1 sigue siendo la puerta de cada corte; esto no publica nada.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Compilar (Release, 0 advertencias)
+        run: dotnet build OfiConvert.slnx -c Release --nologo -warnaserror
+
+      - name: Pruebas unitarias
+        run: >
+          dotnet test tests/OfiConvert.Tests/OfiConvert.Tests.csproj -c Release --no-build --nologo
+          --logger "trx;LogFileName=unit.trx" --results-directory TestResults
+
+      # -c Release no es decorativo: DrivenBinaryTests exige que se conduzca el binario Release (TJ-05).
+      - name: Pruebas de UI (FlaUI)
+        run: >
+          dotnet test tests/OfiConvert.UiTests/OfiConvert.UiTests.csproj -c Release --no-build --nologo
+          --logger "trx;LogFileName=ui.trx" --results-directory TestResults
+
+      - name: Subir resultados
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: TestResults/*.trx
+          if-no-files-found: ignore

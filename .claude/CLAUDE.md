@@ -44,7 +44,8 @@ Están todos razonados en `CONTEXT.md` §4. En corto:
   fallan. Solo hace `git add -u`: **los archivos nuevos hay que `git add`earlos antes**.
 - **Un test que nunca ha fallado no prueba nada.** Al añadir uno, comprobar que se pone rojo si se rompe
   lo que dice cubrir.
-- **No hay CI** (decisión cerrada, ver `ROADMAP.md`): los UI tests necesitan un escritorio interactivo.
+- **CI:** `.github/workflows/ci.yml` (GitHub Actions, `windows-latest`) compila con `-warnaserror` y corre
+  las dos suites, UI incluida, en cada push/PR a `main`. No publica: el corte sigue siendo `release.ps1`.
 
 <!-- CODEGRAPH_START -->
 ## CodeGraph

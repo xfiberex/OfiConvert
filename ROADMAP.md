@@ -1050,6 +1050,12 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
   necesita admin; no copiar el `PrivilegesRequired=admin` de los hermanos.
 - **No portar** `requireAdministrator` ni la ventana fija de FormatDiskPro (decisiones correctas para
   *su* producto, no para este), ni el parseo de winget de WingetUSoft.
+- ~~**CI (GitHub Actions) — descartado**~~ **Superada el 2026-09-22** (con el repo ya público): la premisa
+  era falsa. Los runners `windows-latest` de GitHub **sí tienen escritorio interactivo** (sesión con
+  auto-logon) y los **34 UI tests pasan allí** a la primera, igual que en local. Ahora hay
+  [`.github/workflows/ci.yml`](.github/workflows/ci.yml): build Release con `-warnaserror` + unitarias
+  + UI en cada push y PR a `main`. `release.ps1` **sigue siendo la puerta del corte**; el CI no publica.
+  Texto original de la decisión, para que se vea qué se creía:
 - **CI (GitHub Actions) — descartado**, con el mismo argumento que los hermanos: los UI tests del
   Tier D **arrancan la app y la conducen**, y eso exige un **escritorio interactivo** que un runner
   hospedado no tiene. `release.ps1` ejecuta **todas** las pruebas (descubre solo los `.csproj` de

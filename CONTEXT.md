@@ -27,7 +27,7 @@
 | **Pruebas** | **307**: 276 unitarias (269 pasan + 7 omitidas: 1 de red con `OFICONVERT_NETWORK_TESTS=1` y 6 que conducen Office con `OFICONVERT_OFFICE_TESTS=1`) + **31 de UI** (FlaUI, contra la app real) |
 | **Hoja de ruta** | [`ROADMAP.md`](ROADMAP.md) — **Tier J abierto** (2026-08-29) |
 | **Cambios por versión** | [`CHANGELOG.md`](CHANGELOG.md) — creado el 2026-08-29; **el _qué_ va allí, el _porqué_ aquí** |
-| **Última actualización** | 2026-08-29 |
+| **Última actualización** | 2026-09-22 |
 
 ---
 
@@ -110,6 +110,7 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | Pruebas de UI | **34 pasan · 0 fallan** (FlaUI, arrancan la app real **en la configuración compilada**) |
 | Publicado | **v2.7.0** (2.1.0 → 2.7.0 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
+| CI | **GitHub Actions** (`.github/workflows/ci.yml`, 2026-09-22): build Release 0/0 + unitarias + **UI** en `windows-latest`, en cada push/PR a `main` |
 | Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real. ⚠️ **Solo en un equipo CON Office**: ver `TJ-04` |
 | Pendiente de release | La verificación de TJ-25, el guardián de puertas de entorno, y **TJ-15, TJ-09, TJ-14 y TJ-16** |
 | **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **39 tareas** (TJ-39 nació dentro del tier), **25 cerradas — las 7 Altas, completas**; quedan **2 Medias** (TJ-22, TJ-26) **y 12 Bajas**. Lo cerrado se publicó en la **v2.7.0** |
@@ -406,6 +407,9 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 
 - **Framework: xUnit** (el estándar de la casa) + **FlaUI/UIA3** para la UI. Dos proyectos en la
   solución: `tests/OfiConvert.Tests` (152) y `tests/OfiConvert.UiTests` (18).
+- **CI en GitHub Actions** (`windows-latest`) corre build + las dos suites, **incluidos los UI tests**:
+  el runner hospedado tiene escritorio interactivo. Que no lo tuviera era la razón del «sin CI», y era
+  falsa (ver registro 2026-09-22). Las puertas de entorno (Office, LibreOffice, red) se omiten allí igual.
 - **`release.ps1` ejecuta TODOS los `.csproj` bajo `tests\`**, descubriéndolos solo. Un proyecto de
   pruebas nuevo entra en el pipeline sin tocar el script.
 - **`Core/` es la frontera de lo testeable**: sin UI, sin `Process`, sin `HttpClient`, sin COM. Lo que
@@ -679,6 +683,25 @@ Menores, sin tier asignado:
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
+
+---
+
+### 2026-09-22 — CI: la decisión cerrada que se apoyaba en una premisa sin comprobar
+
+El «sin CI» del ROADMAP (heredado de los hermanos) decía que los UI tests necesitan un escritorio
+interactivo **y que un runner hospedado no lo tiene**. Lo primero es cierto; lo segundo nadie lo había
+probado. Con el repo ya público (minutos de Actions gratis), se probó: en `windows-latest` la app arranca
+y FlaUI la conduce. **284 unitarias pasan · 9 omitidas (las mismas puertas de entorno) · 34 UI pasan**, en
+2 m 24 s.
+
+- `.github/workflows/ci.yml`: `dotnet build -c Release -warnaserror` (el 0/0 pasa a vigilarse solo) y
+  después cada suite con `--no-build` y `-c Release` —el binario que conducen los UI tests es el Release,
+  como exige `DrivenBinaryTests`—. Los `.trx` se suben como artefacto.
+- `release.ps1` **no cambia de papel**: sigue corriendo todo antes de cada corte y es lo único que publica.
+- La decisión del ROADMAP queda **tachada, no borrada**, con el porqué.
+
+> **Lo que enseña:** una «decisión cerrada» vale lo que la premisa sobre la que se cerró. Esta se copió de
+> un hermano a otro sin que ninguno lanzara nunca el runner.
 
 ---
 

@@ -300,8 +300,8 @@ try {
         # OfiConvert.UiTests (FlaUI, Tier D).
         #
         # OJO: los UI tests ARRANCAN LA APP de verdad y la conducen — necesitan un escritorio interactivo,
-        # y por eso este script corre en la máquina del desarrollador y no en un runner de CI (ver
-        # ROADMAP, "Decisiones cerradas"). Verán aparecer y desaparecer la ventana unos segundos: es
+        # que el runner windows-latest de GitHub Actions SÍ tiene: el CI los corre también (ver
+        # .github/workflows/ci.yml), pero el corte se valida AQUÍ, en la máquina que publica. Verán aparecer y desaparecer la ventana unos segundos: es
         # normal. No necesitan Office ni LibreOffice instalado: ninguno convierte un archivo.
         $testProjects = @(Get-ChildItem $testsDir -Filter *.csproj -Recurse -ErrorAction SilentlyContinue)
         if ($testProjects.Count -gt 0) {
