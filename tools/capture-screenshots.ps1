@@ -47,6 +47,15 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Los datos de la app se escriben en UTF-8 SIN BOM. En PS 5.1, `Set-Content -Encoding utf8` mete BOM
+# siempre, y `Get-Content -Raw` lee con la página de códigos ANSI: una copia de seguridad hecha así
+# devolvía «año» como «aÃ±o» en la cola o el historial reales del usuario. Por eso los respaldos van
+# byte a byte (ReadAllBytes/WriteAllBytes) y lo sembrado pasa por aquí.
+function Write-Utf8NoBom {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory, ValueFromPipeline)][string]$Value)
+    [System.IO.File]::WriteAllText($Path, $Value, (New-Object System.Text.UTF8Encoding($false)))
+}
+
 function Info($m) { Write-Host "==> $m" -ForegroundColor Cyan }
 function Ok($m)   { Write-Host "[OK] $m" -ForegroundColor Green }
 function Warn($m) { Write-Host "[!] $m" -ForegroundColor Yellow }
@@ -137,8 +146,8 @@ function Set-CaptureState([string]$theme, [string[]]$queue) {
         LastOutputFolder       = ""
         DefaultOutputFormat    = 0           # PDF
     }
-    $settings | ConvertTo-Json | Set-Content -Path $settingsPath -Encoding utf8
-    $queue    | ConvertTo-Json | Set-Content -Path $queuePath    -Encoding utf8
+    $settings | ConvertTo-Json | Write-Utf8NoBom -Path $settingsPath
+    $queue    | ConvertTo-Json | Write-Utf8NoBom -Path $queuePath
 }
 
 # ── UI Automation ──────────────────────────────────────────────────────────
@@ -248,8 +257,8 @@ function Capture-Theme([string]$theme, [string[]]$queue) {
 # ── Ejecución ──────────────────────────────────────────────────────────────
 # Respaldo de los datos REALES del usuario: la app es unpackaged y escribe en el mismo sitio que su
 # instalación de verdad. Se restauran en el finally, aunque la captura reviente a mitad.
-$backupSettings = if (Test-Path $settingsPath) { Get-Content $settingsPath -Raw } else { $null }
-$backupQueue    = if (Test-Path $queuePath)    { Get-Content $queuePath -Raw }    else { $null }
+$backupSettings = if (Test-Path $settingsPath) { [System.IO.File]::ReadAllBytes($settingsPath) } else { $null }
+$backupQueue    = if (Test-Path $queuePath)    { [System.IO.File]::ReadAllBytes($queuePath) }    else { $null }
 
 Get-Process OfiConvert -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
@@ -267,10 +276,10 @@ finally {
     Remove-Item Env:\OFICONVERT_ACCENT -ErrorAction SilentlyContinue
     Get-Process OfiConvert -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
-    if ($null -ne $backupSettings) { Set-Content -Path $settingsPath -Value $backupSettings -Encoding utf8 }
+    if ($null -ne $backupSettings) { [System.IO.File]::WriteAllBytes($settingsPath, $backupSettings) }
     elseif (Test-Path $settingsPath) { Remove-Item $settingsPath -Force }
 
-    if ($null -ne $backupQueue) { Set-Content -Path $queuePath -Value $backupQueue -Encoding utf8 }
+    if ($null -ne $backupQueue) { [System.IO.File]::WriteAllBytes($queuePath, $backupQueue) }
     elseif (Test-Path $queuePath) { Remove-Item $queuePath -Force }
 
     Remove-Item $sampleDir -Recurse -Force -ErrorAction SilentlyContinue

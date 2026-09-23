@@ -25,6 +25,17 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Sin publicar]
 
+### Interno
+
+- **Las notas del release ya no empiezan por un carácter invisible.** `release.ps1` las escribía con
+  `Out-File -Encoding utf8`, que en PowerShell 5.1 añade BOM, y `gh` las subía tal cual: las de la v2.7.0
+  y la v2.8.0 empiezan por U+FEFF. Ahora se escriben en UTF-8 sin BOM.
+- **Los scripts de `tools/` ya no corrompen los datos reales del usuario.** Respaldaban ajustes, cola e
+  historial con `Get-Content -Raw` —que en PS 5.1 lee con la página de códigos ANSI— y los restauraban
+  como UTF-8: una ruta con «año» volvía como «aÃ±o». Reproducido antes de arreglarlo. Ahora el respaldo
+  es byte a byte y lo sembrado se escribe sin BOM.
+- Prueba nueva: ningún `.ps1` escribe con `-Encoding utf8` (`Out-File`, `Set-Content`, `Add-Content`).
+
 ---
 
 ## [2.8.0] — 2026-09-22

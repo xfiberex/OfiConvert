@@ -230,4 +230,32 @@ public sealed class ReleaseScriptTests
             $"{script} lee el .csproj con Get-Content; usa [System.IO.File]::ReadAllText:\n  "
                 + string.Join("\n  ", culpables));
     }
+
+    /// <summary>
+    /// Ningún script escribe con <c>Out-File</c>/<c>Set-Content</c> <c>-Encoding utf8</c>.
+    /// </summary>
+    /// <remarks>
+    /// En PowerShell 5.1, <c>utf8</c> significa <b>UTF-8 con BOM</b>, siempre. Así salían las notas del
+    /// release: <c>gh release create --notes-file</c> sube el archivo tal cual, y las notas de la v2.7.0 y la
+    /// v2.8.0 empiezan por un U+FEFF invisible en GitHub pero presente para quien las lea por la API. Lo que
+    /// no deba llevar BOM se escribe con <c>[System.IO.File]::WriteAllText</c> y
+    /// <c>UTF8Encoding($false)</c>.
+    /// </remarks>
+    [Theory]
+    [MemberData(nameof(Scripts))]
+    public void NingunScript_EscribeUtf8ConElBomImplicitoDePs51(string script)
+    {
+        string code = File.ReadAllText(Path.Combine(TestPaths.RepoRoot, script));
+        var culpables = code.Split('\n')
+            .Select((linea, i) => (linea, n: i + 1))
+            .Where(x => !x.linea.TrimStart().StartsWith('#'))
+            .Where(x => Regex.IsMatch(x.linea, @"\b(Out-File|Set-Content|Add-Content)\b.*-Encoding\s+['""]?utf8\b", RegexOptions.IgnoreCase))
+            .Select(x => $"línea {x.n}: {x.linea.Trim()}")
+            .ToList();
+
+        Assert.True(culpables.Count == 0,
+            $"{script} escribe con -Encoding utf8, que en PS 5.1 añade BOM. Usa " +
+            "[System.IO.File]::WriteAllText(ruta, texto, (New-Object System.Text.UTF8Encoding($false))):\n  "
+                + string.Join("\n  ", culpables));
+    }
 }

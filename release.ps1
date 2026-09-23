@@ -281,7 +281,11 @@ try {
             "",
             "El asset ``OfiConvert_Setup_$Version.exe.sha256`` es el hash SHA-256 del instalador. **No es",
             "opcional:** la app verifica con él cada actualización antes de ejecutarla."
-        ) | Out-File -FilePath $tempNotes -Encoding utf8
+        ) -join "`n" | ForEach-Object {
+            # SIN BOM: `Out-File -Encoding utf8` lo mete siempre en PS 5.1, gh lo sube tal cual y las notas
+            # de la v2.7.0 y la v2.8.0 empezaban por un U+FEFF.
+            [System.IO.File]::WriteAllText($tempNotes, $_, (New-Object System.Text.UTF8Encoding($false)))
+        }
         $notesPath = $tempNotes
         Ok "Notas tomadas de CHANGELOG.md (sección $Version)."
     }

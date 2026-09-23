@@ -20,7 +20,7 @@
 |---|---|
 | **Repositorio** | https://github.com/xfiberex/OfiConvert |
 | **Versión publicada** | **2.8.0** (2026-09-22) — **30 de las 39 fichas del [Tier J](ROADMAP.md)**. Miniaturas que por fin se ven, ventana del tamaño correcto con escalado, actualizar sin dejar Office colgado, log que rota, controles con nombre para el Narrador e instalador en japonés. Instalador sin firmar, **con `.sha256`** |
-| **En `main`, sin publicar** | — |
+| **En `main`, sin publicar** | Solo interno: notas del release sin BOM y respaldos byte a byte en `tools/` (2026-09-22) |
 | **Estado** | Funcional; Tiers 0 y A–I ✅. **Hoja de ruta REABIERTA**: [Tier J](ROADMAP.md) (re-auditoría del 2026-08-29) — **39 tareas, 30 cerradas** (las **7 Altas**, completas); quedan 2 Medias y 7 Bajas |
 | **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · **xUnit** + **FlaUI** · Inno Setup 6 |
 | **Licencia** | **MIT** ([`LICENSE`](LICENSE)) — pero **lo que redistribuye NO es todo MIT**: ver §4 *Legal* |
@@ -106,13 +106,13 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas unitarias | **296 pasan · 9 se omiten (1 de red + 6 que conducen Office + 2 que ejecutan LibreOffice) · 0 fallan** (total 305); con `OFICONVERT_OFFICE_TESTS=1` y `OFICONVERT_LIBREOFFICE_TESTS=1`, **305 pasan** |
+| Pruebas unitarias | **301 pasan · 9 se omiten (1 de red + 6 que conducen Office + 2 que ejecutan LibreOffice) · 0 fallan** (total 310); con `OFICONVERT_OFFICE_TESTS=1` y `OFICONVERT_LIBREOFFICE_TESTS=1`, **310 pasan** |
 | Pruebas de UI | **34 pasan · 0 fallan** (FlaUI, arrancan la app real **en la configuración compilada**) |
 | Publicado | **v2.8.0** (2.1.0 → 2.8.0 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
 | CI | **GitHub Actions** (`.github/workflows/ci.yml`, 2026-09-22): build Release 0/0 + unitarias + **UI** en `windows-latest`, en cada push/PR a `main` |
 | Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real. ⚠️ **Solo en un equipo CON Office**: ver `TJ-04` |
-| Pendiente de release | — (la 2.8.0 está publicada; nada en `main` sin publicar) |
+| Pendiente de release | Solo scripts: notas del release sin BOM y respaldos de `tools/` byte a byte. Nada que cambie la app |
 | **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **39 tareas** (TJ-39 nació dentro del tier), **30 cerradas — las 7 Altas, completas**; quedan **2 Medias** (TJ-22, TJ-26) **y 7 Bajas**. Publicadas: 21 en la **v2.7.0** y 9 más en la **v2.8.0** |
 
 **Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **A–I cerrados; J abierto**
@@ -493,6 +493,11 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
   un `push` eso deja el release **a medias**: rama subida, sin tag ni GitHub Release. Por eso los git
   que mutan estado van por **`Invoke-Git`**, que baja la preferencia mientras corre git y decide por
   `$LASTEXITCODE`.
+- **`-Encoding utf8` en PS 5.1 significa CON BOM**, siempre, en `Out-File`, `Set-Content` y
+  `Add-Content`. Lo que no deba llevarlo se escribe con `[System.IO.File]::WriteAllText` y
+  `UTF8Encoding($false)`. Y un **respaldo** de datos del usuario se hace **byte a byte**
+  (`ReadAllBytes`/`WriteAllBytes`), nunca con `Get-Content -Raw`, que lee en ANSI. Lo vigila
+  `NingunScript_EscribeUtf8ConElBomImplicitoDePs51` (registro del 2026-09-22).
 
 ### MVVM
 
@@ -684,6 +689,34 @@ Menores, sin tier asignado:
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
+
+---
+
+### 2026-09-22 — El BOM que viajaba en las notas, y los respaldos que corrompían datos reales
+
+Al comprobar la v2.8.0 recién publicada, el cuerpo del release empezaba por `EF BB BF`, **y el de la
+v2.7.0 también**. `release.ps1` escribía las notas con `Out-File -Encoding utf8` —BOM siempre en PS 5.1—
+y `gh release create --notes-file` las sube sin tocarlas. En GitHub no se ve; por la API llega un U+FEFF
+delante del texto.
+
+El guardián se escribió **para el riesgo y no para el sitio** —ningún `.ps1` con `-Encoding utf8`—, y
+en rojo señaló también los tres scripts de `tools/`. Ahí había algo peor que un BOM: respaldaban
+`settings.json`, `queue.json` y `history.json` **del usuario real** con `Get-Content -Raw` (lectura
+ANSI en PS 5.1) y los restauraban como UTF-8. **Reproducido en 5.1 antes de tocar nada:**
+`["C:\\Informes\\año 2026\\reseña.docx"]` volvía como `aÃ±o` / `reseÃ±a` (41 → 50 bytes). Quien
+regenerara las capturas con rutas acentuadas en su cola o historial se las encontraba corrompidas.
+
+- Respaldos **byte a byte** (`ReadAllBytes`/`WriteAllBytes`): restauración idéntica, comprobada.
+  PowerShell desenrolla el `byte[]` que sale de un `if` en `Object[]`; `WriteAllBytes` lo reconvierte
+  bien, también comprobado.
+- Lo sembrado pasa por `Write-Utf8NoBom`; las notas del release, por `WriteAllText` sin BOM.
+- Las notas **ya publicadas** de la v2.7.0 y la v2.8.0 **no se han editado**: tocar un release publicado
+  es decisión aparte.
+
+> **Lo que enseña:** el guardián que se escribe para un sitio habría cazado solo `release.ps1`. El que
+> se escribe para el riesgo encontró el daño de verdad en otra carpeta.
+
+**Pruebas:** 301 pasan · 9 omitidas · 0 fallan; UI 34 · 0. Build 0/0 con `-warnaserror`.
 
 ---
 
