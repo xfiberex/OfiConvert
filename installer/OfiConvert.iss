@@ -69,9 +69,10 @@ Name: "portuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
+Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
 
 ; El aviso de "sin motor de conversion" (TJ-12). Vive aqui, y no como literal en [Code], porque el
-; instalador habla SEIS idiomas y hasta ahora lo soltaba en espanol en todos.
+; instalador habla SIETE idiomas y hasta ahora lo soltaba en espanol en todos.
 ;
 ; Ojo con el texto: NO puede decir "hace falta Microsoft Office". La app convierte con Office o con
 ; LibreOffice, y decirle a quien usa LibreOffice que su instalacion no va a funcionar es mentirle sobre
@@ -89,6 +90,8 @@ german.NoEngineTitle=Keine Konvertierungs-Engine gefunden
 german.NoEngineBody=OfiConvert konvertiert Dokumente, indem es Microsoft Office (Desktop) oder LibreOffice automatisiert. Keines von beiden wurde gefunden.%n%nSie können fortfahren: Die Anwendung wird korrekt installiert, kann aber erst konvertieren, wenn Sie eines davon installieren.
 italian.NoEngineTitle=Nessun motore di conversione rilevato
 italian.NoEngineBody=OfiConvert converte i documenti automatizzando Microsoft Office (desktop) o LibreOffice, e nessuno dei due è stato trovato.%n%nPuoi continuare: l'applicazione verrà installata correttamente, ma non potrà convertire finché non ne installerai uno.
+japanese.NoEngineTitle=変換エンジンが検出されませんでした
+japanese.NoEngineBody=OfiConvert は Microsoft Office（デスクトップ版）または LibreOffice を自動操作してドキュメントを変換しますが、どちらも見つかりませんでした。%n%nこのまま続行できます。アプリケーションは正しくインストールされますが、いずれかをインストールするまで変換はできません。
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -102,7 +105,8 @@ Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{group}\Desinstalar {#MyAppName}"; Filename: "{uninstallexe}"
+; El nombre del acceso sale del mensaje común de Inno: en duro decía «Desinstalar» en todos los idiomas (TJ-35).
+Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]

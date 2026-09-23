@@ -58,7 +58,7 @@ Descarga el instalador (`OfiConvert_Setup_X.Y.Z.exe`) desde la
 [página de Releases](https://github.com/xfiberex/OfiConvert/releases) y ejecútalo.
 
 Se instala **para el usuario actual** y no pide permisos de administrador (puedes elegir instalar para
-todos los equipos desde el propio instalador). Si no detecta Office, avisa pero deja continuar —
+todos los usuarios del equipo desde el propio instalador). Si no detecta Office, avisa pero deja continuar —
 LibreOffice puede cubrirlo.
 
 > El instalador **no está firmado**, así que SmartScreen mostrará "editor desconocido" la primera vez.
@@ -195,7 +195,7 @@ OfiConvert/
 ├── Models/          Modelos y enumeraciones
 ├── Services/        Conversión (Office/LibreOffice), validación, historial, ajustes, updater…
 ├── tests/           Pruebas: OfiConvert.Tests (xUnit) y OfiConvert.UiTests (FlaUI, sobre la app real)
-├── tools/           capture-screenshots.ps1
+├── tools/           Capturas regenerables: README, galería de estados y desplegables
 ├── ViewModels/      MainViewModel (MVVM)
 ├── App.xaml(.cs)    Arranque, activaciones
 ├── Program.cs       Punto de entrada, instancia única

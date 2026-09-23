@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Fotografía los desplegables ABIERTOS de la app y COMPRUEBA que su fondo es opaco (no acrílico),
     contando colores. En claro y oscuro, con acento neutro.

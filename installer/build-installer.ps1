@@ -166,7 +166,8 @@ $csproj       = Join-Path $projectDir "OfiConvert.csproj"
 if (-not (Test-Path $csproj)) { throw "No se encontró el proyecto: $csproj" }
 
 # --- Versión (fuente única: el .csproj) ------------------------------------
-$csprojXml = [xml](Get-Content $csproj)
+# ReadAllText, no Get-Content: en PS 5.1 este lee con la página de códigos ANSI si no hay BOM (TJ-37).
+$csprojXml = [xml][System.IO.File]::ReadAllText($csproj)
 if (-not $Version) {
     $Version = ($csprojXml.Project.PropertyGroup.Version | Where-Object { $_ }) | Select-Object -First 1
     if (-not $Version) { throw "No hay <Version> en el .csproj y no se pasó -Version." }

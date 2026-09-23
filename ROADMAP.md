@@ -369,7 +369,7 @@ translúcidas y el texto del menú pierde contraste. Arreglado con `ThemeDiction
 > `LocalizationUsageTests` vigila tres formas de pedir una clave y ya hay una cuarta. Los tres pasan en
 > verde sobre problemas de su propia especialidad.
 
-**Índice del tier:** **39 tareas** — 7 Altas · 20 Medias · 12 Bajas *(TJ-39 nació durante el propio tier)*. **Cerradas: 25** (TJ-01 a TJ-21, más TJ-23, TJ-24, TJ-25 y TJ-39) — **las 7 Altas, completas**; quedan **2 Medias** (TJ-22, TJ-26) **y 12 Bajas**.
+**Índice del tier:** **39 tareas** — 7 Altas · 20 Medias · 12 Bajas *(TJ-39 nació durante el propio tier)*. **Cerradas: 30** (TJ-01 a TJ-21, más TJ-23, TJ-24, TJ-25, TJ-27, TJ-30, TJ-31, TJ-35, TJ-37 y TJ-39) — **las 7 Altas, completas**; quedan **2 Medias** (TJ-22, TJ-26) **y 7 Bajas**.
 Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 
 ### J.1 — Severidad ALTA
@@ -904,7 +904,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 
 ### J.3 — Severidad BAJA
 
-- [ ] **[TJ-27] `tools/capture-dropdown.ps1` es el único `.ps1` SIN BOM** · Bajo
+- [x] ✅ **[TJ-27] `tools/capture-dropdown.ps1` es el único `.ps1` SIN BOM** · Bajo *(cerrado 2026-09-22)*
   - **Área:** DevOps · **Ubicación:** `tools/capture-dropdown.ps1:1`
   - **Qué hacer:** empieza por `3C 23 0D`; los otros cuatro `.ps1` del repo empiezan por `EF BB BF`.
     `CONTEXT.md` §4 lo declara invariante. Verificado en PowerShell **5.1** con página de códigos
@@ -914,6 +914,11 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     el «Falta el paréntesis de cierre» que ya pagaron los proyectos hermanos. Reguardar con BOM.
   - **Criterio de aceptación:** los cinco `.ps1` empiezan por `EF BB BF`, y `release.ps1` lo comprueba.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
+  - **Hecho (2026-09-22):** reguardado con BOM (y CRLF, como los demás). El criterio pedía que lo
+    comprobara `release.ps1`: lo comprueba `ReleaseScriptTests.CadaScript_EmpiezaPorElBomDeUtf8`, que
+    corre en cada corte **y en el CI**, y descubre los `.ps1` solo — un script nuevo sin BOM se pone rojo
+    sin tocar la prueba. Comprobado en rojo sobre el archivo original (`3C230A`). En PS 5.1 el mensaje
+    pasa de `encontrÃ³` a `encontró`.
 
 - [ ] **[TJ-28] Código muerto en cinco sitios** · Bajo
   - **Área:** Refactorización
@@ -936,7 +941,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
   - **Criterio de aceptación:** el chequeo inverso de TJ-18 pasa en verde sin lista de excepciones.
   - **Esfuerzo:** medio · **Depende de:** TJ-06, TJ-18, TJ-26
 
-- [ ] **[TJ-30] Cuatro afirmaciones del README que ya no son ciertas** · Bajo
+- [x] ✅ **[TJ-30] Cuatro afirmaciones del README que ya no son ciertas** · Bajo *(cerrado 2026-09-22)*
   - **Área:** Documentación · **Ubicación:** `README.md:60,79,81,195`
   - **Qué hacer:** (a) «*todos los controles tienen nombre para lectores de pantalla*» — falso, ver
     TJ-09; (b) «*Sin sobrescrituras*» — falso por la ruta de LibreOffice, ver TJ-03; (c) «puedes elegir
@@ -944,14 +949,21 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     contiene `capture-screenshots.ps1` y ya son **tres** scripts.
   - **Criterio de aceptación:** las cuatro corregidas y coherentes con el estado real tras TJ-03/TJ-09.
   - **Esfuerzo:** bajo · **Depende de:** TJ-03, TJ-09
+  - **Hecho (2026-09-22):** (a) y (b) **ya eran ciertas** cuando se llegó aquí — TJ-09 y TJ-03, cerradas
+    antes, las hicieron verdad; se dejan como están. Se corrigieron (c) «todos los *usuarios* del equipo»
+    y (d) el árbol de `tools/`, que ahora describe los tres scripts en vez de listar uno.
 
-- [ ] **[TJ-31] El log se para al llegar a 10 MB y no rota** · Bajo
+- [x] ✅ **[TJ-31] El log se para al llegar a 10 MB y no rota** · Bajo *(cerrado 2026-09-22)*
   - **Área:** Código / Observabilidad · **Ubicación:** `Services/LoggingService.cs:21-26`
   - **Qué hacer:** hay `fileSizeLimitBytes: 10 MB` pero **no** `rollOnFileSizeLimit: true`: alcanzado
     el límite, Serilog **deja de escribir** el resto del día en vez de abrir otro archivo. Un lote
     grande con errores puede perder justo el registro que se iba a consultar.
   - **Criterio de aceptación:** superado el límite aparece `oficonvert-YYYYMMDD_001.log`.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
+  - **Hecho (2026-09-22):** `rollOnFileSizeLimit: true`. La configuración se sacó a
+    `LoggingService.CreateLogger(carpeta, límite)` para probarla **con Serilog de verdad**:
+    `LoggingServiceTests` escribe con un límite de 1 KB y exige el `_001` y la última entrada. Roja sin
+    la opción.
 
 - [ ] **[TJ-32] Los fallos irrecuperables se tragan en silencio** · Bajo
   - **Área:** Código · **Ubicación:** `App.xaml.cs:20-24`; `Helpers/AppPaths.cs:22-33`
@@ -981,12 +993,17 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
   - **Criterio de aceptación:** cambiado y documentado antes del primer release firmado.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
 
-- [ ] **[TJ-35] El instalador habla 6 de los 8 idiomas de la app** · Bajo
+- [x] ✅ **[TJ-35] El instalador habla 6 de los 8 idiomas de la app** · Bajo *(cerrado 2026-09-22)*
   - **Área:** Localización / DevOps · **Ubicación:** `installer/OfiConvert.iss:65-71,85`
   - **Qué hacer:** faltan japonés (Inno 6 trae `Japanese.isl`: una línea) y chino (`.isl` no oficial).
     Además el icono de desinstalación dice «Desinstalar» en duro: usar `{cm:UninstallProgram,…}`.
   - **Criterio de aceptación:** el instalador ofrece japonés y el atajo usa el mensaje común.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
+  - **Hecho (2026-09-22):** `Japanese.isl` y los dos mensajes del aviso de «sin motor» en japonés
+    (`ElTextoDelAviso_EstaEnTodosLosIdiomas` se puso roja al añadir el idioma sin ellos: la prueba ya
+    cubría idiomas nuevos). El acceso usa `{cm:UninstallProgram,…}`; `ElAccesoDeDesinstalar_UsaElMensajeComun`,
+    roja con la línea antigua. **Compilado con ISCC** sin errores. **El chino queda fuera:** Inno no trae
+    `.isl` oficial y vendorizar uno no oficial es otra decisión.
 
 - [ ] **[TJ-36] Hasta 300 MB de logs pueden acabar en el perfil móvil** · Bajo
   - **Área:** Código · **Ubicación:** `Helpers/AppPaths.cs:9-12`
@@ -997,7 +1014,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
   - **Criterio de aceptación:** decidido y escrito; si se mueve, migrar lo que ya exista.
   - **Esfuerzo:** medio · **Depende de:** ninguna
 
-- [ ] **[TJ-37] El único lector del `.csproj` que no sigue la regla de la casa** · Bajo
+- [x] ✅ **[TJ-37] El único lector del `.csproj` que no sigue la regla de la casa** · Bajo *(cerrado 2026-09-22)*
   - **Área:** DevOps · **Ubicación:** `installer/build-installer.ps1:110`
   - **Qué hacer:** `[xml](Get-Content $csproj)` es justo la forma que `CONTEXT.md` §4 y el propio
     `release.ps1` prohíben. Hoy es inocuo —el `.csproj` tiene BOM y este script **no reescribe**—, pero
@@ -1005,6 +1022,9 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
     escrito es como se pierden los invariantes. Usar `[System.IO.File]::ReadAllText`.
   - **Criterio de aceptación:** ningún script lee el `.csproj` con `Get-Content`.
   - **Esfuerzo:** bajo · **Depende de:** ninguna
+  - **Hecho (2026-09-22):** `[xml][System.IO.File]::ReadAllText($csproj)`. Lo vigila
+    `ReleaseScriptTests.NingunScript_LeeElCsprojConGetContent` sobre todos los `.ps1` (ignorando
+    comentarios, que mencionan la regla). Roja sobre la línea 169 antigua.
 
 - [ ] **[TJ-38] Rastro de los documentos convertidos tras desinstalar** · Bajo
   - **Área:** Legal / Privacidad · **Ubicación:** `installer/OfiConvert.iss` (sin `[UninstallDelete]`);

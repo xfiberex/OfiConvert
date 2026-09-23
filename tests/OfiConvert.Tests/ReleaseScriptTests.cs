@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Xunit;
 
 namespace OfiConvert.Tests;
@@ -166,5 +166,68 @@ public sealed class ReleaseScriptTests
             if (nombre.Success) clases.Add(nombre.Groups["n"].Value);
         }
         return clases;
+    }
+
+    // ── TJ-27 y TJ-37: la codificación de los scripts ─────────────────────────
+
+    /// <summary>Todo <c>.ps1</c> del repo, sin <c>bin</c>, <c>obj</c> ni <c>publish</c>.</summary>
+    public static TheoryData<string> Scripts()
+    {
+        var data = new TheoryData<string>();
+        foreach (string path in Directory.EnumerateFiles(TestPaths.RepoRoot, "*.ps1", SearchOption.AllDirectories))
+        {
+            string rel = Path.GetRelativePath(TestPaths.RepoRoot, path);
+            string[] partes = rel.Split(Path.DirectorySeparatorChar);
+            if (partes.Any(p => p is "bin" or "obj" or "publish" or ".git")) continue;
+            data.Add(rel);
+        }
+        return data;
+    }
+
+    /// <summary>
+    /// Todo <c>.ps1</c> empieza por el BOM de UTF-8 (<c>EF BB BF</c>).
+    /// </summary>
+    /// <remarks>
+    /// Sin BOM, PowerShell 5.1 lo lee con la página de códigos ANSI: los acentos de los mensajes salen
+    /// corruptos (<c>encontrÃ³</c>) y un <c>—</c> dentro de una cadena basta para el «Falta el paréntesis de
+    /// cierre» que ya pagaron los hermanos. <c>tools/capture-dropdown.ps1</c> nació sin él (TJ-27). Se
+    /// descubren solos: un script nuevo entra en la prueba sin tocarla.
+    /// </remarks>
+    [Theory]
+    [MemberData(nameof(Scripts))]
+    public void CadaScript_EmpiezaPorElBomDeUtf8(string script)
+    {
+        byte[] head = File.ReadAllBytes(Path.Combine(TestPaths.RepoRoot, script)).Take(3).ToArray();
+
+        Assert.True(head.SequenceEqual(new byte[] { 0xEF, 0xBB, 0xBF }),
+            $"{script} no empieza por el BOM de UTF-8 (empieza por {Convert.ToHexString(head)}). " +
+            "Guárdalo como «UTF-8 con BOM»: PowerShell 5.1 lo leería con la página de códigos ANSI.");
+    }
+
+    /// <summary>
+    /// Ningún script lee el <c>.csproj</c> con <c>Get-Content</c> (TJ-37).
+    /// </summary>
+    /// <remarks>
+    /// En PS 5.1, <c>Get-Content</c> usa la página de códigos ANSI si el archivo no trae BOM, y el
+    /// <c>.csproj</c> es la fuente única de la versión: se lee con <c>[System.IO.File]::ReadAllText</c>,
+    /// como hace <c>release.ps1</c>. Hoy es inocuo en <c>build-installer.ps1</c>, pero contradecir la regla
+    /// allí donde está escrita es como se pierden las reglas.
+    /// </remarks>
+    [Theory]
+    [MemberData(nameof(Scripts))]
+    public void NingunScript_LeeElCsprojConGetContent(string script)
+    {
+        string code = File.ReadAllText(Path.Combine(TestPaths.RepoRoot, script));
+        // Solo líneas de código: los comentarios que EXPLICAN la regla la mencionan.
+        var culpables = code.Split('\n')
+            .Select((linea, i) => (linea, n: i + 1))
+            .Where(x => !x.linea.TrimStart().StartsWith('#'))
+            .Where(x => Regex.IsMatch(x.linea, @"Get-Content[^|;]*\$csproj", RegexOptions.IgnoreCase))
+            .Select(x => $"línea {x.n}: {x.linea.Trim()}")
+            .ToList();
+
+        Assert.True(culpables.Count == 0,
+            $"{script} lee el .csproj con Get-Content; usa [System.IO.File]::ReadAllText:\n  "
+                + string.Join("\n  ", culpables));
     }
 }

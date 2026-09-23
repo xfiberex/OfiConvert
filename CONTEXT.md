@@ -21,7 +21,7 @@
 | **Repositorio** | https://github.com/xfiberex/OfiConvert |
 | **Versión publicada** | **2.7.0** (2026-09-01) — **21 de las 39 fichas del [Tier J](ROADMAP.md)**: las 7 Altas y 14 Medias. Deja de cerrarle al usuario su PowerPoint sin guardar, de borrar archivos ajenos por la ruta de LibreOffice y de hablar en español en los ocho idiomas. Instalador sin firmar, **con `.sha256`** |
 | **En `main`, sin publicar** | La **verificación de punta a punta de TJ-25** contra LibreOffice 26.8.0.3 (2026-09-01) |
-| **Estado** | Funcional; Tiers 0 y A–I ✅. **Hoja de ruta REABIERTA**: [Tier J](ROADMAP.md) (re-auditoría del 2026-08-29) — **39 tareas, 21 cerradas** (las **7 Altas**, completas); quedan 6 Medias y 12 Bajas |
+| **Estado** | Funcional; Tiers 0 y A–I ✅. **Hoja de ruta REABIERTA**: [Tier J](ROADMAP.md) (re-auditoría del 2026-08-29) — **39 tareas, 30 cerradas** (las **7 Altas**, completas); quedan 2 Medias y 7 Bajas |
 | **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · **xUnit** + **FlaUI** · Inno Setup 6 |
 | **Licencia** | **MIT** ([`LICENSE`](LICENSE)) — pero **lo que redistribuye NO es todo MIT**: ver §4 *Legal* |
 | **Pruebas** | **307**: 276 unitarias (269 pasan + 7 omitidas: 1 de red con `OFICONVERT_NETWORK_TESTS=1` y 6 que conducen Office con `OFICONVERT_OFFICE_TESTS=1`) + **31 de UI** (FlaUI, contra la app real) |
@@ -106,14 +106,14 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | | |
 |---|---|
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
-| Pruebas unitarias | **284 pasan · 9 se omiten (1 de red + 6 que conducen Office + 2 que ejecutan LibreOffice) · 0 fallan** (total 293); con `OFICONVERT_OFFICE_TESTS=1` y `OFICONVERT_LIBREOFFICE_TESTS=1`, **293 pasan** |
+| Pruebas unitarias | **296 pasan · 9 se omiten (1 de red + 6 que conducen Office + 2 que ejecutan LibreOffice) · 0 fallan** (total 305); con `OFICONVERT_OFFICE_TESTS=1` y `OFICONVERT_LIBREOFFICE_TESTS=1`, **305 pasan** |
 | Pruebas de UI | **34 pasan · 0 fallan** (FlaUI, arrancan la app real **en la configuración compilada**) |
 | Publicado | **v2.7.0** (2.1.0 → 2.7.0 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
 | CI | **GitHub Actions** (`.github/workflows/ci.yml`, 2026-09-22): build Release 0/0 + unitarias + **UI** en `windows-latest`, en cada push/PR a `main` |
 | Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real. ⚠️ **Solo en un equipo CON Office**: ver `TJ-04` |
-| Pendiente de release | La verificación de TJ-25, el guardián de puertas de entorno, y **TJ-15, TJ-09, TJ-14 y TJ-16** |
-| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **39 tareas** (TJ-39 nació dentro del tier), **25 cerradas — las 7 Altas, completas**; quedan **2 Medias** (TJ-22, TJ-26) **y 12 Bajas**. Lo cerrado se publicó en la **v2.7.0** |
+| Pendiente de release | La verificación de TJ-25, el guardián de puertas de entorno, **TJ-15, TJ-09, TJ-14 y TJ-16**, y el lote de Bajas **TJ-27, TJ-30, TJ-31, TJ-35 y TJ-37** |
+| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **39 tareas** (TJ-39 nació dentro del tier), **30 cerradas — las 7 Altas, completas**; quedan **2 Medias** (TJ-22, TJ-26) **y 7 Bajas**. La v2.7.0 publicó 21; el resto espera en `main` |
 
 **Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **A–I cerrados; J abierto**
 
@@ -683,6 +683,29 @@ Menores, sin tier asignado:
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
+
+---
+
+### 2026-09-22 — Lote de Bajas: TJ-27, TJ-37, TJ-31, TJ-35 y TJ-30
+
+Cinco fichas pequeñas, cada una con su prueba **comprobada en rojo** antes del arreglo.
+
+- **TJ-27 y TJ-37 — codificación de los scripts.** Dos pruebas nuevas en `ReleaseScriptTests` que
+  **descubren** los `.ps1` en vez de listarlos: todos con BOM, ninguno leyendo el `.csproj` con
+  `Get-Content`. Rojas exactamente sobre `tools/capture-dropdown.ps1` y la línea 169 de
+  `build-installer.ps1`. El criterio de TJ-27 pedía que lo comprobara `release.ps1`; lo comprueba una
+  prueba, que `release.ps1` ejecuta **y el CI también** — mejor sitio que un chequeo más en el script.
+- **TJ-31 — el log.** Faltaba `rollOnFileSizeLimit`. Para no probarlo buscando texto, la configuración
+  se sacó a `LoggingService.CreateLogger(carpeta, límite)` y la prueba escribe con Serilog de verdad y
+  un límite de 1 KB.
+- **TJ-35 — el instalador en japonés.** Al añadir `Japanese.isl`, `ElTextoDelAviso_EstaEnTodosLosIdiomas`
+  se puso roja **sola**: ya descubría los idiomas del `[Languages]`. Es el guardián que cubre el riesgo y
+  no el sitio, justo lo contrario del patrón que el Tier J denuncia. Compilado con ISCC. El chino, fuera:
+  no hay `.isl` oficial.
+- **TJ-30 — el README.** Dos de las cuatro afirmaciones falsas **ya eran ciertas**: TJ-03 y TJ-09 las
+  arreglaron antes de llegar aquí. Solo quedaban el «todos los equipos» y el árbol de `tools/`.
+
+**Pruebas:** 296 pasan · 9 omitidas · 0 fallan; UI 34 · 0. Build 0/0 con `-warnaserror`.
 
 ---
 

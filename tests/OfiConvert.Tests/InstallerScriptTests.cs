@@ -79,14 +79,13 @@ public sealed class InstallerScriptTests
     }
 
     /// <summary>
-    /// El texto de ese aviso no puede nacer en duro: el instalador habla seis idiomas.
+    /// El texto de ese aviso no puede nacer en duro: el instalador habla varios idiomas (siete desde TJ-35).
     /// </summary>
     /// <remarks>
-    /// Es el mismo fallo que TJ-06 dentro de la app, en el instalador: el texto salía en español en los
-    /// seis. Ahora vive en la sección de mensajes personalizados y el código solo pide la clave.
+    /// Es el mismo fallo que TJ-06 dentro de la app, en el instalador: el texto salía en español en todos. Ahora vive en la sección de mensajes personalizados y el código solo pide la clave.
     /// </remarks>
     [Fact]
-    public void ElTextoDelAviso_EstaEnLosSeisIdiomas()
+    public void ElTextoDelAviso_EstaEnTodosLosIdiomas()
     {
         var raw = File.ReadAllText(IssPath);
 
@@ -94,7 +93,7 @@ public sealed class InstallerScriptTests
             .Select(m => m.Groups[1].Value)
             .ToList();
 
-        Assert.True(idiomas.Count >= 6, $"Solo se encontraron {idiomas.Count} idiomas en el instalador.");
+        Assert.True(idiomas.Count >= 7, $"Solo se encontraron {idiomas.Count} idiomas en el instalador.");
 
         var faltan = idiomas
             .SelectMany(i => new[] { $"{i}.NoEngineTitle", $"{i}.NoEngineBody" })
@@ -104,6 +103,24 @@ public sealed class InstallerScriptTests
         Assert.True(faltan.Count == 0,
             "Faltan traducciones del aviso de «sin motor»; en esos idiomas saldría en español:\n  "
                 + string.Join("\n  ", faltan));
+    }
+
+    /// <summary>
+    /// Los accesos del menú Inicio no llevan texto en duro: se piden a los mensajes de Inno (TJ-35).
+    /// </summary>
+    /// <remarks>
+    /// El de desinstalar decía «Desinstalar OfiConvert» en los siete idiomas. <c>{cm:UninstallProgram,…}</c>
+    /// ya viene traducido en cada <c>.isl</c>.
+    /// </remarks>
+    [Fact]
+    public void ElAccesoDeDesinstalar_UsaElMensajeComun()
+    {
+        string[] icons = WithoutComments(File.ReadAllLines(IssPath))
+            .Where(l => l.Contains("{uninstallexe}", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.NotEmpty(icons);
+        Assert.All(icons, l => Assert.Contains("{cm:UninstallProgram,", l, StringComparison.Ordinal));
     }
 
     /// <summary>
