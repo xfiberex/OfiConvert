@@ -27,7 +27,11 @@
 >
 > **v2.7.0** (2026-09-01): **21 de las 39 fichas del Tier J** — las 7 Altas y 14 Medias. Deja de
 > cerrarle al usuario su PowerPoint sin guardar, de borrar archivos ajenos por la ruta de LibreOffice
-> y de hablar en español en los ocho idiomas. **307 pruebas.** No queda nada en `main` sin publicar.
+> y de hablar en español en los ocho idiomas. **307 pruebas.**
+>
+> **v2.8.0** (2026-09-22): **30 de 39 fichas del Tier J**. Las miniaturas por fin se ven, la ventana respeta
+> el escalado, actualizar ya no deja Office colgado, el log rota, instalador en japonés. Primer corte
+> con **CI** (GitHub Actions). **339 pruebas.** No queda nada en `main` sin publicar.
 
 > **Qué hay aquí:** el trabajo pendiente agrupado por **tiers**, con su porqué y dónde vive cada cosa.
 >
@@ -1055,6 +1059,7 @@ Esfuerzo agregado: **~19 bajo · ~16 medio · ~3 alto**.
 | 2026-09-01 | **TJ-15** (instalar una actualización a mitad de un lote se saltaba el cierre protegido) y **TJ-09** (siete controles mudos para el Narrador, con el guardián mirando solo botones) (23/39) |
 | 2026-09-01 | **TJ-14** (las miniaturas **no se veían nunca**: el `BitmapImage` se creaba fuera del hilo de UI y el fallo se tragaba) y **TJ-16** (ventana sin mínimo y sin escalar por DPI) (25/39) |
 | 2026-09-01 | **v2.7.0 publicada**: 21 de las 39 fichas del Tier J (las 7 Altas y 14 Medias). Primer corte con el pipeline que el propio tier arregló — notas desde el `CHANGELOG.md` (TJ-07), omitidas contadas aparte (TJ-08), UI tests sobre el binario Release (TJ-05). Quedan **6 Medias y 12 Bajas** |
+| 2026-09-22 | **v2.8.0 publicada**: 30 de las 39 fichas del Tier J (TJ-09, TJ-14, TJ-15, TJ-16, TJ-27, TJ-30, TJ-31, TJ-35 y TJ-37 desde la 2.7.0). Primer corte con CI en GitHub Actions. Quedan **2 Medias y 7 Bajas** |
 | 2026-08-31 | **TJ-18** (el escáner ya mira en los dos sentidos), **TJ-23** (cuatro paquetes redistribuidos sin atribuir, no uno), **TJ-08** (el corte dice pasan/omitidas/fallan) y **TJ-24** (la contraseña ya no llega a `signtool`). Y **TJ-39**, nuevo: dos clases de pruebas se peleaban por el idioma (21/39) |
 | 2026-08-31 | **TJ-11** (dos archivos homónimos se pisaban en paralelo), **TJ-13** (dos avisos a la vez = ninguno), **TJ-10** (la frase del resumen se cortaba en el flujo por defecto) y **TJ-19** (progreso muerto: se quita) (16/38) |
 | 2026-08-31 | **TJ-21** (PowerPoint ya no saca su ventana: la sacábamos nosotros), **TJ-20** (un fallo al configurar dejaba un proceso huérfano por intento) y **TJ-25** (perfil propio por proceso de LibreOffice, *verificación de punta a punta pendiente*) (12/38) |

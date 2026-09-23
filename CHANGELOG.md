@@ -25,12 +25,33 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Sin publicar]
 
+---
+
+## [2.8.0] — 2026-09-22
+
+Segunda tanda del [Tier J](ROADMAP.md): **30 de sus 39 fichas cerradas** desde la re-auditoría. No trae
+funciones nuevas en la ventana, salvo una que **nunca había llegado a funcionar**: las miniaturas. El
+resto es que la app no deje Office colgado al actualizarse, que abra de su tamaño en pantallas con
+escalado, que el registro no se calle a mitad de un lote y que el Narrador diga **qué** es cada control.
+
+### Añadido
+
+- **El instalador habla japonés**, y el acceso *Desinstalar* del menú Inicio sale en el idioma de la
+  instalación: antes decía «Desinstalar OfiConvert» en todos. El chino sigue pendiente: Inno Setup no
+  trae traducción oficial. *(Cierra [TJ-35](ROADMAP.md).)*
+
 ### Corregido
 
 - **Las miniaturas de los documentos ya se ven.** La lista mostraba siempre el icono genérico: la
   miniatura se pedía bien, pero la imagen se construía fuera del hilo de la interfaz —donde no se
   puede— y el fallo se descartaba en silencio. Ahora se ve el documento, y de paso la app dejó de
   escribir un PNG temporal por archivo encolado. *(Cierra [TJ-14](ROADMAP.md).)*
+- **Instalar una actualización a mitad de una conversión ya no deja Office colgado.** El botón de
+  instalar seguía disponible con un lote en marcha, y al pulsarlo la app se cerraba **por un camino que
+  se saltaba la confirmación y la cancelación**: los Word, Excel o PowerPoint que estuvieran abiertos
+  para convertir se quedaban sueltos en el equipo. Ahora el botón se apaga mientras se convierte y, si
+  la conversión empieza durante la descarga, el lote se cancela y se espera a que Office cierre antes de
+  salir. *(Cierra [TJ-15](ROADMAP.md).)*
 - **La ventana abre del tamaño correcto en pantallas con escalado, y ya no se puede encoger hasta
   romperla.** Con Windows al 125 %, 150 % o 200 % la ventana nacía más pequeña de lo pensado —al 150 %,
   un tercio— porque el tamaño se pedía en píxeles crudos. Además no tenía mínimo: se podía arrastrar
@@ -38,17 +59,6 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - **El registro ya no se calla al llegar a 10 MB.** Alcanzado el límite, dejaba de escribir el resto del
   día, así que un lote grande con errores podía perder justo lo que había que consultar. Ahora abre un
   archivo nuevo (`oficonvert-AAAAMMDD_001.log`) y sigue. *(Cierra [TJ-31](ROADMAP.md).)*
-- **El instalador habla japonés**, y el acceso *Desinstalar* del menú Inicio sale en el idioma de la
-  instalación: antes decía «Desinstalar OfiConvert» en todos. *(Cierra [TJ-35](ROADMAP.md); el chino
-  sigue pendiente: Inno Setup no trae traducción oficial.)*
-- **El README dice la verdad sobre el instalador**: se puede instalar para todos los *usuarios* del
-  equipo (no «todos los equipos»). *(Cierra [TJ-30](ROADMAP.md).)*
-- **Instalar una actualización a mitad de una conversión ya no deja Office colgado.** El botón de
-  instalar seguía disponible con un lote en marcha, y al pulsarlo la app se cerraba **por un camino que
-  se saltaba la confirmación y la cancelación**: los Word, Excel o PowerPoint que estuvieran abiertos
-  para convertir se quedaban sueltos en el equipo. Ahora el botón se apaga mientras se convierte y, si
-  la conversión empieza durante la descarga, el lote se cancela y se espera a que Office cierre antes de
-  salir. *(Cierra [TJ-15](ROADMAP.md).)*
 
 ### Accesibilidad
 
@@ -92,6 +102,10 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - El guardián de omisiones previstas del corte **descubre** las pruebas con puerta de entorno en vez de
   llevar la lista escrita a mano: la cuarta puerta había que acordarse de darla de alta, que es el mismo
   fallo que TJ-17.
+- El README corrige dos afirmaciones que ya no eran ciertas: el instalador permite instalar para todos
+  los **usuarios** del equipo (no «todos los equipos»), y `tools/` tiene tres scripts, no uno.
+  *(Cierra [TJ-30](ROADMAP.md).)*
+- **Pruebas: 339** (305 unitarias + 34 de UI), frente a 307 en la v2.7.0.
 
 ---
 
@@ -446,7 +460,9 @@ Primera versión publicada (WPF).
 
 ---
 
-[Sin publicar]: https://github.com/xfiberex/OfiConvert/compare/v2.6.1...HEAD
+[Sin publicar]: https://github.com/xfiberex/OfiConvert/compare/v2.8.0...HEAD
+[2.8.0]: https://github.com/xfiberex/OfiConvert/compare/v2.7.0...v2.8.0
+[2.7.0]: https://github.com/xfiberex/OfiConvert/compare/v2.6.1...v2.7.0
 [2.6.1]: https://github.com/xfiberex/OfiConvert/compare/v2.6.0...v2.6.1
 [2.6.0]: https://github.com/xfiberex/OfiConvert/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/xfiberex/OfiConvert/compare/v2.4.0...v2.5.0

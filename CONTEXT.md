@@ -19,8 +19,8 @@
 | | |
 |---|---|
 | **Repositorio** | https://github.com/xfiberex/OfiConvert |
-| **Versión publicada** | **2.7.0** (2026-09-01) — **21 de las 39 fichas del [Tier J](ROADMAP.md)**: las 7 Altas y 14 Medias. Deja de cerrarle al usuario su PowerPoint sin guardar, de borrar archivos ajenos por la ruta de LibreOffice y de hablar en español en los ocho idiomas. Instalador sin firmar, **con `.sha256`** |
-| **En `main`, sin publicar** | La **verificación de punta a punta de TJ-25** contra LibreOffice 26.8.0.3 (2026-09-01) |
+| **Versión publicada** | **2.8.0** (2026-09-22) — **30 de las 39 fichas del [Tier J](ROADMAP.md)**. Miniaturas que por fin se ven, ventana del tamaño correcto con escalado, actualizar sin dejar Office colgado, log que rota, controles con nombre para el Narrador e instalador en japonés. Instalador sin firmar, **con `.sha256`** |
+| **En `main`, sin publicar** | — |
 | **Estado** | Funcional; Tiers 0 y A–I ✅. **Hoja de ruta REABIERTA**: [Tier J](ROADMAP.md) (re-auditoría del 2026-08-29) — **39 tareas, 30 cerradas** (las **7 Altas**, completas); quedan 2 Medias y 7 Bajas |
 | **Stack** | C# / .NET 10 · **WinUI 3** (Windows App SDK **1.8.260317003**, unpackaged, `net10.0-windows10.0.22621.0`, mín. 10.0.19041.0) · COM Interop (Office) + LibreOffice CLI · Serilog · **xUnit** + **FlaUI** · Inno Setup 6 |
 | **Licencia** | **MIT** ([`LICENSE`](LICENSE)) — pero **lo que redistribuye NO es todo MIT**: ver §4 *Legal* |
@@ -108,12 +108,12 @@ UI, ni lanza procesos, ni sale a la red, ni habla COM — por eso se puede proba
 | Build | `dotnet build OfiConvert.slnx -c Release`: **0 errores / 0 advertencias** |
 | Pruebas unitarias | **296 pasan · 9 se omiten (1 de red + 6 que conducen Office + 2 que ejecutan LibreOffice) · 0 fallan** (total 305); con `OFICONVERT_OFFICE_TESTS=1` y `OFICONVERT_LIBREOFFICE_TESTS=1`, **305 pasan** |
 | Pruebas de UI | **34 pasan · 0 fallan** (FlaUI, arrancan la app real **en la configuración compilada**) |
-| Publicado | **v2.7.0** (2.1.0 → 2.7.0 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
+| Publicado | **v2.8.0** (2.1.0 → 2.8.0 cortadas con `release.ps1`; todas con instalador + `.sha256`) |
 | Updater | **Verifica** el instalador antes de ejecutarlo (Authenticode → SHA-256) |
 | CI | **GitHub Actions** (`.github/workflows/ci.yml`, 2026-09-22): build Release 0/0 + unitarias + **UI** en `windows-latest`, en cada push/PR a `main` |
 | Instalador | **Probado de punta a punta** (2026-07-14): instalación limpia, desinstalación y actualización in-place sobre una instalación real. ⚠️ **Solo en un equipo CON Office**: ver `TJ-04` |
-| Pendiente de release | La verificación de TJ-25, el guardián de puertas de entorno, **TJ-15, TJ-09, TJ-14 y TJ-16**, y el lote de Bajas **TJ-27, TJ-30, TJ-31, TJ-35 y TJ-37** |
-| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **39 tareas** (TJ-39 nació dentro del tier), **30 cerradas — las 7 Altas, completas**; quedan **2 Medias** (TJ-22, TJ-26) **y 7 Bajas**. La v2.7.0 publicó 21; el resto espera en `main` |
+| Pendiente de release | — (la 2.8.0 está publicada; nada en `main` sin publicar) |
+| **Abierto** | **[Tier J](ROADMAP.md)** — re-auditoría externa del 2026-08-29: **39 tareas** (TJ-39 nació dentro del tier), **30 cerradas — las 7 Altas, completas**; quedan **2 Medias** (TJ-22, TJ-26) **y 7 Bajas**. Publicadas: 21 en la **v2.7.0** y 9 más en la **v2.8.0** |
 
 **Tiers** (detalle en [`ROADMAP.md`](ROADMAP.md)) — **A–I cerrados; J abierto**
 
@@ -673,6 +673,7 @@ Menores, sin tier asignado:
 
 | Versión | Qué trajo |
 |---|---|
+| **2.8.0** | **Tier J (30 de 39)** — las **miniaturas**, que nunca se habían visto; la ventana del tamaño correcto con escalado y con mínimo; **actualizar a mitad de un lote ya no deja Office colgado**; el log **rota** en vez de callarse; seis controles mudos para el Narrador; instalador en **japonés**. Primer corte con **CI** en GitHub Actions. **339 pruebas.** |
 | **2.7.0** | **Tier J (21 de 39 fichas)** — re-auditoría externa. Deja de **cerrar el PowerPoint del usuario** con trabajo sin guardar, de **borrar un archivo anterior** por la ruta de LibreOffice, de **pisar dos archivos homónimos** en el mismo lote y de mostrar **18 mensajes de error en español** en los ocho idiomas; el instalador deja de contradecir al producto sobre LibreOffice. **307 pruebas.** |
 | **2.6.1** | Los **desplegables se veían borrosos** sobre Mica: fondo sólido en claro, oscuro y alto contraste. El arreglo va en `App.xaml` **después** de `XamlControlsResources` — en la raíz no se aplica. **230 pruebas.** |
 | **2.6.0** | **Pase de UX/UI sobre capturas** — galería de todos los estados (×claro/oscuro, incluidos convirtiendo/resultados con conversión real) que destapó **3 bugs** vistos solo mirando la app (historial que no distinguía éxito de fallo, diálogos que ignoraban el tema, panel de resultados con tilde verde sobre errores) + pulido (destructivos *outline*, jerarquía de tarjetas, layout, diálogo legal, duración con unidad). **230 pruebas.** |
@@ -683,6 +684,21 @@ Menores, sin tier asignado:
 | **2.1.0** | **Tier A** — instancia única + menú contextual que funciona, los 8 idiomas persisten, aviso al terminar sin modal, build 0/0, `LICENSE`, README real. **Tier B** — pipeline de release en un paso (`release.ps1`), instalador scriptado y `.sha256`. |
 | **2.0.0** | Migración de WPF a **WinUI 3** (Mica, title bar propia). Post-tag, sin release: publish self-contained, tooling MSIX + idiomas en el publish, progreso de descarga en el updater. |
 | **1.0.0** | La app WPF completa: conversión por lotes a 5 formatos, 8 idiomas, historial, cola persistente, bandeja, menú contextual y aviso de actualización vía GitHub. |
+
+---
+
+### 2026-09-22 — El corte de la v2.8.0
+
+Nueve fichas desde la v2.7.0 (TJ-09, TJ-14, TJ-15, TJ-16 y el lote TJ-27/30/31/35/37) más la
+verificación de TJ-25 contra LibreOffice real. Es el primer corte con **CI**: `main` ya estaba en verde
+en GitHub Actions (build 0/0, 296 · 9 · 0 y 34 · 0) antes de lanzar `release.ps1`.
+
+El `[Sin publicar]` se **redactó entero** al cortar, como dejó escrito el corte anterior: por tandas
+había acumulado una afirmación del README archivada como «Corregido» del programa y el instalador en
+japonés, que es una **adición**, entre las correcciones. Los enlaces de comparación del final del
+`CHANGELOG.md` seguían apuntando a `v2.6.1...HEAD`: la 2.7.0 se publicó sin su enlace.
+
+**Pruebas:** 339 (305 unitarias + 34 de UI) frente a 307 en la v2.7.0.
 
 ---
 
