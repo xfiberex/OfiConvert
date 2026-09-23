@@ -2,6 +2,7 @@
 
 [![Release](https://img.shields.io/github/v/release/xfiberex/OfiConvert?label=release)](https://github.com/xfiberex/OfiConvert/releases/latest)
 [![Descargas](https://img.shields.io/github/downloads/xfiberex/OfiConvert/total?label=descargas)](https://github.com/xfiberex/OfiConvert/releases)
+[![CI](https://github.com/xfiberex/OfiConvert/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/xfiberex/OfiConvert/actions/workflows/ci.yml)
 [![Licencia](https://img.shields.io/badge/licencia-MIT-blue)](LICENSE)
 [![Plataforma](https://img.shields.io/badge/Windows-10%2F11%20x64-0078D4)](#requisitos-del-sistema)
 [![.NET](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com/)
